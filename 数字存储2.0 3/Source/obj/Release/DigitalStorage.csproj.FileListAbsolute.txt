@@ -1,0 +1,7 @@
+B:\rimworld code\_SourceCode\Develop\数字存储2.0\Assemblies\DigitalStorage.dll
+B:\rimworld code\_SourceCode\Develop\数字存储2.0\Assemblies\DigitalStorage.pdb
+B:\rimworld code\_SourceCode\Develop\数字存储2.0\Source\obj\Release\DigitalStorage.csproj.AssemblyReference.cache
+B:\rimworld code\_SourceCode\Develop\数字存储2.0\Source\obj\Release\DigitalStorage.csproj.CoreCompileInputs.cache
+B:\rimworld code\_SourceCode\Develop\数字存储2.0\Source\obj\Release\DigitalS.D2F0D98A.Up2Date
+B:\rimworld code\_SourceCode\Develop\数字存储2.0\Source\obj\Release\DigitalStorage.dll
+B:\rimworld code\_SourceCode\Develop\数字存储2.0\Source\obj\Release\DigitalStorage.pdb
