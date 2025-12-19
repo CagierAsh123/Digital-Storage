@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!-- 植入终端芯片手术 -->
+  <RecipeDef ParentName="SurgeryInstallImplantBase">
+    <defName>InstallTerminalChip</defName>
+    <label>植入终端芯片</label>
+    <description>在大脑中植入终端芯片，使其能够远程访问数字存储系统。</description>
+    <descriptionHyperlinks>
+      <ThingDef>DigitalStorage_TerminalChip</ThingDef>
+      <HediffDef>DigitalStorage_TerminalImplant</HediffDef>
+    </descriptionHyperlinks>
+    <jobString>植入终端芯片。</jobString>
+    <researchPrerequisite>DigitalStorage_TerminalImplant</researchPrerequisite>
+    <ingredients>
+      <li>
+        <filter>
+          <thingDefs>
+            <li>DigitalStorage_TerminalChip</li>
+          </thingDefs>
+        </filter>
+        <count>1</count>
+      </li>
+    </ingredients>
+    <fixedIngredientFilter>
+      <thingDefs>
+        <li>DigitalStorage_TerminalChip</li>
+      </thingDefs>
+    </fixedIngredientFilter>
+    <appliedOnFixedBodyParts>
+      <li>Brain</li>
+    </appliedOnFixedBodyParts>
+    <addsHediff>DigitalStorage_TerminalImplant</addsHediff>
+  </RecipeDef>
+
+  <!-- 移除终端芯片手术 -->
+  <RecipeDef ParentName="SurgeryRemoveImplantBase">
+    <defName>RemoveTerminalChip</defName>
+    <label>移除终端芯片</label>
+    <description>从大脑中移除终端芯片。</description>
+    <descriptionHyperlinks>
+      <ThingDef>DigitalStorage_TerminalChip</ThingDef>
+      <HediffDef>DigitalStorage_TerminalImplant</HediffDef>
+    </descriptionHyperlinks>
+    <jobString>移除终端芯片。</jobString>
+    <removesHediff>DigitalStorage_TerminalImplant</removesHediff>
+  </RecipeDef>
+
+</Defs>

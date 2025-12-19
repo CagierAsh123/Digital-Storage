@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!-- 终端芯片 - 用于植入终端植入体 -->
+  <ThingDef ParentName="BodyPartBase">
+    <defName>DigitalStorage_TerminalChip</defName>
+    <label>终端芯片</label>
+    <description>一个高级神经接口芯片，可以植入大脑中，允许携带者远程访问数字存储系统。需要通过手术台进行植入。</description>
+    <descriptionHyperlinks>
+      <RecipeDef>InstallTerminalChip</RecipeDef>
+    </descriptionHyperlinks>
+    <graphicData>
+      <texPath>大脑终端芯片</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+    </graphicData>
+    <techLevel>Spacer</techLevel>
+    <statBases>
+      <Mass>0.1</Mass>
+      <MarketValue>1000</MarketValue>
+    </statBases>
+    <thingCategories>
+      <li>BodyPartsBionic</li>
+    </thingCategories>
+    <costList>
+      <Steel>250</Steel>
+      <Plasteel>150</Plasteel>
+      <ComponentIndustrial>40</ComponentIndustrial>
+    </costList>
+    <techHediffsTags>
+      <li>Advanced</li>
+    </techHediffsTags>
+  </ThingDef>
+
+</Defs>

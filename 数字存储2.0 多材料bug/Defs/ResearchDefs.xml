@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!-- 研究页签 -->
+  <ResearchTabDef>
+    <defName>DigitalStorage_Tab</defName>
+    <label>数字存储</label>
+  </ResearchTabDef>
+
+  <!-- 基础数字存储研究 -->
+  <ResearchProjectDef>
+    <defName>DigitalStorage_BasicStorage</defName>
+    <label>数字存储</label>
+    <description>解锁基础数字存储系统。建造存储核心以创建远程物品存储网络。</description>
+    <baseCost>1000</baseCost>
+    <techLevel>Industrial</techLevel>
+    <prerequisites>
+      <li>MicroelectronicsBasics</li>
+    </prerequisites>
+    <requiredResearchBuilding>HiTechResearchBench</requiredResearchBuilding>
+    <tab>DigitalStorage_Tab</tab>
+    <researchViewX>0</researchViewX>
+    <researchViewY>2</researchViewY>
+  </ResearchProjectDef>
+
+  <!-- 磁盘扩展研究 -->
+  <ResearchProjectDef>
+    <defName>DigitalStorage_DiskExpansion</defName>
+    <label>磁盘存储扩展</label>
+    <description>解锁磁盘柜以扩展数字存储容量。在存储核心相邻的柜子中放入磁盘。</description>
+    <baseCost>1500</baseCost>
+    <techLevel>Industrial</techLevel>
+    <prerequisites>
+      <li>DigitalStorage_BasicStorage</li>
+    </prerequisites>
+    <requiredResearchBuilding>HiTechResearchBench</requiredResearchBuilding>
+    <tab>DigitalStorage_Tab</tab>
+    <researchViewX>1</researchViewX>
+    <researchViewY>1</researchViewY>
+  </ResearchProjectDef>
+
+  <!-- 接口研究 -->
+  <ResearchProjectDef>
+    <defName>DigitalStorage_Interface</defName>
+    <label>数字存储接口</label>
+    <description>解锁存储接口。接口 3x3 范围内的殖民者可以隔空存取物品。</description>
+    <baseCost>2000</baseCost>
+    <techLevel>Industrial</techLevel>
+    <prerequisites>
+      <li>DigitalStorage_BasicStorage</li>
+    </prerequisites>
+    <requiredResearchBuilding>HiTechResearchBench</requiredResearchBuilding>
+    <tab>DigitalStorage_Tab</tab>
+    <researchViewX>1</researchViewX>
+    <researchViewY>3</researchViewY>
+  </ResearchProjectDef>
+
+  <!-- 终端植入体研究 -->
+  <ResearchProjectDef>
+    <defName>DigitalStorage_TerminalImplant</defName>
+    <label>终端植入体</label>
+    <description>解锁终端植入体。植入后殖民者可以在任意位置隔空存取物品，无需接近接口。</description>
+    <baseCost>3000</baseCost>
+    <techLevel>Spacer</techLevel>
+    <prerequisites>
+      <li>DigitalStorage_Interface</li>
+    </prerequisites>
+    <requiredResearchBuilding>HiTechResearchBench</requiredResearchBuilding>
+    <tab>DigitalStorage_Tab</tab>
+    <researchViewX>2</researchViewX>
+    <researchViewY>3</researchViewY>
+  </ResearchProjectDef>
+
+</Defs>
