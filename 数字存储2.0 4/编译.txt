@@ -1,0 +1,1 @@
+dotnet build "Develop\数字存储2.0\Source\DigitalStorage.csproj" -c Release
