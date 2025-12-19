@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!-- 终端植入体 -->
+  <HediffDef ParentName="ImplantHediffBase">
+    <defName>DigitalStorage_TerminalImplant</defName>
+    <hediffClass>DigitalStorage.Components.Hediff_TerminalImplant</hediffClass>
+    <label>终端植入体</label>
+    <labelNoun>终端植入体</labelNoun>
+    <description>一个神经植入体，允许携带者远程访问数字存储系统。</description>
+    <descriptionHyperlinks>
+      <ThingDef>DigitalStorage_TerminalChip</ThingDef>
+    </descriptionHyperlinks>
+    <spawnThingOnRemoved>DigitalStorage_TerminalChip</spawnThingOnRemoved>
+  </HediffDef>
+
+</Defs>

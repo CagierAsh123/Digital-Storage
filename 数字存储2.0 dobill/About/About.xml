@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <name>数字存储 Digital Storage</name>
+  <author>Cagier.阳</author>
+  <supportedVersions>
+    <li>1.6</li>
+  </supportedVersions>
+  <description>一个为 RimWorld 设计的数字存储系统，允许通过存储核心、磁盘柜和接口网络进行远程物品访问。
+
+功能特性：
+- 建造存储核心创建远程存储网络
+- 使用磁盘柜和存储磁盘扩展容量
+- 使用接口自动转移原版存储中的物品
+- 装载终端植入体的 Pawn 可以远程访问存储
+- 完全集成 RimWorld 的电力系统
+
+该系统提供了一种便捷的方式来管理大量物品，而无需在基地中堆放大量存储建筑。</description>
+  <packageId>cagier.digitalstorage</packageId>
+  <modDependencies>
+    <li>
+      <packageId>brrainz.harmony</packageId>
+      <displayName>Harmony</displayName>
+      <steamWorkshopUrl>https://steamcommunity.com/sharedfiles/filedetails/?id=2009463077</steamWorkshopUrl>
+    </li>
+  </modDependencies>
+  <loadAfter>
+    <li>brrainz.harmony</li>
+  </loadAfter>
+</ModMetaData>
