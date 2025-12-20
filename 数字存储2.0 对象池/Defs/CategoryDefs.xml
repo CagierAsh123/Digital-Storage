@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!-- 数字存储物品分类 -->
+  <ThingCategoryDef>
+    <defName>DigitalStorageItems</defName>
+    <label>数字存储</label>
+    <parent>Manufactured</parent>
+  </ThingCategoryDef>
+
+</Defs>
