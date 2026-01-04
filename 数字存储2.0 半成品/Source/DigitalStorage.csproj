@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{7E8F6B3E-1AED-46CF-97D0-A06206F3649F}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>DigitalStorage</RootNamespace>
+    <AssemblyName>DigitalStorage</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\Assemblies\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="0Harmony">
+      <HintPath>..\Assemblies\0Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>..\..\..\..\..\..\..\SteamLibrary\steamapps\common\RimWorld\RimWorldWin64_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\..\..\..\..\..\..\SteamLibrary\steamapps\common\RimWorld\RimWorldWin64_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>..\..\..\..\..\..\..\SteamLibrary\steamapps\common\RimWorld\RimWorldWin64_Data\Managed\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>..\..\..\..\..\..\..\SteamLibrary\steamapps\common\RimWorld\RimWorldWin64_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+  </ItemGroup>
+  <ItemGroup>
+    <AppDesigner Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Components - 核心建筑 -->
+    <Compile Include="Components\Building_StorageCore.cs" />
+    <Compile Include="Components\Building_DiskCabinet.cs" />
+    <Compile Include="Components\DigitalStorageMapComponent.cs" />
+    <Compile Include="Components\Dialog_RenameNetwork.cs" />
+    <Compile Include="Components\Hediff_TerminalImplant.cs" />
+    <Compile Include="Components\CompVirtualIngredient.cs" />
+    <Compile Include="Components\CompUseEffect_TerminalImplant.cs" />
+    
+    <!-- Data - 数据结构 -->
+    <Compile Include="Data\StoredItemData.cs" />
+    
+    <!-- HarmonyPatches - 核心补丁 -->
+    <Compile Include="HarmonyPatches\HarmonyInit.cs" />
+    <Compile Include="HarmonyPatches\Patch_Pawn_JobTracker_StartJob_Teleport.cs" />
+    <Compile Include="HarmonyPatches\Patch_WorkGiver_DoBill_TryFindBestBillIngredients.cs" />
+    <Compile Include="HarmonyPatches\Patch_WorkGiver_ConstructDeliverResources_V2.cs" />
+    <Compile Include="HarmonyPatches\Patch_Designator_Build.cs" />
+    
+    <!-- HarmonyPatches - 兼容性补丁 -->
+    <Compile Include="HarmonyPatches\Patch_ResourceCounter.cs" />
+    <Compile Include="HarmonyPatches\Patch_RecipeWorkerCounter_CountProducts.cs" />
+    <Compile Include="HarmonyPatches\Patch_TradeUtility.cs" />
+    <Compile Include="HarmonyPatches\Patch_TradeAction.cs" />
+    
+    <!-- HarmonyPatches - 功能补丁 -->
+    <Compile Include="HarmonyPatches\Patch_StackProtection.cs" />
+    <Compile Include="HarmonyPatches\Patch_Thing_CanStackWith.cs" />
+    <Compile Include="HarmonyPatches\Patch_Thing_TryAbsorbStack.cs" />
+    <Compile Include="HarmonyPatches\Patch_Thing_Print.cs" />
+    <Compile Include="HarmonyPatches\Patch_Thing_DrawGUIOverlay.cs" />
+    <Compile Include="HarmonyPatches\Patch_CompRottable_Active.cs" />
+    <Compile Include="HarmonyPatches\Patch_CompRottable_TicksUntilRotAtTemp.cs" />
+    <Compile Include="HarmonyPatches\Patch_StaticConstructorOnStartup.cs" />
+    
+    <!-- HarmonyPatches - 第三方兼容 -->
+    <Compile Include="HarmonyPatches\Patch_PickUpAndHaul_Compatibility.cs" />
+    <Compile Include="HarmonyPatches\Patch_Achtung_Compatibility.cs" />
+    
+    <!-- Services - 核心服务 -->
+    <Compile Include="Services\DigitalStorageGameComponent.cs" />
+    <Compile Include="Services\PawnStorageAccess.cs" />
+    <Compile Include="Services\AsyncItemConverter.cs" />
+    
+    <!-- Settings - 设置 -->
+    <Compile Include="Settings\DigitalStorageMod.cs" />
+    <Compile Include="Settings\DigitalStorageSettings.cs" />
+    
+    <!-- UI - 用户界面 -->
+    <Compile Include="UI\Dialog_VirtualStorage.cs" />
+    <Compile Include="UI\Dialog_ExtractAmount.cs" />
+    
+    <!-- Threading - 多线程支持 -->
+    <Compile Include="Threading\JobScheduler.cs" />
+    <Compile Include="Threading\MainThreadInvoker.cs" />
+    
+    <!-- Properties -->
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
