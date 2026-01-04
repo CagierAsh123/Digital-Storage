@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!-- 终端芯片 - 可直接使用植入 -->
+  <ThingDef ParentName="ResourceBase">
+    <defName>DigitalStorage_TerminalChip</defName>
+    <label>终端芯片</label>
+    <description>一个高级神经接口芯片，可以直接使用植入大脑中，允许携带者远程访问数字存储系统。\n\n植入后，物品将直接传送到脚下，无需走到存储核心位置。</description>
+    <descriptionHyperlinks>
+      <HediffDef>DigitalStorage_TerminalImplant</HediffDef>
+    </descriptionHyperlinks>
+    <graphicData>
+      <texPath>大脑终端芯片</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+    </graphicData>
+    <techLevel>Spacer</techLevel>
+    <stackLimit>1</stackLimit>
+    <statBases>
+      <MaxHitPoints>80</MaxHitPoints>
+      <Mass>0.1</Mass>
+      <MarketValue>1000</MarketValue>
+      <DeteriorationRate>2</DeteriorationRate>
+      <Flammability>0.2</Flammability>
+    </statBases>
+    <thingCategories>
+      <li>BodyPartsBionic</li>
+    </thingCategories>
+    <tradeTags>
+      <li>ExoticMisc</li>
+    </tradeTags>
+    <comps>
+      <li Class="CompProperties_Usable">
+        <useJob>UseItem</useJob>
+        <useLabel>植入终端芯片</useLabel>
+      </li>
+      <li Class="DigitalStorage.Components.CompProperties_UseEffect_TerminalImplant" />
+      <li Class="CompProperties_UseEffectPlaySound">
+        <soundOnUsed>MechSerumUsed</soundOnUsed>
+      </li>
+      <li Class="CompProperties_UseEffectDestroySelf" />
+      <li Class="CompProperties_Forbiddable" />
+    </comps>
+  </ThingDef>
+
+</Defs>
