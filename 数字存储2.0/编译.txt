@@ -1,0 +1,18 @@
+dotnet build "Develop\数字存储2.0\Source\DigitalStorage.csproj" -c Release
+
+
+
+# 清理编译输出
+cd "B:\rimworld code\_SourceCode\Develop\数字存储2.0\Source"
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue bin, obj
+dotnet clean "Develop\数字存储2.0\Source\DigitalStorage.csproj"
+
+# 重新编译
+cd "B:\rimworld code\_SourceCode"
+dotnet build "Develop\数字存储2.0\Source\DigitalStorage.csproj" -c Release
+
+
+cd "B:\rimworld code\_SourceCode\Develop\数字存储2.0\Source"
+dotnet-sonarscanner begin /key:digital-storage /d:sonar.host.url=http://localhost:9000 /d:sonar.token=sqp_4d0a8737c2b26c2bb05d6a00f06a578bfbafe85b
+dotnet build
+dotnet-sonarscanner end /d:sonar.token=sqp_4d0a8737c2b26c2bb05d6a00f06a578bfbafe85b

@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!-- 数字存储建筑基类 -->
+  <ThingDef Name="DigitalStorage_BuildingBase" ParentName="BuildingBase" Abstract="True">
+    <designationCategory>Furniture</designationCategory>
+    <passability>PassThroughOnly</passability>
+    <castEdgeShadows>true</castEdgeShadows>
+    <canOverlapZones>false</canOverlapZones>
+    <terrainAffordanceNeeded>Medium</terrainAffordanceNeeded>
+    <drawGUIOverlay>true</drawGUIOverlay>
+    <surfaceType>Item</surfaceType>
+    <minifiedDef>MinifiedThing</minifiedDef>
+    <statBases>
+      <Flammability>0.5</Flammability>
+    </statBases>
+    <comps>
+      <li Class="CompProperties_Forbiddable" />
+    </comps>
+    <inspectorTabs>
+      <li>ITab_Storage</li>
+    </inspectorTabs>
+    <thingCategories>
+      <li>BuildingsFurniture</li>
+    </thingCategories>
+  </ThingDef>
+
+  <!-- 存储核心 - 每个核心是独立网络 -->
+  <ThingDef ParentName="DigitalStorage_BuildingBase">
+    <defName>DigitalStorage_StorageCore</defName>
+    <label>数字存储核心</label>
+    <description>数字存储系统的核心单元。每个核心是一个独立的存储网络，可以命名。基础容量 1000 个物品，通过连接磁盘柜扩展容量。\n\n存储在网络中的物品不会老化或变质。\n\n有终端芯片的殖民者可以远程传送物品。</description>
+    <thingClass>DigitalStorage.Components.Building_StorageCore</thingClass>
+    <graphicData>
+      <texPath>2.0/基座</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <shaderType>CutoutComplex</shaderType>
+      <drawSize>(4,4)</drawSize>
+      <drawOffset>(0, 0, 0.5)</drawOffset>
+    </graphicData>
+    <drawerType>MapMeshAndRealTime</drawerType>
+    <uiIconScale>0.9</uiIconScale>
+    <fillPercent>0.5</fillPercent>
+    <statBases>
+      <MaxHitPoints>10000</MaxHitPoints>
+      <WorkToBuild>2000</WorkToBuild>
+      <Mass>50</Mass>
+    </statBases>
+    <size>(3,3)</size>
+    <building>
+      <blueprintClass>Blueprint_Storage</blueprintClass>
+      <maxItemsInCell>200</maxItemsInCell>
+      <preventDeteriorationOnTop>true</preventDeteriorationOnTop>
+      <ignoreStoredThingsBeauty>true</ignoreStoredThingsBeauty>
+      <fixedStorageSettings>
+        <priority>Normal</priority>
+        <filter>
+          <disallowNotEverStorable>true</disallowNotEverStorable>
+          <categories Inherit="False">
+            <li>Foods</li>
+            <li>ResourcesRaw</li>
+            <li>Textiles</li>
+          </categories>
+        </filter>
+      </fixedStorageSettings>
+      <defaultStorageSettings>
+        <priority>Important</priority>
+        <filter>
+          <categories>
+            <li>Foods</li>
+            <li>ResourcesRaw</li>
+            <li>Textiles</li>
+          </categories>
+        </filter>
+      </defaultStorageSettings>
+    </building>
+    <tickerType>Normal</tickerType>
+    <comps>
+      <li Class="CompProperties_Power">
+        <compClass>CompPowerTrader</compClass>
+        <basePowerConsumption>100</basePowerConsumption>
+        <shortCircuitInRain>true</shortCircuitInRain>
+      </li>
+      <li Class="CompProperties_Breakdownable" />
+    </comps>
+    <researchPrerequisites>
+      <li>DigitalStorage_BasicStorage</li>
+    </researchPrerequisites>
+    <costList>
+      <Steel>500</Steel>
+      <Plasteel>250</Plasteel>
+      <ComponentSpacer>15</ComponentSpacer>
+      <ComponentIndustrial>100</ComponentIndustrial>
+    </costList>
+  </ThingDef>
+
+  <!-- 磁盘柜 - 最多存放8个磁盘 -->
+  <ThingDef ParentName="DigitalStorage_BuildingBase">
+    <defName>DigitalStorage_DiskCabinet</defName>
+    <label>磁盘柜</label>
+    <description>用于存储磁盘的柜子，最多可存放8个磁盘。可选择连接到任意存储核心以扩展其容量。\n\n小型磁盘: +500 容量\n中型磁盘: +1000 容量\n大型磁盘: +2000 容量</description>
+    <thingClass>DigitalStorage.Components.Building_DiskCabinet</thingClass>
+    <graphicData>
+      <texPath>磁盘柜</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <shaderType>CutoutComplex</shaderType>
+      <drawSize>(1,1)</drawSize>
+    </graphicData>
+    <uiIconScale>0.9</uiIconScale>
+    <fillPercent>0.4</fillPercent>
+    <statBases>
+      <MaxHitPoints>150</MaxHitPoints>
+      <WorkToBuild>1500</WorkToBuild>
+      <Mass>30</Mass>
+    </statBases>
+    <size>(1,1)</size>
+    <building>
+      <maxItemsInCell>8</maxItemsInCell>
+      <fixedStorageSettings>
+        <filter>
+          <thingDefs>
+            <li>DigitalStorage_DiskSmall</li>
+            <li>DigitalStorage_DiskMedium</li>
+            <li>DigitalStorage_DiskLarge</li>
+          </thingDefs>
+        </filter>
+      </fixedStorageSettings>
+      <defaultStorageSettings>
+        <priority>Important</priority>
+        <filter>
+          <thingDefs>
+            <li>DigitalStorage_DiskSmall</li>
+            <li>DigitalStorage_DiskMedium</li>
+            <li>DigitalStorage_DiskLarge</li>
+          </thingDefs>
+        </filter>
+      </defaultStorageSettings>
+    </building>
+    <researchPrerequisites>
+      <li>DigitalStorage_DiskExpansion</li>
+    </researchPrerequisites>
+    <costList>
+      <Steel>50</Steel>
+      <Plasteel>40</Plasteel>
+      <ComponentIndustrial>15</ComponentIndustrial>
+    </costList>
+  </ThingDef>
+
+  <!-- 输入接口 - 物品放上去自动传送到核心 -->
+  <ThingDef ParentName="DigitalStorage_BuildingBase">
+    <defName>DigitalStorage_InputInterface</defName>
+    <label>数字存储输入接口</label>
+    <description>数字存储系统的输入接口。殖民者将物品放到接口上后，物品会自动传送到绑定的存储核心。\n\n放置后会自动连接到相邻的存储核心，也可以手动选择连接目标。</description>
+    <thingClass>DigitalStorage.Components.Building_InputInterface</thingClass>
+    <graphicData>
+      <texPath>接口</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <shaderType>CutoutComplex</shaderType>
+      <drawSize>(1,1)</drawSize>
+    </graphicData>
+    <uiIconScale>0.9</uiIconScale>
+    <fillPercent>0.4</fillPercent>
+    <statBases>
+      <MaxHitPoints>150</MaxHitPoints>
+      <WorkToBuild>1000</WorkToBuild>
+      <Mass>20</Mass>
+    </statBases>
+    <size>(1,1)</size>
+    <building>
+      <maxItemsInCell>100</maxItemsInCell>
+      <preventDeteriorationOnTop>true</preventDeteriorationOnTop>
+      <ignoreStoredThingsBeauty>true</ignoreStoredThingsBeauty>
+      <fixedStorageSettings>
+        <priority>Normal</priority>
+        <filter>
+          <disallowNotEverStorable>true</disallowNotEverStorable>
+          <categories Inherit="False">
+            <li>Foods</li>
+            <li>ResourcesRaw</li>
+            <li>Textiles</li>
+          </categories>
+        </filter>
+      </fixedStorageSettings>
+      <defaultStorageSettings>
+        <priority>Critical</priority>
+        <filter>
+          <categories>
+            <li>Foods</li>
+            <li>ResourcesRaw</li>
+            <li>Textiles</li>
+          </categories>
+        </filter>
+      </defaultStorageSettings>
+    </building>
+    <comps>
+      <li Class="CompProperties_Power">
+        <compClass>CompPowerTrader</compClass>
+        <basePowerConsumption>50</basePowerConsumption>
+        <shortCircuitInRain>true</shortCircuitInRain>
+      </li>
+    </comps>
+    <researchPrerequisites>
+      <li>DigitalStorage_Interface</li>
+    </researchPrerequisites>
+    <costList>
+      <Steel>50</Steel>
+      <Plasteel>25</Plasteel>
+      <ComponentIndustrial>5</ComponentIndustrial>
+    </costList>
+  </ThingDef>
+
+</Defs>

@@ -1,0 +1,11 @@
+const fs = require('fs');
+const data = JSON.parse(fs.readFileSync('.sonarqube/out/0/Issues.json', 'utf8'));
+const issue = data.runs[0].results[0];
+let uri = issue.locations?.[0]?.physicalLocation?.artifactLocation?.uri || issue.locations?.[0]?.resultFile?.uri || "";
+let decoded = decodeURIComponent(uri.replace('file:///', ''));
+console.log('URI:', uri.substring(0, 100));
+console.log('Decoded:', decoded.substring(0, 100));
+const parts = decoded.split(/[\/\\]+/);
+console.log('Parts:', parts);
+const fileName = parts.find(p => p && p.endsWith('.cs')) || 'Unknown';
+console.log('FileName:', fileName);

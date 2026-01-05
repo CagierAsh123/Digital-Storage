@@ -1,0 +1,1 @@
+Roslyn version: 5.0.0.0Language version: CSharp7_3!Concurrent execution: enabled��File 'B:\rimworld code\_SourceCode\Develop\数字存储2.0\Source\obj\Debug\.NETFramework,Version=v4.7.2.AssemblyAttributes.cs' was recognized as generated

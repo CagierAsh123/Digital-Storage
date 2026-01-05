@@ -1,0 +1,96 @@
+{
+  "scannerProperties": [
+    {
+      "key": "sonar.scanner.app",
+      "value": "ScannerMSBuild"
+    },
+    {
+      "key": "sonar.scanner.appVersion",
+      "value": "11.0"
+    },
+    {
+      "key": "sonar.scanner.bootstrapStartTime",
+      "value": "1767598707000"
+    },
+    {
+      "key": "sonar.projectKey",
+      "value": "digital-storage"
+    },
+    {
+      "key": "sonar.working.directory",
+      "value": "B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\.sonarqube\\out\\.sonar"
+    },
+    {
+      "key": "sonar.projectBaseDir",
+      "value": "B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source"
+    },
+    {
+      "key": "sonar.pullrequest.cache.basepath",
+      "value": "B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source"
+    },
+    {
+      "key": "sonar.sources",
+      "value": ""
+    },
+    {
+      "key": "sonar.tests",
+      "value": ""
+    },
+    {
+      "key": "sonar.modules",
+      "value": "7E8F6B3E-1AED-46CF-97D0-A06206F3649F"
+    },
+    {
+      "key": "7E8F6B3E-1AED-46CF-97D0-A06206F3649F.sonar.projectKey",
+      "value": "digital-storage:7E8F6B3E-1AED-46CF-97D0-A06206F3649F"
+    },
+    {
+      "key": "7E8F6B3E-1AED-46CF-97D0-A06206F3649F.sonar.projectName",
+      "value": "DigitalStorage"
+    },
+    {
+      "key": "7E8F6B3E-1AED-46CF-97D0-A06206F3649F.sonar.projectBaseDir",
+      "value": "B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source"
+    },
+    {
+      "key": "7E8F6B3E-1AED-46CF-97D0-A06206F3649F.sonar.working.directory",
+      "value": "B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\.sonarqube\\out\\.sonar\\mod0"
+    },
+    {
+      "key": "7E8F6B3E-1AED-46CF-97D0-A06206F3649F.sonar.sourceEncoding",
+      "value": "utf-8"
+    },
+    {
+      "key": "7E8F6B3E-1AED-46CF-97D0-A06206F3649F.sonar.tests",
+      "value": ""
+    },
+    {
+      "key": "7E8F6B3E-1AED-46CF-97D0-A06206F3649F.sonar.sources",
+      "value": "B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\Components\\Building_StorageCore.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\Components\\Building_DiskCabinet.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\Components\\Building_InputInterface.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\Components\\DigitalStorageMapComponent.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\Components\\Dialog_RenameNetwork.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\Components\\Hediff_TerminalImplant.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\Components\\CompVirtualIngredient.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\Components\\CompUseEffect_TerminalImplant.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\Data\\StoredItemData.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\HarmonyPatches\\HarmonyInit.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\HarmonyPatches\\Patch_Pawn_JobTracker_StartJob_Teleport.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\HarmonyPatches\\Patch_WorkGiver_DoBill_TryFindBestBillIngredients.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\HarmonyPatches\\Patch_WorkGiver_ConstructDeliverResources_V2.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\HarmonyPatches\\Patch_Designator_Build.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\HarmonyPatches\\Patch_ResourceCounter.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\HarmonyPatches\\Patch_RecipeWorkerCounter_CountProducts.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\HarmonyPatches\\Patch_TradeUtility.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\HarmonyPatches\\Patch_TradeAction.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\HarmonyPatches\\Patch_StackProtection.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\HarmonyPatches\\Patch_Thing_CanStackWith.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\HarmonyPatches\\Patch_Thing_TryAbsorbStack.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\HarmonyPatches\\Patch_Thing_Print.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\HarmonyPatches\\Patch_Thing_DrawGUIOverlay.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\HarmonyPatches\\Patch_CompRottable_Active.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\HarmonyPatches\\Patch_CompRottable_TicksUntilRotAtTemp.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\HarmonyPatches\\Patch_StaticConstructorOnStartup.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\HarmonyPatches\\Patch_PickUpAndHaul_Compatibility.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\HarmonyPatches\\Patch_Achtung_Compatibility.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\Services\\DigitalStorageGameComponent.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\Services\\PawnStorageAccess.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\Services\\AsyncItemConverter.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\Settings\\DigitalStorageMod.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\Settings\\DigitalStorageSettings.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\UI\\Dialog_VirtualStorage.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\UI\\Dialog_ExtractAmount.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\Threading\\JobScheduler.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\Threading\\MainThreadInvoker.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\Properties\\AssemblyInfo.cs,B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\debug.js"
+    },
+    {
+      "key": "7E8F6B3E-1AED-46CF-97D0-A06206F3649F.sonar.cs.analyzer.projectOutPaths",
+      "value": "B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\.sonarqube\\out\\0"
+    },
+    {
+      "key": "7E8F6B3E-1AED-46CF-97D0-A06206F3649F.sonar.cs.roslyn.reportFilePaths",
+      "value": "B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\.sonarqube\\out\\0\\Issues.json"
+    },
+    {
+      "key": "7E8F6B3E-1AED-46CF-97D0-A06206F3649F.sonar.cs.scanner.telemetry",
+      "value": "B:\\rimworld code\\_SourceCode\\Develop\\数字存储2.0\\Source\\.sonarqube\\out\\0\\Telemetry.json"
+    },
+    {
+      "key": "sonar.token",
+      "value": "***"
+    },
+    {
+      "key": "sonar.host.url",
+      "value": "http://localhost:9000"
+    },
+    {
+      "key": "sonar.visualstudio.enable",
+      "value": "false"
+    }
+  ]
+}
