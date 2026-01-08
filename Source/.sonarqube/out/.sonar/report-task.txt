@@ -1,0 +1,6 @@
+projectKey=digital-storage
+serverUrl=http://localhost:9000
+serverVersion=25.12.0.117093
+dashboardUrl=http://localhost:9000/dashboard?id=digital-storage
+ceTaskId=856190b6-0423-4ae1-b79f-bd2a49d0c052
+ceTaskUrl=http://localhost:9000/api/ce/task?id=856190b6-0423-4ae1-b79f-bd2a49d0c052
