@@ -8,7 +8,6 @@ namespace DigitalStorage.Components
     public class DigitalStorageMapComponent : MapComponent
     {
         private List<Building_StorageCore> cores = new List<Building_StorageCore>();
-        private HashSet<IntVec3> cabinetPositions = new HashSet<IntVec3>();
 
         public DigitalStorageMapComponent(Map map)
             : base(map)
@@ -36,27 +35,6 @@ namespace DigitalStorage.Components
             return this.cores;
         }
 
-        public void RegisterCabinet(Building_DiskCabinet cabinet)
-        {
-            if (cabinet != null)
-            {
-                this.cabinetPositions.Add(cabinet.Position);
-            }
-        }
-
-        public void DeregisterCabinet(Building_DiskCabinet cabinet)
-        {
-            if (cabinet != null)
-            {
-                this.cabinetPositions.Remove(cabinet.Position);
-            }
-        }
-
-        public bool IsCabinetPosition(IntVec3 pos)
-        {
-            return this.cabinetPositions.Contains(pos);
-        }
-
         /// <summary>
         /// 查找包含指定物品的核心（支持预留物品系统）
         /// </summary>
@@ -78,7 +56,6 @@ namespace DigitalStorage.Components
                 SlotGroup slotGroup = core.GetSlotGroup();
                 if (slotGroup != null)
                 {
-                    // 通过引用匹配（预留物品）
                     foreach (Thing t in slotGroup.HeldThings)
                     {
                         if (t == thing)
@@ -88,7 +65,6 @@ namespace DigitalStorage.Components
                     }
                 }
 
-                // 通过位置匹配
                 if (slotGroup != null && slotGroup.CellsList != null)
                 {
                     foreach (IntVec3 cell in slotGroup.CellsList)
@@ -108,7 +84,6 @@ namespace DigitalStorage.Components
                     }
                 }
 
-                // 检查虚拟存储（如果预留物品中没有）
                 if (core.HasItem(thing.def, thing.Stuff))
                 {
                     return core;

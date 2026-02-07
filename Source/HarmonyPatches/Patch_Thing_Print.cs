@@ -37,12 +37,6 @@ namespace DigitalStorage.HarmonyPatches
                 return false; // 隐藏渲染
             }
 
-            // 检查是否在磁盘柜中
-            Building_DiskCabinet cabinet = slotGroup.parent as Building_DiskCabinet;
-            if (cabinet != null && cabinet.Spawned)
-            {
-                return false; // 隐藏渲染
-            }
 
             return true; // 正常渲染
         }

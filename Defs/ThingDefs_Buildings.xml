@@ -203,59 +203,6 @@
     </costList>
   </ThingDef>
 
-  <!-- 磁盘柜 - 最多存放8个磁盘 -->
-  <ThingDef ParentName="DigitalStorage_BuildingBase">
-    <defName>DigitalStorage_DiskCabinet</defName>
-    <label>磁盘柜</label>
-    <description>用于存储磁盘的柜子，最多可存放8个磁盘。可选择连接到任意存储核心以扩展其容量。\n\n小型磁盘: +500 容量\n中型磁盘: +1000 容量\n大型磁盘: +2000 容量</description>
-    <thingClass>DigitalStorage.Components.Building_DiskCabinet</thingClass>
-    <graphicData>
-      <texPath>磁盘柜</texPath>
-      <graphicClass>Graphic_Single</graphicClass>
-      <shaderType>CutoutComplex</shaderType>
-      <drawSize>(1,1)</drawSize>
-    </graphicData>
-    <uiIconScale>0.9</uiIconScale>
-    <fillPercent>0.4</fillPercent>
-    <statBases>
-      <MaxHitPoints>150</MaxHitPoints>
-      <WorkToBuild>1500</WorkToBuild>
-      <Mass>30</Mass>
-    </statBases>
-    <size>(1,1)</size>
-    <building>
-      <maxItemsInCell>8</maxItemsInCell>
-      <groupingLabel>Digital Storage</groupingLabel>
-      <fixedStorageSettings>
-        <filter>
-          <thingDefs>
-            <li>DigitalStorage_DiskSmall</li>
-            <li>DigitalStorage_DiskMedium</li>
-            <li>DigitalStorage_DiskLarge</li>
-          </thingDefs>
-        </filter>
-      </fixedStorageSettings>
-      <defaultStorageSettings>
-        <priority>Important</priority>
-        <filter>
-          <thingDefs>
-            <li>DigitalStorage_DiskSmall</li>
-            <li>DigitalStorage_DiskMedium</li>
-            <li>DigitalStorage_DiskLarge</li>
-          </thingDefs>
-        </filter>
-      </defaultStorageSettings>
-    </building>
-    <researchPrerequisites>
-      <li>DigitalStorage_DiskExpansion</li>
-    </researchPrerequisites>
-    <costList>
-      <Steel>50</Steel>
-      <Plasteel>40</Plasteel>
-      <ComponentIndustrial>15</ComponentIndustrial>
-    </costList>
-  </ThingDef>
-
   <!-- 输入接口 - 物品放上去自动传送到核心 -->
   <ThingDef ParentName="DigitalStorage_BuildingBase">
     <defName>DigitalStorage_InputInterface</defName>

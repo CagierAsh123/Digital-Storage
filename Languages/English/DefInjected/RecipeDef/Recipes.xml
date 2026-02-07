@@ -2,18 +2,6 @@
 <LanguageData>
 
   <!-- Crafting Recipes -->
-  <Make_DigitalStorage_DiskSmall.label>make small storage disk</Make_DigitalStorage_DiskSmall.label>
-  <Make_DigitalStorage_DiskSmall.description>Make a small storage disk that can be installed in a disk cabinet to expand storage capacity by 50.</Make_DigitalStorage_DiskSmall.description>
-  <Make_DigitalStorage_DiskSmall.jobString>Making small storage disk.</Make_DigitalStorage_DiskSmall.jobString>
-
-  <Make_DigitalStorage_DiskMedium.label>make medium storage disk</Make_DigitalStorage_DiskMedium.label>
-  <Make_DigitalStorage_DiskMedium.description>Make a medium storage disk that can be installed in a disk cabinet to expand storage capacity by 100.</Make_DigitalStorage_DiskMedium.description>
-  <Make_DigitalStorage_DiskMedium.jobString>Making medium storage disk.</Make_DigitalStorage_DiskMedium.jobString>
-
-  <Make_DigitalStorage_DiskLarge.label>make large storage disk</Make_DigitalStorage_DiskLarge.label>
-  <Make_DigitalStorage_DiskLarge.description>Make a large storage disk that can be installed in a disk cabinet to expand storage capacity by 200.</Make_DigitalStorage_DiskLarge.description>
-  <Make_DigitalStorage_DiskLarge.jobString>Making large storage disk.</Make_DigitalStorage_DiskLarge.jobString>
-
   <Make_DigitalStorage_TerminalChip.label>make terminal chip</Make_DigitalStorage_TerminalChip.label>
   <Make_DigitalStorage_TerminalChip.description>Make a terminal chip that can be implanted into the brain for remote access to the digital storage system.</Make_DigitalStorage_TerminalChip.description>
   <Make_DigitalStorage_TerminalChip.jobString>Making terminal chip.</Make_DigitalStorage_TerminalChip.jobString>

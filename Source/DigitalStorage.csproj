@@ -61,7 +61,6 @@
   <ItemGroup>
     <!-- Components - 核心建筑 -->
     <Compile Include="Components\Building_StorageCore.cs" />
-    <Compile Include="Components\Building_DiskCabinet.cs" />
     <Compile Include="Components\Building_InputInterface.cs" />
     <Compile Include="Components\DigitalStorageMapComponent.cs" />
     <Compile Include="Components\Dialog_RenameNetwork.cs" />
@@ -89,9 +88,6 @@
     <Compile Include="HarmonyPatches\Patch_TradeAction.cs" />
     
     <!-- HarmonyPatches - 功能补丁 -->
-    <Compile Include="HarmonyPatches\Patch_StackProtection.cs" />
-    <Compile Include="HarmonyPatches\Patch_Thing_CanStackWith.cs" />
-    <Compile Include="HarmonyPatches\Patch_Thing_TryAbsorbStack.cs" />
     <Compile Include="HarmonyPatches\Patch_Thing_Print.cs" />
     <Compile Include="HarmonyPatches\Patch_Thing_DrawGUIOverlay.cs" />
     <Compile Include="HarmonyPatches\Patch_CompRottable_Active.cs" />

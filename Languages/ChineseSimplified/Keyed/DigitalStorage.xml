@@ -9,21 +9,14 @@
   <DS_RenameNetworkDesc>为此存储网络设置一个名称</DS_RenameNetworkDesc>
   <DS_InspectNetwork>网络: {0}</DS_InspectNetwork>
   <DS_InspectCapacity>容量: {0}/{1} 组</DS_InspectCapacity>
-  <DS_InspectDiskCabinets>磁盘柜: {0}</DS_InspectDiskCabinets>
   <DS_NoPower>无电力</DS_NoPower>
 
-  <!-- ========== Building_DiskCabinet ========== -->
-  <DS_InspectDisks>磁盘: {0}/{1}</DS_InspectDisks>
-  <DS_InspectProvidedCapacity>提供容量: +{0}</DS_InspectProvidedCapacity>
+  <!-- ========== Building_InputInterface ========== -->
   <DS_ConnectedTo>连接到: {0}</DS_ConnectedTo>
   <DS_NotConnected>未连接</DS_NotConnected>
   <DS_ConnectToCore>连接到核心</DS_ConnectToCore>
-  <DS_ConnectToCoreDesc>选择要连接的存储核心（支持跨地图）</DS_ConnectToCoreDesc>
-  <DS_CoreOnMap>{0} (地图 {1})</DS_CoreOnMap>
-  <DS_NoCoresAvailable>无可用核心</DS_NoCoresAvailable>
-
-  <!-- ========== Building_InputInterface ========== -->
   <DS_ConnectToCoreDescInterface>选择要连接的存储核心</DS_ConnectToCoreDescInterface>
+  <DS_NoCoresAvailable>无可用核心</DS_NoCoresAvailable>
   <DS_InspectInterfaceStorage>存储: {0}/{1}</DS_InspectInterfaceStorage>
 
   <!-- ========== Dialog_RenameNetwork ========== -->

@@ -20,25 +20,15 @@ namespace DigitalStorage.HarmonyPatches
         {
             float multiplier = DigitalStorageSettings.costMultiplier;
 
-            // 使用 Mathf.Approximately 比较浮点数，避免精度问题
             if (Mathf.Approximately(multiplier, 1.0f))
             {
-                return; // 默认值，不需要修改
+                return;
             }
 
-            // 需要修改的 defName 列表
             List<string> defNames = new List<string>
             {
-                // 建筑
                 "DigitalStorage_StorageCore",
-                "DigitalStorage_DiskCabinet",
-                "DigitalStorage_Interface",
                 "DigitalStorage_InputInterface",
-                // 磁盘
-                "DigitalStorage_DiskSmall",
-                "DigitalStorage_DiskMedium",
-                "DigitalStorage_DiskLarge",
-                // 终端芯片
                 "DigitalStorage_TerminalChip"
             };
 
@@ -51,7 +41,6 @@ namespace DigitalStorage.HarmonyPatches
                     foreach (ThingDefCountClass cost in thingDef.costList)
                     {
                         int newCount = Mathf.RoundToInt(cost.count * multiplier);
-                        // 确保至少为 1
                         if (newCount < 1)
                         {
                             newCount = 1;
@@ -62,12 +51,8 @@ namespace DigitalStorage.HarmonyPatches
                 }
             }
 
-            // 同时修改配方的材料消耗
             List<string> recipeDefNames = new List<string>
             {
-                "Make_DigitalStorage_DiskSmall",
-                "Make_DigitalStorage_DiskMedium",
-                "Make_DigitalStorage_DiskLarge",
                 "Make_DigitalStorage_TerminalChip"
             };
 
@@ -85,4 +70,3 @@ namespace DigitalStorage.HarmonyPatches
         }
     }
 }
-

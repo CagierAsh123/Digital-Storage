@@ -9,21 +9,14 @@
   <DS_RenameNetworkDesc>Set a name for this storage network</DS_RenameNetworkDesc>
   <DS_InspectNetwork>Network: {0}</DS_InspectNetwork>
   <DS_InspectCapacity>Capacity: {0}/{1} groups</DS_InspectCapacity>
-  <DS_InspectDiskCabinets>Disk cabinets: {0}</DS_InspectDiskCabinets>
   <DS_NoPower>No power</DS_NoPower>
 
-  <!-- ========== Building_DiskCabinet ========== -->
-  <DS_InspectDisks>Disks: {0}/{1}</DS_InspectDisks>
-  <DS_InspectProvidedCapacity>Provided capacity: +{0}</DS_InspectProvidedCapacity>
+  <!-- ========== Building_InputInterface ========== -->
   <DS_ConnectedTo>Connected to: {0}</DS_ConnectedTo>
   <DS_NotConnected>Not connected</DS_NotConnected>
   <DS_ConnectToCore>Connect to Core</DS_ConnectToCore>
-  <DS_ConnectToCoreDesc>Select a storage core to connect to (supports cross-map)</DS_ConnectToCoreDesc>
-  <DS_CoreOnMap>{0} (Map {1})</DS_CoreOnMap>
-  <DS_NoCoresAvailable>No cores available</DS_NoCoresAvailable>
-
-  <!-- ========== Building_InputInterface ========== -->
   <DS_ConnectToCoreDescInterface>Select a storage core to connect to</DS_ConnectToCoreDescInterface>
+  <DS_NoCoresAvailable>No cores available</DS_NoCoresAvailable>
   <DS_InspectInterfaceStorage>Storage: {0}/{1}</DS_InspectInterfaceStorage>
 
   <!-- ========== Dialog_RenameNetwork ========== -->

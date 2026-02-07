@@ -30,7 +30,6 @@ namespace DigitalStorage.Components
         private static readonly Material OrbMat = MaterialPool.MatFrom("2.0/一个球", ShaderDatabase.Cutout);
         private const int BaseCapacity = 100;  // 基础容量：100 组物品
         private string networkName;
-        private List<Building_DiskCabinet> diskCabinets = new List<Building_DiskCabinet>();
         private CompPowerTrader powerComp;
 
         // 虚拟存储：不保存真实 Thing，只保存数据
@@ -133,14 +132,6 @@ namespace DigitalStorage.Components
                     component2.DeregisterCore(this);
                 }
             }
-            foreach (Building_DiskCabinet cabinet in this.diskCabinets.ToList())
-            {
-                if (cabinet != null)
-                {
-                    cabinet.SetBoundCore(null);
-                }
-            }
-            this.diskCabinets.Clear();
 
             base.DeSpawn(mode);
         }
@@ -179,7 +170,6 @@ namespace DigitalStorage.Components
         public override void PostMake()
         {
             base.PostMake();
-            this.diskCabinets = new List<Building_DiskCabinet>();
             this.virtualStorage = new List<StoredItemData>();
             this.itemLookup = new Dictionary<string, StoredItemData>();
             this.reservedItemCounts = new Dictionary<string, int>();
@@ -189,16 +179,11 @@ namespace DigitalStorage.Components
         {
             base.ExposeData();
             Scribe_Values.Look<string>(ref this.networkName, "networkName", null, false);
-            Scribe_Collections.Look<Building_DiskCabinet>(ref this.diskCabinets, "diskCabinets", LookMode.Reference, Array.Empty<object>());
             Scribe_Collections.Look<StoredItemData>(ref this.virtualStorage, "virtualStorage", LookMode.Deep);
             Scribe_Collections.Look<string, int>(ref this.reservedItemCounts, "reservedItemCounts", LookMode.Value, LookMode.Value);
             
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
-                if (this.diskCabinets == null)
-                {
-                    this.diskCabinets = new List<Building_DiskCabinet>();
-                }
                 if (this.virtualStorage == null)
                 {
                     this.virtualStorage = new List<StoredItemData>();
@@ -223,7 +208,6 @@ namespace DigitalStorage.Components
             }
             sb.AppendLine("DS_InspectNetwork".Translate(this.NetworkName));
             sb.AppendLine("DS_InspectCapacity".Translate(this.GetUsedCapacity(), this.GetCapacity()));
-            sb.AppendLine("DS_InspectDiskCabinets".Translate(this.diskCabinets.Count));
             if (!this.Powered)
             {
                 sb.AppendLine("DS_NoPower".Translate());
@@ -237,8 +221,7 @@ namespace DigitalStorage.Components
         public int GetCapacity()
         {
             CompStorageCoreUpgrade upgradeComp = this.GetComp<CompStorageCoreUpgrade>();
-            int baseCapacity = upgradeComp != null ? upgradeComp.GetCapacity() : BaseCapacity;
-            return baseCapacity + this.GetDiskCapacity();
+            return upgradeComp != null ? upgradeComp.GetCapacity() : BaseCapacity;
         }
 
         /// <summary>
@@ -248,19 +231,6 @@ namespace DigitalStorage.Components
         {
             // 返回虚拟存储中的组数，而不是物品数量
             return this.virtualStorage.Count;
-        }
-
-        public int GetDiskCapacity()
-        {
-            int total = 0;
-            foreach (Building_DiskCabinet cabinet in this.diskCabinets)
-            {
-                if (cabinet != null && cabinet.Spawned)
-                {
-                    total += cabinet.GetProvidedCapacity();
-                }
-            }
-            return total;
         }
 
         /// <summary>
@@ -309,19 +279,6 @@ namespace DigitalStorage.Components
         public bool CanReceiveThing(Thing item)
         {
             return this.Accepts(item);
-        }
-
-        public void RegisterDiskCabinet(Building_DiskCabinet cabinet)
-        {
-            if (cabinet != null && !this.diskCabinets.Contains(cabinet))
-            {
-                this.diskCabinets.Add(cabinet);
-            }
-        }
-
-        public void DeregisterDiskCabinet(Building_DiskCabinet cabinet)
-        {
-            this.diskCabinets.Remove(cabinet);
         }
 
         // 对象池优化：缓存 Dictionary，避免频繁分配（通过 Clear() 复用）

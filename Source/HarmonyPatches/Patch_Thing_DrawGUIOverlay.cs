@@ -37,17 +37,7 @@ namespace DigitalStorage.HarmonyPatches
                             return false;
                         }
                     }
-                    Building_DiskCabinet cabinet = GridsUtility.GetFirstThing<Building_DiskCabinet>(__instance.Position, __instance.Map);
-                    bool flag6 = cabinet != null && cabinet.Spawned;
-                    if (flag6)
-                    {
-                        SlotGroup slotGroup2 = StoreUtility.GetSlotGroup(__instance.Position, __instance.Map);
-                        bool flag7 = slotGroup2 != null && slotGroup2.parent == cabinet;
-                        if (flag7)
-                        {
-                            return false;
-                        }
-                    }
+
                     flag2 = true;
                 }
             }
