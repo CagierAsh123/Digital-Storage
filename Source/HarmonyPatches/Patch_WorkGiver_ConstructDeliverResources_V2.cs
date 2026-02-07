@@ -15,6 +15,7 @@ namespace DigitalStorage.HarmonyPatches
     /// 蓝图建造材料查找：统一处理预留足够和补货两种情况
     /// 1. 预留足够：从预留分出需要的数量
     /// 2. 预留不够：补货后合并
+    /// 3. 跨地图：有芯片时从远程核心提取，Spawn 到蓝图位置
     /// 注意：这里只补货，不传送。传送在 StartJob 阶段处理（有芯片时）
     /// </summary>
     [HarmonyPatch(typeof(WorkGiver_ConstructDeliverResources), "ResourceDeliverJobFor")]
@@ -42,7 +43,6 @@ namespace DigitalStorage.HarmonyPatches
             if (LOG) Log.Message($"[建造] Postfix开始: pawn={pawn.Name}, hasChip={hasChip}, __result={__result != null}");
 
             // 情况1：原版已经找到工作（预留物品足够）
-            // 注意：这里不再调用 FindCoreWithItem，因为物品已被情况2处理过
             if (__result != null && __result.def == JobDefOf.HaulToContainer)
             {
                 if (LOG) Log.Message($"[建造] 情况1: 原版找到工作，跳过");
@@ -56,22 +56,21 @@ namespace DigitalStorage.HarmonyPatches
                 return;
             }
 
-            // 安全检查：确保 c 是真正的建筑（不是蓝图 Blueprint_Install）
-            // 蓝图系统使用 Blueprint_Install Thing，它不是 IConstructible，调用 TotalMaterialCost() 会失败
+            // 安全检查
             IConstructible constructible = c as IConstructible;
             if (constructible == null)
             {
-                if (LOG) Log.Message($"[建造] 情况2: c 不是建筑（可能是蓝图），跳过");
+                if (LOG) Log.Message($"[建造] c 不是 IConstructible，跳过");
                 return;
             }
 
-            if (LOG) Log.Message($"[建造] 情况2: 原版没找到工作，尝试从核心获取");
+            if (LOG) Log.Message($"[建造] 原版没找到工作，尝试从核心获取");
 
             // 为第一个可处理的材料创建job
             foreach (ThingDefCountClass need in constructible.TotalMaterialCost())
             {
                 int countNeeded = GetCountNeeded(c, need.thingDef, pawn, forced);
-                if (LOG) Log.Message($"[建造] 情况2: 检查材料 {need.thingDef.defName}, countNeeded={countNeeded}");
+                if (LOG) Log.Message($"[建造] 检查材料 {need.thingDef.defName}, countNeeded={countNeeded}");
                 if (countNeeded <= 0)
                 {
                     continue;
@@ -80,170 +79,162 @@ namespace DigitalStorage.HarmonyPatches
                 // 限制为pawn携带上限
                 int maxCanCarry = pawn.carryTracker.MaxStackSpaceEver(need.thingDef);
                 int actualNeeded = Math.Min(countNeeded, maxCanCarry);
-                if (LOG) Log.Message($"[建造] 情况2: maxCanCarry={maxCanCarry}, actualNeeded={actualNeeded}");
+                if (LOG) Log.Message($"[建造] maxCanCarry={maxCanCarry}, actualNeeded={actualNeeded}");
 
-                // 查找材料来源并获取/补货（不传送，传送在 StartJob 阶段处理）
-                Thing finalThing = GetOrReplenishMaterial(gameComp, need.thingDef, actualNeeded, pawn.Map);
+                // 蓝图位置（用于跨地图 Spawn）
+                Thing blueprint = c as Thing;
+                IntVec3 blueprintPos = blueprint?.Position ?? pawn.Position;
+
+                // 查找材料来源并获取/补货
+                Thing finalThing = GetOrReplenishMaterial(gameComp, need.thingDef, actualNeeded, pawn, blueprintPos);
                 
                 if (finalThing == null || !finalThing.Spawned)
                 {
-                    if (LOG) Log.Message($"[建造] 情况2: GetOrReplenishMaterial 返回 null");
+                    if (LOG) Log.Message($"[建造] GetOrReplenishMaterial 返回 null");
                     continue;
                 }
 
-                if (LOG) Log.Message($"[建造] 情况2: 获取到材料 {finalThing.Label} x{finalThing.stackCount} at {finalThing.Position}");
+                if (LOG) Log.Message($"[建造] 获取到材料 {finalThing.Label} x{finalThing.stackCount} at {finalThing.Position}");
 
                 // 创建Job
                 __result = CreateHaulJob(pawn, c, finalThing, actualNeeded);
-                if (LOG) Log.Message($"[建造] 情况2: 创建Job, __result={__result != null}");
+                if (LOG) Log.Message($"[建造] 创建Job, __result={__result != null}");
                 return;
             }
         }
 
         /// <summary>
-        /// 获取或补货材料（只补货，不传送）
+        /// 获取或补货材料
+        /// 本地图核心：走预留+补货逻辑
+        /// 跨地图核心：有芯片时直接从虚拟存储提取，Spawn 到蓝图位置
         /// </summary>
-        private static Thing GetOrReplenishMaterial(DigitalStorageGameComponent gameComp, ThingDef def, int needed, Map map)
+        private static Thing GetOrReplenishMaterial(DigitalStorageGameComponent gameComp, ThingDef def, int needed, Pawn pawn, IntVec3 blueprintPos)
         {
             if (LOG) Log.Message($"[建造] GetOrReplenishMaterial: def={def.defName}, needed={needed}");
 
-            foreach (Building_StorageCore core in gameComp.GetAllCores())
+            bool hasChip = PawnStorageAccess.HasTerminalImplant(pawn);
+            Map pawnMap = pawn.Map;
+
+            // 两轮遍历：第一轮本地图，第二轮跨地图
+            for (int pass = 0; pass < 2; pass++)
             {
-                if (core == null || !core.Spawned || !core.Powered || core.Map != map)
+                foreach (Building_StorageCore core in gameComp.GetAllCores())
                 {
-                    continue;
-                }
-
-                // 检查预留物品
-                Thing reservedThing = core.FindReservedItem(def, null);
-                int reservedCount = reservedThing?.stackCount ?? 0;
-                int virtualCount = core.GetItemCount(def, null);
-                int totalAvailable = reservedCount + virtualCount;
-
-                if (LOG) Log.Message($"[建造] GetOrReplenishMaterial: 核心={core.NetworkName}, reservedCount={reservedCount}, virtualCount={virtualCount}, totalAvailable={totalAvailable}");
-
-                if (totalAvailable < needed)
-                {
-                    if (LOG) Log.Message($"[建造] GetOrReplenishMaterial: 核心材料不足，跳过");
-                    continue; // 这个核心没有足够的材料
-                }
-
-                Thing finalThing;
-
-                if (reservedCount >= needed)
-                {
-                    if (LOG) Log.Message($"[建造] GetOrReplenishMaterial: 预留足够，从预留分出 {needed} 个");
-                    // 预留足够：从预留分出需要的数量
-                    if (reservedCount == needed)
+                    if (core == null || !core.Spawned || !core.Powered)
                     {
-                        finalThing = reservedThing;
-                    }
-                    else
-                    {
-                        finalThing = reservedThing.SplitOff(needed);
-                        GenSpawn.Spawn(finalThing, reservedThing.Position, map, WipeMode.Vanish);
-                    }
-                }
-                else
-                {
-                    if (LOG) Log.Message($"[建造] GetOrReplenishMaterial: 预留不够，需要补货 {needed - reservedCount} 个");
-                    // 预留不够：补货
-                    int needMore = needed - reservedCount;
-                    Thing extracted = core.ExtractItem(def, needMore, null);
-                    
-                    if (extracted == null)
-                    {
-                        if (LOG) Log.Message($"[建造] GetOrReplenishMaterial: ExtractItem 返回 null");
                         continue;
                     }
 
-                    if (LOG) Log.Message($"[建造] GetOrReplenishMaterial: 提取到 {extracted.Label} x{extracted.stackCount}");
+                    bool isCrossMap = core.Map != pawnMap;
 
-                    if (reservedThing != null && reservedThing.Spawned)
+                    // 第一轮只查本地图，第二轮只查跨地图
+                    if (pass == 0 && isCrossMap) continue;
+                    if (pass == 1 && !isCrossMap) continue;
+
+                    // 跨地图必须有芯片
+                    if (isCrossMap && !hasChip)
                     {
-                        // 合并到预留物品
-                        if (LOG) Log.Message($"[建造] GetOrReplenishMaterial: 合并到预留物品");
-                        reservedThing.TryAbsorbStack(extracted, false);
-                        if (extracted.stackCount > 0)
+                        continue;
+                    }
+
+                    if (LOG) Log.Message($"[建造] 检查核心={core.NetworkName}, crossMap={isCrossMap}");
+
+                    if (isCrossMap)
+                    {
+                        // ===== 跨地图逻辑 =====
+                        // 只查虚拟存储（远程核心的预留物品在另一张地图上，本地 pawn 拿不到）
+                        int virtualCount = core.GetVirtualItemCount(def);
+
+                        if (LOG) Log.Message($"[建造] 跨地图: virtualCount={virtualCount}");
+
+                        if (virtualCount < needed)
                         {
-                            if (LOG) Log.Message($"[建造] GetOrReplenishMaterial: 合并后剩余 {extracted.stackCount}，生成到核心位置");
-                            GenSpawn.Spawn(extracted, reservedThing.Position, map, WipeMode.Vanish);
+                            continue;
                         }
-                        finalThing = reservedThing;
+
+                        Thing extracted = core.ExtractItem(def, needed, null);
+                        if (extracted == null)
+                        {
+                            if (LOG) Log.Message($"[建造] 跨地图: ExtractItem 返回 null");
+                            continue;
+                        }
+
+                        // Spawn 到 pawn 所在地图的蓝图位置
+                        GenSpawn.Spawn(extracted, blueprintPos, pawnMap, WipeMode.Vanish);
+
+                        if (LOG) Log.Message($"[建造] 跨地图: Spawn {extracted.Label} x{extracted.stackCount} at {blueprintPos}");
+
+                        return extracted;
                     }
                     else
                     {
-                        // 没有预留，直接生成
-                        if (LOG) Log.Message($"[建造] GetOrReplenishMaterial: 没有预留，直接生成");
-                        GenSpawn.Spawn(extracted, core.Position, map, WipeMode.Vanish);
-                        finalThing = extracted;
-                    }
-                }
+                        // ===== 本地图逻辑（原有逻辑不变） =====
+                        Thing reservedThing = core.FindReservedItem(def, null);
+                        int reservedCount = reservedThing?.stackCount ?? 0;
+                        int virtualCount = core.GetItemCount(def, null);
+                        int totalAvailable = reservedCount + virtualCount;
 
-                if (LOG) Log.Message($"[建造] GetOrReplenishMaterial: finalThing={finalThing.Label} x{finalThing.stackCount} at {finalThing.Position}");
+                        if (LOG) Log.Message($"[建造] 本地图: reservedCount={reservedCount}, virtualCount={virtualCount}, totalAvailable={totalAvailable}");
 
-                // 不在这里传送，传送在 StartJob 阶段处理
-
-                return finalThing;
-            }
-
-            if (LOG) Log.Message($"[建造] GetOrReplenishMaterial: 没有找到合适的核心");
-            return null;
-        }
-
-        /// <summary>
-        /// 从物品中分出指定数量并传送
-        /// </summary>
-        private static Thing SplitAndTeleport(Thing source, int count, IntVec3 targetPos, Map map)
-        {
-            if (source == null || !source.Spawned)
-            {
-                return null;
-            }
-
-            Thing thingToTeleport;
-            if (source.stackCount <= count)
-            {
-                source.DeSpawn(0);
-                thingToTeleport = source;
-            }
-            else
-            {
-                thingToTeleport = source.SplitOff(count);
-            }
-
-            Thing spawned = GenSpawn.Spawn(thingToTeleport, targetPos, map, WipeMode.Vanish);
-            FleckMaker.ThrowLightningGlow(spawned.DrawPos, map, 0.5f);
-
-            if (DigitalStorageSettings.enableDebugLog)
-            {
-                Log.Message($"[数字存储] 传送物品: {spawned.Label} x{spawned.stackCount} 到 {targetPos}");
-            }
-
-            return spawned;
-        }
-
-        private static Building_StorageCore FindCoreWithItem(DigitalStorageGameComponent gameComp, Thing item)
-        {
-            foreach (Building_StorageCore core in gameComp.GetAllCores())
-            {
-                if (core == null || !core.Spawned || !core.Powered)
-                {
-                    continue;
-                }
-
-                SlotGroup slotGroup = core.GetSlotGroup();
-                if (slotGroup != null)
-                {
-                    foreach (Thing thing in slotGroup.HeldThings)
-                    {
-                        if (thing == item)
+                        if (totalAvailable < needed)
                         {
-                            return core;
+                            if (LOG) Log.Message($"[建造] 本地图: 材料不足，跳过");
+                            continue;
                         }
+
+                        Thing finalThing;
+
+                        if (reservedCount >= needed)
+                        {
+                            if (LOG) Log.Message($"[建造] 本地图: 预留足够，从预留分出 {needed} 个");
+                            if (reservedCount == needed)
+                            {
+                                finalThing = reservedThing;
+                            }
+                            else
+                            {
+                                finalThing = reservedThing.SplitOff(needed);
+                                GenSpawn.Spawn(finalThing, reservedThing.Position, pawnMap, WipeMode.Vanish);
+                            }
+                        }
+                        else
+                        {
+                            if (LOG) Log.Message($"[建造] 本地图: 预留不够，需要补货 {needed - reservedCount} 个");
+                            int needMore = needed - reservedCount;
+                            Thing extracted = core.ExtractItem(def, needMore, null);
+                            
+                            if (extracted == null)
+                            {
+                                if (LOG) Log.Message($"[建造] 本地图: ExtractItem 返回 null");
+                                continue;
+                            }
+
+                            if (LOG) Log.Message($"[建造] 本地图: 提取到 {extracted.Label} x{extracted.stackCount}");
+
+                            if (reservedThing != null && reservedThing.Spawned)
+                            {
+                                reservedThing.TryAbsorbStack(extracted, false);
+                                if (extracted.stackCount > 0)
+                                {
+                                    GenSpawn.Spawn(extracted, reservedThing.Position, pawnMap, WipeMode.Vanish);
+                                }
+                                finalThing = reservedThing;
+                            }
+                            else
+                            {
+                                GenSpawn.Spawn(extracted, core.Position, pawnMap, WipeMode.Vanish);
+                                finalThing = extracted;
+                            }
+                        }
+
+                        if (LOG) Log.Message($"[建造] 本地图: finalThing={finalThing.Label} x{finalThing.stackCount} at {finalThing.Position}");
+
+                        return finalThing;
                     }
                 }
             }
+
+            if (LOG) Log.Message($"[建造] 没有找到合适的核心");
             return null;
         }
 
@@ -261,25 +252,6 @@ namespace DigitalStorage.HarmonyPatches
             }
 
             return haulEnroute.GetSpaceRemainingWithEnroute(def, pawn);
-        }
-
-        private static Thing TeleportItem(Thing item, IntVec3 targetPos, Map map)
-        {
-            if (item == null || !item.Spawned || map == null)
-            {
-                return null;
-            }
-
-            item.DeSpawn(0);
-            Thing spawned = GenSpawn.Spawn(item, targetPos, map, 0);
-            FleckMaker.ThrowLightningGlow(spawned.DrawPos, map, 0.5f);
-            
-            if (DigitalStorageSettings.enableDebugLog)
-            {
-                Log.Message($"[数字存储] 传送物品: {spawned.Label} x{spawned.stackCount} 到 {targetPos}");
-            }
-            
-            return spawned;
         }
 
         private static Job CreateHaulJob(Pawn pawn, IConstructible c, Thing realThing, int countNeeded)
