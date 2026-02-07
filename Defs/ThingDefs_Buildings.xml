@@ -52,6 +52,7 @@
       <maxItemsInCell>200</maxItemsInCell>
       <preventDeteriorationOnTop>true</preventDeteriorationOnTop>
       <ignoreStoredThingsBeauty>true</ignoreStoredThingsBeauty>
+      <groupingLabel>Digital Storage</groupingLabel>
       <fixedStorageSettings>
         <priority>Normal</priority>
         <filter>
@@ -120,6 +121,76 @@
         <shortCircuitInRain>true</shortCircuitInRain>
       </li>
       <li Class="CompProperties_Breakdownable" />
+      <li Class="DigitalStorage.Components.CompProperties_StorageCoreUpgrade">
+        <upgrades>
+          <!-- 等级 1: 基础 -->
+          <li>
+            <labelKey>DS_UpgradeLevel_1</labelKey>
+            <capacity>100</capacity>
+            <powerConsumption>100</powerConsumption>
+            <upgradeDurationTicks>0</upgradeDurationTicks>
+            <cooldownTicks>0</cooldownTicks>
+          </li>
+          <!-- 等级 2: 进阶 -->
+          <li>
+            <labelKey>DS_UpgradeLevel_2</labelKey>
+            <capacity>250</capacity>
+            <powerConsumption>150</powerConsumption>
+            <upgradeDurationTicks>30000</upgradeDurationTicks>
+            <cooldownTicks>2500</cooldownTicks>
+            <upgradeCost>
+              <li>
+                <thingDef>Steel</thingDef>
+                <count>200</count>
+              </li>
+              <li>
+                <thingDef>ComponentIndustrial</thingDef>
+                <count>10</count>
+              </li>
+            </upgradeCost>
+          </li>
+          <!-- 等级 3: 高级 -->
+          <li>
+            <labelKey>DS_UpgradeLevel_3</labelKey>
+            <capacity>500</capacity>
+            <powerConsumption>200</powerConsumption>
+            <upgradeDurationTicks>60000</upgradeDurationTicks>
+            <cooldownTicks>2500</cooldownTicks>
+            <upgradeCost>
+              <li>
+                <thingDef>Plasteel</thingDef>
+                <count>100</count>
+              </li>
+              <li>
+                <thingDef>ComponentIndustrial</thingDef>
+                <count>20</count>
+              </li>
+              <li>
+                <thingDef>ComponentSpacer</thingDef>
+                <count>5</count>
+              </li>
+            </upgradeCost>
+          </li>
+          <!-- 等级 4: 量子 -->
+          <li>
+            <labelKey>DS_UpgradeLevel_4</labelKey>
+            <capacity>1000</capacity>
+            <powerConsumption>300</powerConsumption>
+            <upgradeDurationTicks>120000</upgradeDurationTicks>
+            <cooldownTicks>2500</cooldownTicks>
+            <upgradeCost>
+              <li>
+                <thingDef>Plasteel</thingDef>
+                <count>200</count>
+              </li>
+              <li>
+                <thingDef>ComponentSpacer</thingDef>
+                <count>15</count>
+              </li>
+            </upgradeCost>
+          </li>
+        </upgrades>
+      </li>
     </comps>
     <researchPrerequisites>
       <li>DigitalStorage_BasicStorage</li>
@@ -154,6 +225,7 @@
     <size>(1,1)</size>
     <building>
       <maxItemsInCell>8</maxItemsInCell>
+      <groupingLabel>Digital Storage</groupingLabel>
       <fixedStorageSettings>
         <filter>
           <thingDefs>
@@ -208,6 +280,7 @@
       <maxItemsInCell>100</maxItemsInCell>
       <preventDeteriorationOnTop>true</preventDeteriorationOnTop>
       <ignoreStoredThingsBeauty>true</ignoreStoredThingsBeauty>
+      <groupingLabel>Digital Storage</groupingLabel>
       <fixedStorageSettings>
         <priority>Normal</priority>
         <filter>

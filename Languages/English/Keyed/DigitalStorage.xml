@@ -81,4 +81,29 @@
   <DS_EnableConversionLogDesc>Show detailed conversion process info in log (tick checks, statistics, conversion, etc.)</DS_EnableConversionLogDesc>
   <DS_DebugWarning>Warning: Enabling these will produce a large amount of log output, only use for debugging</DS_DebugWarning>
 
+  <!-- ========== Upgrade System ========== -->
+  <DS_Upgrade>Upgrade</DS_Upgrade>
+  <DS_Downgrade>Downgrade</DS_Downgrade>
+  <DS_UpgradeDesc>Upgrade storage core.\n\nCapacity: {0} → {1}\nPower: {2}W → {3}W</DS_UpgradeDesc>
+  <DS_DowngradeDesc>Downgrade storage core.\n\nCapacity: {0} → {1}\nPower: {2}W → {3}W</DS_DowngradeDesc>
+  <DS_UpgradeCost>Cost: {0}</DS_UpgradeCost>
+  <DS_UpgradeStarted>{0} upgrade started</DS_UpgradeStarted>
+  <DS_DowngradeStarted>{0} downgrade started</DS_DowngradeStarted>
+  <DS_UpgradeComplete>{0} upgraded to {1}</DS_UpgradeComplete>
+  <DS_DowngradeComplete>{0} downgraded to {1}</DS_DowngradeComplete>
+  <DS_UpgradeInProgress>In progress: {0}</DS_UpgradeInProgress>
+  <DS_DowngradeInProgress>In progress: {0}</DS_DowngradeInProgress>
+  <DS_UpgradeCooldown>Cooldown: {0}</DS_UpgradeCooldown>
+  <DS_MaxLevel>Already at maximum level</DS_MaxLevel>
+  <DS_MinLevel>Already at minimum level</DS_MinLevel>
+  <DS_MaxLevelDesc>This storage core is already at maximum level.</DS_MaxLevelDesc>
+  <DS_MinLevelDesc>This storage core is already at minimum level.</DS_MinLevelDesc>
+  <DS_UpgradeNoMaterials>Not enough materials for upgrade</DS_UpgradeNoMaterials>
+  <DS_DowngradeTooFull>Cannot downgrade: {0} items stored, but downgraded capacity is only {1}</DS_DowngradeTooFull>
+  <DS_InspectLevel>Level: {0}/{1}</DS_InspectLevel>
+  <DS_UpgradeLevel_1>Basic</DS_UpgradeLevel_1>
+  <DS_UpgradeLevel_2>Advanced</DS_UpgradeLevel_2>
+  <DS_UpgradeLevel_3>Superior</DS_UpgradeLevel_3>
+  <DS_UpgradeLevel_4>Quantum</DS_UpgradeLevel_4>
+
 </LanguageData>

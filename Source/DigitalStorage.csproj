@@ -68,6 +68,9 @@
     <Compile Include="Components\Hediff_TerminalImplant.cs" />
     <Compile Include="Components\CompVirtualIngredient.cs" />
     <Compile Include="Components\CompUseEffect_TerminalImplant.cs" />
+    <Compile Include="Components\CompStorageCoreUpgrade.cs" />
+    <Compile Include="Components\CompProperties_StorageCoreUpgrade.cs" />
+    <Compile Include="Components\StorageCoreUpgrade.cs" />
     
     <!-- Data - 数据结构 -->
     <Compile Include="Data\StoredItemData.cs" />

@@ -236,7 +236,9 @@ namespace DigitalStorage.Components
         /// </summary>
         public int GetCapacity()
         {
-            return BaseCapacity + this.GetDiskCapacity();
+            CompStorageCoreUpgrade upgradeComp = this.GetComp<CompStorageCoreUpgrade>();
+            int baseCapacity = upgradeComp != null ? upgradeComp.GetCapacity() : BaseCapacity;
+            return baseCapacity + this.GetDiskCapacity();
         }
 
         /// <summary>

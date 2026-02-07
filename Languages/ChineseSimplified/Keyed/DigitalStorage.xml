@@ -81,4 +81,29 @@
   <DS_EnableConversionLogDesc>在日志中显示物品转换过程的详细信息（Tick检查、统计、转换等）</DS_EnableConversionLogDesc>
   <DS_DebugWarning>注意：启用后会产生大量日志，仅用于调试问题</DS_DebugWarning>
 
+  <!-- ========== 升级系统 ========== -->
+  <DS_Upgrade>升级</DS_Upgrade>
+  <DS_Downgrade>降级</DS_Downgrade>
+  <DS_UpgradeDesc>升级存储核心。\n\n容量: {0} → {1}\n耗电: {2}W → {3}W</DS_UpgradeDesc>
+  <DS_DowngradeDesc>降级存储核心。\n\n容量: {0} → {1}\n耗电: {2}W → {3}W</DS_DowngradeDesc>
+  <DS_UpgradeCost>所需材料: {0}</DS_UpgradeCost>
+  <DS_UpgradeStarted>{0} 开始升级</DS_UpgradeStarted>
+  <DS_DowngradeStarted>{0} 开始降级</DS_DowngradeStarted>
+  <DS_UpgradeComplete>{0} 已升级至 {1}</DS_UpgradeComplete>
+  <DS_DowngradeComplete>{0} 已降级至 {1}</DS_DowngradeComplete>
+  <DS_UpgradeInProgress>进行中: {0}</DS_UpgradeInProgress>
+  <DS_DowngradeInProgress>进行中: {0}</DS_DowngradeInProgress>
+  <DS_UpgradeCooldown>冷却中: {0}</DS_UpgradeCooldown>
+  <DS_MaxLevel>已达最高等级</DS_MaxLevel>
+  <DS_MinLevel>已达最低等级</DS_MinLevel>
+  <DS_MaxLevelDesc>此存储核心已达到最高等级。</DS_MaxLevelDesc>
+  <DS_MinLevelDesc>此存储核心已达到最低等级。</DS_MinLevelDesc>
+  <DS_UpgradeNoMaterials>升级材料不足</DS_UpgradeNoMaterials>
+  <DS_DowngradeTooFull>无法降级：已存储 {0} 组物品，降级后容量仅为 {1}</DS_DowngradeTooFull>
+  <DS_InspectLevel>等级: {0}/{1}</DS_InspectLevel>
+  <DS_UpgradeLevel_1>基础</DS_UpgradeLevel_1>
+  <DS_UpgradeLevel_2>进阶</DS_UpgradeLevel_2>
+  <DS_UpgradeLevel_3>高级</DS_UpgradeLevel_3>
+  <DS_UpgradeLevel_4>量子</DS_UpgradeLevel_4>
+
 </LanguageData>
