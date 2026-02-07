@@ -78,8 +78,7 @@
             <li>SubcoreBasic</li>
             <li>SubcoreRegular</li>
             <li>SubcoreHigh</li>
-            <li>ShuttleEngine</li>
-            <li>Shard</li>
+
           </thingDefs>
         </filter>
       </fixedStorageSettings>
@@ -107,8 +106,7 @@
             <li>SubcoreBasic</li>
             <li>SubcoreRegular</li>
             <li>SubcoreHigh</li>
-            <li>ShuttleEngine</li>
-            <li>Shard</li>
+
           </thingDefs>
         </filter>
       </defaultStorageSettings>
@@ -253,8 +251,7 @@
             <li>SubcoreBasic</li>
             <li>SubcoreRegular</li>
             <li>SubcoreHigh</li>
-            <li>ShuttleEngine</li>
-            <li>Shard</li>
+
           </thingDefs>
         </filter>
       </fixedStorageSettings>
@@ -282,8 +279,7 @@
             <li>SubcoreBasic</li>
             <li>SubcoreRegular</li>
             <li>SubcoreHigh</li>
-            <li>ShuttleEngine</li>
-            <li>Shard</li>
+
           </thingDefs>
         </filter>
       </defaultStorageSettings>
