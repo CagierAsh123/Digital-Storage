@@ -133,9 +133,12 @@ namespace DigitalStorage.Components
                     component2.DeregisterCore(this);
                 }
             }
-            foreach (Building_DiskCabinet cabinet in this.diskCabinets.Where(c => c != null))
+            foreach (Building_DiskCabinet cabinet in this.diskCabinets.ToList())
             {
-                cabinet.SetBoundCore(null);
+                if (cabinet != null)
+                {
+                    cabinet.SetBoundCore(null);
+                }
             }
             this.diskCabinets.Clear();
 
