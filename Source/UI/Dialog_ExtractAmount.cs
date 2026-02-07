@@ -38,17 +38,17 @@ namespace DigitalStorage.UI
 
             Rect titleRect = new Rect(0f, curY, inRect.width, 40f);
             Text.Font = GameFont.Medium;
-            Widgets.Label(titleRect, "提取数量");
+            Widgets.Label(titleRect, "DS_ExtractAmountTitle".Translate());
             Text.Font = GameFont.Small;
             curY += 50f;
 
             Rect itemLabelRect = new Rect(0f, curY, inRect.width, 30f);
             string itemLabel = GetItemLabel();
-            Widgets.Label(itemLabelRect, $"物品: {itemLabel}");
+            Widgets.Label(itemLabelRect, "DS_ExtractAmountItem".Translate(itemLabel));
             curY += 35f;
 
             Rect availableRect = new Rect(0f, curY, inRect.width, 30f);
-            Widgets.Label(availableRect, $"可用: {item.stackCount}  (堆叠上限: {item.def?.stackLimit ?? 1})");
+            Widgets.Label(availableRect, "DS_ExtractAmountAvailable".Translate(item.stackCount, item.def?.stackLimit ?? 1));
             curY += 35f;
 
             Rect inputRect = new Rect(0f, curY, inRect.width - 20f, 30f);
@@ -58,13 +58,13 @@ namespace DigitalStorage.UI
             float buttonWidth = (inRect.width - 10f) / 2f;
             
             Rect confirmRect = new Rect(0f, curY, buttonWidth, 35f);
-            if (Widgets.ButtonText(confirmRect, "确认"))
+            if (Widgets.ButtonText(confirmRect, "DS_Confirm".Translate()))
             {
                 TryExtract();
             }
 
             Rect cancelRect = new Rect(buttonWidth + 10f, curY, buttonWidth, 35f);
-            if (Widgets.ButtonText(cancelRect, "取消"))
+            if (Widgets.ButtonText(cancelRect, "DS_Cancel".Translate()))
             {
                 Close();
             }
@@ -74,19 +74,19 @@ namespace DigitalStorage.UI
         {
             if (!int.TryParse(amountBuffer, out int amount))
             {
-                Messages.Message("请输入有效的数字", MessageTypeDefOf.RejectInput);
+                Messages.Message("DS_InvalidNumber".Translate(), MessageTypeDefOf.RejectInput);
                 return;
             }
 
             if (amount <= 0)
             {
-                Messages.Message("数量必须大于 0", MessageTypeDefOf.RejectInput);
+                Messages.Message("DS_AmountMustBePositive".Translate(), MessageTypeDefOf.RejectInput);
                 return;
             }
 
             if (amount > maxAmount)
             {
-                Messages.Message($"数量不能超过 {maxAmount}", MessageTypeDefOf.RejectInput);
+                Messages.Message("DS_AmountExceedsMax".Translate(maxAmount), MessageTypeDefOf.RejectInput);
                 return;
             }
 
@@ -102,7 +102,7 @@ namespace DigitalStorage.UI
         {
             if (item.def == null)
             {
-                return "未知物品";
+                return "DS_UnknownItem".Translate();
             }
 
             string label = item.def.label;

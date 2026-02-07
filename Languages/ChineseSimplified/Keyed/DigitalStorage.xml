@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <!-- ========== Building_StorageCore ========== -->
+  <DS_UnnamedNetwork>未命名网络</DS_UnnamedNetwork>
+  <DS_ViewStorage>查看存储</DS_ViewStorage>
+  <DS_ViewStorageDesc>查看虚拟存储中的所有物品</DS_ViewStorageDesc>
+  <DS_RenameNetwork>重命名网络</DS_RenameNetwork>
+  <DS_RenameNetworkDesc>为此存储网络设置一个名称</DS_RenameNetworkDesc>
+  <DS_InspectNetwork>网络: {0}</DS_InspectNetwork>
+  <DS_InspectCapacity>容量: {0}/{1} 组</DS_InspectCapacity>
+  <DS_InspectDiskCabinets>磁盘柜: {0}</DS_InspectDiskCabinets>
+  <DS_NoPower>无电力</DS_NoPower>
+
+  <!-- ========== Building_DiskCabinet ========== -->
+  <DS_InspectDisks>磁盘: {0}/{1}</DS_InspectDisks>
+  <DS_InspectProvidedCapacity>提供容量: +{0}</DS_InspectProvidedCapacity>
+  <DS_ConnectedTo>连接到: {0}</DS_ConnectedTo>
+  <DS_NotConnected>未连接</DS_NotConnected>
+  <DS_ConnectToCore>连接到核心</DS_ConnectToCore>
+  <DS_ConnectToCoreDesc>选择要连接的存储核心（支持跨地图）</DS_ConnectToCoreDesc>
+  <DS_CoreOnMap>{0} (地图 {1})</DS_CoreOnMap>
+  <DS_NoCoresAvailable>无可用核心</DS_NoCoresAvailable>
+
+  <!-- ========== Building_InputInterface ========== -->
+  <DS_ConnectToCoreDescInterface>选择要连接的存储核心</DS_ConnectToCoreDescInterface>
+  <DS_InspectInterfaceStorage>存储: {0}/{1}</DS_InspectInterfaceStorage>
+
+  <!-- ========== Dialog_RenameNetwork ========== -->
+  <DS_EnterNetworkName>输入网络名称:</DS_EnterNetworkName>
+  <DS_Confirm>确定</DS_Confirm>
+  <DS_Cancel>取消</DS_Cancel>
+
+  <!-- ========== Dialog_VirtualStorage ========== -->
+  <DS_VirtualStorageTitle>虚拟存储 - {0}</DS_VirtualStorageTitle>
+  <DS_CapacityInfo>容量: {0} / {1}  |  物品种类: {2}</DS_CapacityInfo>
+  <DS_ClearSearch>清除</DS_ClearSearch>
+  <DS_HeaderIcon>图标</DS_HeaderIcon>
+  <DS_HeaderName>名称</DS_HeaderName>
+  <DS_HeaderQuality>品质</DS_HeaderQuality>
+  <DS_HeaderCount>数量</DS_HeaderCount>
+  <DS_HeaderDurability>耐久</DS_HeaderDurability>
+  <DS_ExtractX1>提取 x1</DS_ExtractX1>
+  <DS_Extract1Stack>1 堆叠</DS_Extract1Stack>
+  <DS_ExtractCustom>自定义</DS_ExtractCustom>
+  <DS_CoreUnavailable>核心不可用</DS_CoreUnavailable>
+  <DS_Extracted>已提取 {0} x{1}</DS_Extracted>
+  <DS_NoSpaceNearCore>核心周围没有空位</DS_NoSpaceNearCore>
+  <DS_ExtractionFailed>提取失败</DS_ExtractionFailed>
+  <DS_UnknownItem>未知物品</DS_UnknownItem>
+  <DS_TooltipCount>数量: {0}</DS_TooltipCount>
+  <DS_TooltipQuality>品质: {0}</DS_TooltipQuality>
+  <DS_TooltipDurability>耐久: {0} / {1} ({2}%)</DS_TooltipDurability>
+
+  <!-- ========== Dialog_ExtractAmount ========== -->
+  <DS_ExtractAmountTitle>提取数量</DS_ExtractAmountTitle>
+  <DS_ExtractAmountItem>物品: {0}</DS_ExtractAmountItem>
+  <DS_ExtractAmountAvailable>可用: {0}  (堆叠上限: {1})</DS_ExtractAmountAvailable>
+  <DS_InvalidNumber>请输入有效的数字</DS_InvalidNumber>
+  <DS_AmountMustBePositive>数量必须大于 0</DS_AmountMustBePositive>
+  <DS_AmountExceedsMax>数量不能超过 {0}</DS_AmountExceedsMax>
+
+  <!-- ========== CompUseEffect_TerminalImplant ========== -->
+  <DS_ImplantSuccess>{0} 已植入终端芯片，现在可以远程访问数字存储系统</DS_ImplantSuccess>
+  <DS_OnlyHumans>只有人类可以使用</DS_OnlyHumans>
+  <DS_AlreadyImplanted>已安装终端芯片</DS_AlreadyImplanted>
+  <DS_ImplantConfirm>确定要为 {0} 植入终端芯片吗？\n\n植入后可以远程访问数字存储系统，物品将直接传送到脚下。</DS_ImplantConfirm>
+
+  <!-- ========== Settings ========== -->
+  <DS_SettingsCategory>数字存储 Digital Storage 2.0</DS_SettingsCategory>
+  <DS_CostSettings>造价设置</DS_CostSettings>
+  <DS_CostMultiplier>造价倍率: {0:F1}x</DS_CostMultiplier>
+  <DS_CostMultiplierDesc>调整所有建筑和物品的材料消耗</DS_CostMultiplierDesc>
+  <DS_ReservedSettings>预留物品设置</DS_ReservedSettings>
+  <DS_ReservedCountPerItem>每种物品预留数量: {0}</DS_ReservedCountPerItem>
+  <DS_ReservedDesc>预留物品保持真实状态，WorkGiver 可以直接找到</DS_ReservedDesc>
+  <DS_DebugSettings>调试设置</DS_DebugSettings>
+  <DS_EnableDebugLog>启用详细日志</DS_EnableDebugLog>
+  <DS_EnableDebugLogDesc>在日志中显示详细的调试信息（占位符创建、物品生成等）</DS_EnableDebugLogDesc>
+  <DS_EnableConversionLog>启用转换日志</DS_EnableConversionLog>
+  <DS_EnableConversionLogDesc>在日志中显示物品转换过程的详细信息（Tick检查、统计、转换等）</DS_EnableConversionLogDesc>
+  <DS_DebugWarning>注意：启用后会产生大量日志，仅用于调试问题</DS_DebugWarning>
+
+</LanguageData>

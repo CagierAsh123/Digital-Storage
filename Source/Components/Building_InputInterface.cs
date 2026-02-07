@@ -58,17 +58,17 @@ namespace DigitalStorage.Components
             
             if (boundCore != null)
             {
-                sb.AppendLine("连接到: " + boundCore.NetworkName);
-                sb.AppendLine($"存储: {boundCore.GetUsedCapacity()}/{boundCore.GetCapacity()}");
+                sb.AppendLine("DS_ConnectedTo".Translate(boundCore.NetworkName));
+                sb.AppendLine("DS_InspectInterfaceStorage".Translate(boundCore.GetUsedCapacity(), boundCore.GetCapacity()));
             }
             else
             {
-                sb.AppendLine("未连接");
+                sb.AppendLine("DS_NotConnected".Translate());
             }
             
             if (!Powered)
             {
-                sb.AppendLine("无电力");
+                sb.AppendLine("DS_NoPower".Translate());
             }
             return sb.ToString().TrimEnd();
         }
@@ -82,8 +82,8 @@ namespace DigitalStorage.Components
 
             yield return new Command_Action
             {
-                defaultLabel = "连接到核心",
-                defaultDesc = "选择要连接的存储核心",
+                defaultLabel = "DS_ConnectToCore".Translate(),
+                defaultDesc = "DS_ConnectToCoreDescInterface".Translate(),
                 icon = ContentFinder<Texture2D>.Get("UI/Commands/LaunchReport", true),
                 action = delegate
                 {
@@ -103,7 +103,7 @@ namespace DigitalStorage.Components
 
                     if (options.Count == 0)
                     {
-                        options.Add(new FloatMenuOption("无可用核心", null));
+                        options.Add(new FloatMenuOption("DS_NoCoresAvailable".Translate(), null));
                     }
                     Find.WindowStack.Add(new FloatMenu(options));
                 }

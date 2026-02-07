@@ -89,15 +89,15 @@ namespace DigitalStorage.Components
             {
                 sb.AppendLine(baseStr);
             }
-            sb.AppendLine(string.Format("磁盘: {0}/{1}", this.GetDiskCount(), 8));
-            sb.AppendLine(string.Format("提供容量: +{0}", this.GetProvidedCapacity()));
+            sb.AppendLine("DS_InspectDisks".Translate(this.GetDiskCount(), 8));
+            sb.AppendLine("DS_InspectProvidedCapacity".Translate(this.GetProvidedCapacity()));
             if (this.boundCore != null)
             {
-                sb.AppendLine("连接到: " + this.boundCore.NetworkName);
+                sb.AppendLine("DS_ConnectedTo".Translate(this.boundCore.NetworkName));
             }
             else
             {
-                sb.AppendLine("未连接");
+                sb.AppendLine("DS_NotConnected".Translate());
             }
             return sb.ToString().TrimEnd();
         }
@@ -111,8 +111,8 @@ namespace DigitalStorage.Components
             
             yield return new Command_Action
             {
-                defaultLabel = "连接到核心",
-                defaultDesc = "选择要连接的存储核心（支持跨地图）",
+                defaultLabel = "DS_ConnectToCore".Translate(),
+                defaultDesc = "DS_ConnectToCoreDesc".Translate(),
                 icon = LinkTex,
                 action = delegate()
                 {
@@ -133,7 +133,7 @@ namespace DigitalStorage.Components
                                 // 如果核心在其他地图，显示地图信息
                                 if (core.Map != base.Map)
                                 {
-                                    label = string.Format("{0} (地图 {1})", core.NetworkName, core.Map?.Index ?? -1);
+                                    label = "DS_CoreOnMap".Translate(core.NetworkName, core.Map?.Index ?? -1);
                                 }
                                 
                                 options.Add(new FloatMenuOption(label, delegate()
@@ -157,7 +157,7 @@ namespace DigitalStorage.Components
                     
                     if (options.Count == 0)
                     {
-                        options.Add(new FloatMenuOption("无可用核心", null));
+                        options.Add(new FloatMenuOption("DS_NoCoresAvailable".Translate(), null));
                     }
                     Find.WindowStack.Add(new FloatMenu(options));
                 }

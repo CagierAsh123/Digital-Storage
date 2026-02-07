@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <!-- Storage Core -->
+  <DigitalStorage_StorageCore.label>digital storage core</DigitalStorage_StorageCore.label>
+  <DigitalStorage_StorageCore.description>The core unit of the digital storage system. Each core is an independent storage network that can be named. Base capacity of 100 item groups, expandable by connecting disk cabinets.\n\nItems stored in the network will not age or deteriorate.\n\nColonists with a terminal chip can remotely teleport items.</DigitalStorage_StorageCore.description>
+
+  <!-- Disk Cabinet -->
+  <DigitalStorage_DiskCabinet.label>disk cabinet</DigitalStorage_DiskCabinet.label>
+  <DigitalStorage_DiskCabinet.description>A cabinet for storing disks, holding up to 8 disks. Can be connected to any storage core to expand its capacity.\n\nSmall disk: +50 capacity\nMedium disk: +100 capacity\nLarge disk: +200 capacity</DigitalStorage_DiskCabinet.description>
+
+  <!-- Input Interface -->
+  <DigitalStorage_InputInterface.label>digital storage input interface</DigitalStorage_InputInterface.label>
+  <DigitalStorage_InputInterface.description>An input interface for the digital storage system. After colonists place items on the interface, items are automatically teleported to the bound storage core.\n\nAutomatically connects to adjacent storage cores when placed. Can also manually select a connection target.</DigitalStorage_InputInterface.description>
+
+  <!-- Disks -->
+  <DigitalStorage_DiskSmall.label>small storage disk</DigitalStorage_DiskSmall.label>
+  <DigitalStorage_DiskSmall.description>A small storage disk that can be installed in a disk cabinet to expand storage capacity by 50 groups.</DigitalStorage_DiskSmall.description>
+
+  <DigitalStorage_DiskMedium.label>medium storage disk</DigitalStorage_DiskMedium.label>
+  <DigitalStorage_DiskMedium.description>A medium storage disk that can be installed in a disk cabinet to expand storage capacity by 100 groups.</DigitalStorage_DiskMedium.description>
+
+  <DigitalStorage_DiskLarge.label>large storage disk</DigitalStorage_DiskLarge.label>
+  <DigitalStorage_DiskLarge.description>A large storage disk that can be installed in a disk cabinet to expand storage capacity by 200 groups.</DigitalStorage_DiskLarge.description>
+
+  <!-- Terminal Chip -->
+  <DigitalStorage_TerminalChip.label>terminal chip</DigitalStorage_TerminalChip.label>
+  <DigitalStorage_TerminalChip.description>An advanced neural interface chip that can be directly used to implant into the brain, allowing the carrier to remotely access the digital storage system.\n\nAfter implantation, items will be teleported directly to the carrier's feet, no need to walk to the storage core.</DigitalStorage_TerminalChip.description>
+  <DigitalStorage_TerminalChip.comps.CompProperties_Usable.useLabel>implant terminal chip</DigitalStorage_TerminalChip.comps.CompProperties_Usable.useLabel>
+
+</LanguageData>

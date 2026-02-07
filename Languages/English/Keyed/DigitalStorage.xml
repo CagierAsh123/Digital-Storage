@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <!-- ========== Building_StorageCore ========== -->
+  <DS_UnnamedNetwork>Unnamed Network</DS_UnnamedNetwork>
+  <DS_ViewStorage>View Storage</DS_ViewStorage>
+  <DS_ViewStorageDesc>View all items in virtual storage</DS_ViewStorageDesc>
+  <DS_RenameNetwork>Rename Network</DS_RenameNetwork>
+  <DS_RenameNetworkDesc>Set a name for this storage network</DS_RenameNetworkDesc>
+  <DS_InspectNetwork>Network: {0}</DS_InspectNetwork>
+  <DS_InspectCapacity>Capacity: {0}/{1} groups</DS_InspectCapacity>
+  <DS_InspectDiskCabinets>Disk cabinets: {0}</DS_InspectDiskCabinets>
+  <DS_NoPower>No power</DS_NoPower>
+
+  <!-- ========== Building_DiskCabinet ========== -->
+  <DS_InspectDisks>Disks: {0}/{1}</DS_InspectDisks>
+  <DS_InspectProvidedCapacity>Provided capacity: +{0}</DS_InspectProvidedCapacity>
+  <DS_ConnectedTo>Connected to: {0}</DS_ConnectedTo>
+  <DS_NotConnected>Not connected</DS_NotConnected>
+  <DS_ConnectToCore>Connect to Core</DS_ConnectToCore>
+  <DS_ConnectToCoreDesc>Select a storage core to connect to (supports cross-map)</DS_ConnectToCoreDesc>
+  <DS_CoreOnMap>{0} (Map {1})</DS_CoreOnMap>
+  <DS_NoCoresAvailable>No cores available</DS_NoCoresAvailable>
+
+  <!-- ========== Building_InputInterface ========== -->
+  <DS_ConnectToCoreDescInterface>Select a storage core to connect to</DS_ConnectToCoreDescInterface>
+  <DS_InspectInterfaceStorage>Storage: {0}/{1}</DS_InspectInterfaceStorage>
+
+  <!-- ========== Dialog_RenameNetwork ========== -->
+  <DS_EnterNetworkName>Enter network name:</DS_EnterNetworkName>
+  <DS_Confirm>Confirm</DS_Confirm>
+  <DS_Cancel>Cancel</DS_Cancel>
+
+  <!-- ========== Dialog_VirtualStorage ========== -->
+  <DS_VirtualStorageTitle>Virtual Storage - {0}</DS_VirtualStorageTitle>
+  <DS_CapacityInfo>Capacity: {0} / {1}  |  Item types: {2}</DS_CapacityInfo>
+  <DS_ClearSearch>Clear</DS_ClearSearch>
+  <DS_HeaderIcon>Icon</DS_HeaderIcon>
+  <DS_HeaderName>Name</DS_HeaderName>
+  <DS_HeaderQuality>Quality</DS_HeaderQuality>
+  <DS_HeaderCount>Count</DS_HeaderCount>
+  <DS_HeaderDurability>Durability</DS_HeaderDurability>
+  <DS_ExtractX1>Extract x1</DS_ExtractX1>
+  <DS_Extract1Stack>1 stack</DS_Extract1Stack>
+  <DS_ExtractCustom>Custom</DS_ExtractCustom>
+  <DS_CoreUnavailable>Core unavailable</DS_CoreUnavailable>
+  <DS_Extracted>{0} x{1} extracted</DS_Extracted>
+  <DS_NoSpaceNearCore>No space near core</DS_NoSpaceNearCore>
+  <DS_ExtractionFailed>Extraction failed</DS_ExtractionFailed>
+  <DS_UnknownItem>Unknown item</DS_UnknownItem>
+  <DS_TooltipCount>Count: {0}</DS_TooltipCount>
+  <DS_TooltipQuality>Quality: {0}</DS_TooltipQuality>
+  <DS_TooltipDurability>Durability: {0} / {1} ({2}%)</DS_TooltipDurability>
+
+  <!-- ========== Dialog_ExtractAmount ========== -->
+  <DS_ExtractAmountTitle>Extract Amount</DS_ExtractAmountTitle>
+  <DS_ExtractAmountItem>Item: {0}</DS_ExtractAmountItem>
+  <DS_ExtractAmountAvailable>Available: {0}  (Stack limit: {1})</DS_ExtractAmountAvailable>
+  <DS_InvalidNumber>Please enter a valid number</DS_InvalidNumber>
+  <DS_AmountMustBePositive>Amount must be greater than 0</DS_AmountMustBePositive>
+  <DS_AmountExceedsMax>Amount cannot exceed {0}</DS_AmountExceedsMax>
+
+  <!-- ========== CompUseEffect_TerminalImplant ========== -->
+  <DS_ImplantSuccess>{0} has been implanted with a terminal chip and can now remotely access the digital storage system</DS_ImplantSuccess>
+  <DS_OnlyHumans>Only humans can use this</DS_OnlyHumans>
+  <DS_AlreadyImplanted>Terminal chip already installed</DS_AlreadyImplanted>
+  <DS_ImplantConfirm>Are you sure you want to implant a terminal chip in {0}?\n\nAfter implantation, items will be teleported directly to their feet, no need to walk to the storage core.</DS_ImplantConfirm>
+
+  <!-- ========== Settings ========== -->
+  <DS_SettingsCategory>Digital Storage 2.0</DS_SettingsCategory>
+  <DS_CostSettings>Cost Settings</DS_CostSettings>
+  <DS_CostMultiplier>Cost multiplier: {0:F1}x</DS_CostMultiplier>
+  <DS_CostMultiplierDesc>Adjust material costs for all buildings and items</DS_CostMultiplierDesc>
+  <DS_ReservedSettings>Reserved Items Settings</DS_ReservedSettings>
+  <DS_ReservedCountPerItem>Reserved count per item type: {0}</DS_ReservedCountPerItem>
+  <DS_ReservedDesc>Reserved items remain in physical form so WorkGivers can find them directly</DS_ReservedDesc>
+  <DS_DebugSettings>Debug Settings</DS_DebugSettings>
+  <DS_EnableDebugLog>Enable verbose logging</DS_EnableDebugLog>
+  <DS_EnableDebugLogDesc>Show detailed debug info in log (placeholder creation, item spawning, etc.)</DS_EnableDebugLogDesc>
+  <DS_EnableConversionLog>Enable conversion logging</DS_EnableConversionLog>
+  <DS_EnableConversionLogDesc>Show detailed conversion process info in log (tick checks, statistics, conversion, etc.)</DS_EnableConversionLogDesc>
+  <DS_DebugWarning>Warning: Enabling these will produce a large amount of log output, only use for debugging</DS_DebugWarning>
+
+</LanguageData>

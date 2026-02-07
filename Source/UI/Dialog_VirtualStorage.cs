@@ -45,13 +45,13 @@ namespace DigitalStorage.UI
             // 标题
             Rect titleRect = new Rect(0f, curY, inRect.width, HeaderHeight);
             Text.Font = GameFont.Medium;
-            Widgets.Label(titleRect, $"虚拟存储 - {core.NetworkName}");
+            Widgets.Label(titleRect, "DS_VirtualStorageTitle".Translate(core.NetworkName));
             Text.Font = GameFont.Small;
             curY += HeaderHeight;
 
             // 容量信息
             Rect capacityRect = new Rect(0f, curY, inRect.width, 30f);
-            string capacityText = $"容量: {core.GetUsedCapacity()} / {core.GetCapacity()}  |  物品种类: {filteredItems.Count}";
+            string capacityText = "DS_CapacityInfo".Translate(core.GetUsedCapacity(), core.GetCapacity(), filteredItems.Count);
             Widgets.Label(capacityRect, capacityText);
             curY += 30f;
 
@@ -66,7 +66,7 @@ namespace DigitalStorage.UI
 
             // 清除搜索按钮
             Rect clearButtonRect = new Rect(inRect.width - 90f, curY, 90f, SearchBarHeight);
-            if (Widgets.ButtonText(clearButtonRect, "清除"))
+            if (Widgets.ButtonText(clearButtonRect, "DS_ClearSearch".Translate()))
             {
                 searchText = "";
                 UpdateFilteredItems();
@@ -106,19 +106,19 @@ namespace DigitalStorage.UI
             Text.Anchor = TextAnchor.MiddleLeft;
             
             Rect iconRect = new Rect(rect.x + 5f, rect.y, 50f, rect.height);
-            Widgets.Label(iconRect, "图标");
+            Widgets.Label(iconRect, "DS_HeaderIcon".Translate());
             
             Rect nameRect = new Rect(rect.x + 60f, rect.y, 250f, rect.height);
-            Widgets.Label(nameRect, "名称");
+            Widgets.Label(nameRect, "DS_HeaderName".Translate());
             
             Rect qualityRect = new Rect(rect.x + 320f, rect.y, 100f, rect.height);
-            Widgets.Label(qualityRect, "品质");
+            Widgets.Label(qualityRect, "DS_HeaderQuality".Translate());
             
             Rect countRect = new Rect(rect.x + 430f, rect.y, 100f, rect.height);
-            Widgets.Label(countRect, "数量");
+            Widgets.Label(countRect, "DS_HeaderCount".Translate());
             
             Rect hpRect = new Rect(rect.x + 540f, rect.y, 80f, rect.height);
-            Widgets.Label(hpRect, "耐久");
+            Widgets.Label(hpRect, "DS_HeaderDurability".Translate());
             
             Text.Anchor = TextAnchor.UpperLeft;
         }
@@ -192,7 +192,7 @@ namespace DigitalStorage.UI
             float buttonX = rect.xMax - ButtonWidth * 3 - 15f;
             
             Rect extract1Rect = new Rect(buttonX, rect.y + 5f, ButtonWidth - 5f, rect.height - 10f);
-            if (Widgets.ButtonText(extract1Rect, "提取 x1"))
+            if (Widgets.ButtonText(extract1Rect, "DS_ExtractX1".Translate()))
             {
                 ExtractItem(item, 1);
             }
@@ -200,7 +200,7 @@ namespace DigitalStorage.UI
             buttonX += ButtonWidth;
             Rect extractStackRect = new Rect(buttonX, rect.y + 5f, ButtonWidth - 5f, rect.height - 10f);
             int stackLimit = item.def?.stackLimit ?? 1;
-            string stackLabel = $"1 堆叠";
+            string stackLabel = "DS_Extract1Stack".Translate();
             
             if (item.stackCount >= stackLimit)
             {
@@ -218,7 +218,7 @@ namespace DigitalStorage.UI
 
             buttonX += ButtonWidth;
             Rect extractCustomRect = new Rect(buttonX, rect.y + 5f, ButtonWidth - 5f, rect.height - 10f);
-            if (Widgets.ButtonText(extractCustomRect, "自定义"))
+            if (Widgets.ButtonText(extractCustomRect, "DS_ExtractCustom".Translate()))
             {
                 Find.WindowStack.Add(new Dialog_ExtractAmount(item, this));
             }
@@ -233,7 +233,7 @@ namespace DigitalStorage.UI
         {
             if (core == null || !core.Spawned || item == null)
             {
-                Messages.Message("核心不可用", MessageTypeDefOf.RejectInput);
+                Messages.Message("DS_CoreUnavailable".Translate(), MessageTypeDefOf.RejectInput);
                 return;
             }
 
@@ -256,7 +256,7 @@ namespace DigitalStorage.UI
                 if (!spawnPos.IsValid)
                 {
                     core.StoreItem(extractedThing);
-                    Messages.Message("核心周围没有空位", MessageTypeDefOf.RejectInput);
+                    Messages.Message("DS_NoSpaceNearCore".Translate(), MessageTypeDefOf.RejectInput);
                     break;
                 }
 
@@ -269,12 +269,12 @@ namespace DigitalStorage.UI
 
             if (totalExtracted > 0)
             {
-                Messages.Message($"已提取 {GetItemLabel(item)} x{totalExtracted}", MessageTypeDefOf.TaskCompletion);
+                Messages.Message("DS_Extracted".Translate(GetItemLabel(item), totalExtracted), MessageTypeDefOf.TaskCompletion);
                 UpdateFilteredItems();
             }
             else
             {
-                Messages.Message("提取失败", MessageTypeDefOf.RejectInput);
+                Messages.Message("DS_ExtractionFailed".Translate(), MessageTypeDefOf.RejectInput);
             }
         }
 
@@ -297,7 +297,7 @@ namespace DigitalStorage.UI
         {
             if (item.def == null)
             {
-                return "未知物品";
+                return "DS_UnknownItem".Translate();
             }
 
             string label = item.def.label;
@@ -313,21 +313,21 @@ namespace DigitalStorage.UI
         {
             if (item.def == null)
             {
-                return "未知物品";
+                return "DS_UnknownItem".Translate();
             }
 
             string tooltip = GetItemLabel(item);
-            tooltip += $"\n数量: {item.stackCount}";
+            tooltip += "\n" + "DS_TooltipCount".Translate(item.stackCount);
             
             if (item.quality != QualityCategory.Normal)
             {
-                tooltip += $"\n品质: {item.quality.GetLabel()}";
+                tooltip += "\n" + "DS_TooltipQuality".Translate(item.quality.GetLabel());
             }
             
             if (item.hitPoints > 0 && item.def.useHitPoints)
             {
                 float hpPercent = (float)item.hitPoints / item.def.BaseMaxHitPoints;
-                tooltip += $"\n耐久: {item.hitPoints} / {item.def.BaseMaxHitPoints} ({Mathf.RoundToInt(hpPercent * 100)}%)";
+                tooltip += "\n" + "DS_TooltipDurability".Translate(item.hitPoints, item.def.BaseMaxHitPoints, Mathf.RoundToInt(hpPercent * 100));
             }
 
             if (!string.IsNullOrEmpty(item.def.description))

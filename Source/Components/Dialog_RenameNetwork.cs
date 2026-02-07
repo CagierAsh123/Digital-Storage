@@ -28,9 +28,9 @@ namespace DigitalStorage.Components
         public override void DoWindowContents(Rect inRect)
         {
             Text.Font = GameFont.Small;
-            Widgets.Label(new Rect(0f, 0f, inRect.width, 30f), "输入网络名称:");
+            Widgets.Label(new Rect(0f, 0f, inRect.width, 30f), "DS_EnterNetworkName".Translate());
             this.curName = Widgets.TextField(new Rect(0f, 35f, inRect.width, 35f), this.curName);
-            bool flag = Widgets.ButtonText(new Rect(0f, inRect.height - 35f, inRect.width / 2f - 5f, 35f), "确定", true, true, true, null);
+            bool flag = Widgets.ButtonText(new Rect(0f, inRect.height - 35f, inRect.width / 2f - 5f, 35f), "DS_Confirm".Translate(), true, true, true, null);
             if (flag)
             {
                 bool flag2 = !string.IsNullOrEmpty(this.curName);
@@ -40,7 +40,7 @@ namespace DigitalStorage.Components
                 }
                 this.Close(true);
             }
-            bool flag3 = Widgets.ButtonText(new Rect(inRect.width / 2f + 5f, inRect.height - 35f, inRect.width / 2f - 5f, 35f), "取消", true, true, true, null);
+            bool flag3 = Widgets.ButtonText(new Rect(inRect.width / 2f + 5f, inRect.height - 35f, inRect.width / 2f - 5f, 35f), "DS_Cancel".Translate(), true, true, true, null);
             if (flag3)
             {
                 this.Close(true);

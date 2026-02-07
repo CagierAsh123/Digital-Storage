@@ -20,7 +20,7 @@ namespace DigitalStorage.Settings
 
         public override string SettingsCategory()
         {
-            return "数字存储 Digital Storage 2.0";
+            return "DS_SettingsCategory".Translate();
         }
     }
 }

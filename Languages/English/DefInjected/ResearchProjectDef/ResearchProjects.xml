@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <DigitalStorage_BasicStorage.label>digital storage</DigitalStorage_BasicStorage.label>
+  <DigitalStorage_BasicStorage.description>Unlock the basic digital storage system. Build a storage core to create a remote item storage network.</DigitalStorage_BasicStorage.description>
+
+  <DigitalStorage_DiskExpansion.label>disk storage expansion</DigitalStorage_DiskExpansion.label>
+  <DigitalStorage_DiskExpansion.description>Unlock disk cabinets to expand digital storage capacity. Place disks in cabinets adjacent to a storage core.</DigitalStorage_DiskExpansion.description>
+
+  <DigitalStorage_Interface.label>digital storage interface</DigitalStorage_Interface.label>
+  <DigitalStorage_Interface.description>Unlock the storage interface. Colonists within a 3x3 range of the interface can remotely store and retrieve items.</DigitalStorage_Interface.description>
+
+  <DigitalStorage_TerminalImplant.label>terminal implant</DigitalStorage_TerminalImplant.label>
+  <DigitalStorage_TerminalImplant.description>Unlock the terminal implant. After implantation, colonists can remotely store and retrieve items from any location, without needing to approach an interface.</DigitalStorage_TerminalImplant.description>
+
+</LanguageData>

@@ -60,7 +60,7 @@ namespace DigitalStorage.Components
 
         public string NetworkName
         {
-            get { return this.networkName ?? "未命名网络"; }
+            get { return this.networkName ?? "DS_UnnamedNetwork".Translate(); }
             set { this.networkName = value; }
         }
 
@@ -151,8 +151,8 @@ namespace DigitalStorage.Components
             
             yield return new Command_Action
             {
-                defaultLabel = "查看存储",
-                defaultDesc = "查看虚拟存储中的所有物品",
+                defaultLabel = "DS_ViewStorage".Translate(),
+                defaultDesc = "DS_ViewStorageDesc".Translate(),
                 icon = ContentFinder<Texture2D>.Get("UI/Commands/LaunchReport", true),
                 action = delegate()
                 {
@@ -162,8 +162,8 @@ namespace DigitalStorage.Components
             
             yield return new Command_Action
             {
-                defaultLabel = "重命名网络",
-                defaultDesc = "为此存储网络设置一个名称",
+                defaultLabel = "DS_RenameNetwork".Translate(),
+                defaultDesc = "DS_RenameNetworkDesc".Translate(),
                 icon = RenameTex,
                 action = delegate()
                 {
@@ -218,12 +218,12 @@ namespace DigitalStorage.Components
             {
                 sb.AppendLine(baseStr);
             }
-            sb.AppendLine("网络: " + this.NetworkName);
-            sb.AppendLine(string.Format("容量: {0}/{1} 组", this.GetUsedCapacity(), this.GetCapacity()));
-            sb.AppendLine(string.Format("磁盘柜: {0}", this.diskCabinets.Count));
+            sb.AppendLine("DS_InspectNetwork".Translate(this.NetworkName));
+            sb.AppendLine("DS_InspectCapacity".Translate(this.GetUsedCapacity(), this.GetCapacity()));
+            sb.AppendLine("DS_InspectDiskCabinets".Translate(this.diskCabinets.Count));
             if (!this.Powered)
             {
-                sb.AppendLine("无电力");
+                sb.AppendLine("DS_NoPower".Translate());
             }
             return sb.ToString().TrimEnd();
         }
