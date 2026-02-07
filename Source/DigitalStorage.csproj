@@ -98,6 +98,7 @@
     <!-- HarmonyPatches - 第三方兼容 -->
     <Compile Include="HarmonyPatches\Patch_PickUpAndHaul_Compatibility.cs" />
     <Compile Include="HarmonyPatches\Patch_Achtung_Compatibility.cs" />
+    <Compile Include="HarmonyPatches\Patch_Phinix_Compatibility.cs" />
     
     <!-- Services - 核心服务 -->
     <Compile Include="Services\DigitalStorageGameComponent.cs" />
