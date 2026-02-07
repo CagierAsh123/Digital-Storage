@@ -44,7 +44,7 @@ namespace DigitalStorage.Settings
             listingStandard.Gap(12f);
 
             listingStandard.Label("DS_ReservedCountPerItem".Translate(reservedCountPerItem));
-            reservedCountPerItem = (int)listingStandard.Slider(reservedCountPerItem, 10, 500);
+            reservedCountPerItem = (int)listingStandard.Slider(reservedCountPerItem, 10, 1000);
             listingStandard.Gap(6f);
 
             listingStandard.Label("DS_ReservedDesc".Translate());
