@@ -1,13 +1,9 @@
 // Phinix & PhinixRedPacket 兼容补丁
-// 让 Phinix 交易和红包系统能看到并消费虚拟存储中的物品
 //
-// 原理：
-// Phinix 和 RedPacket 都通过 haulDestinationManager.AllGroups → HeldThings 获取可交易物品。
-// 虚拟存储中的物品不在任何 SlotGroup 中，所以它们看不到。
-//
-// 方案：
-// 1. Patch StackedThings.GroupThings（Phinix 的物品分组方法），注入虚拟存储物品
-// 2. 追踪虚拟 Thing 实例，在 DeSpawn/Destroy 时从虚拟存储扣除
+// 策略：
+// 不 patch 通用的 GroupThings（会污染报价缓存），
+// 而是分别 Postfix TradeWindow.PreOpen 和 RedPacketTab.RefreshAvailableItems，
+// 通过反射直接向 availableItems 字段注入虚拟物品。
 
 using System;
 using System.Collections.Generic;
@@ -23,83 +19,38 @@ using Verse;
 
 namespace DigitalStorage.HarmonyPatches
 {
-    /// <summary>
-    /// Phinix 兼容：追踪为 Phinix 创建的虚拟 Thing，在它们被消费时从虚拟存储扣除
-    /// </summary>
     public static class PhinixCompatibility
     {
-        /// <summary>
-        /// 追踪虚拟 Thing → 源核心的映射
-        /// </summary>
-        private static readonly Dictionary<int, VirtualThingInfo> _virtualThings = new Dictionary<int, VirtualThingInfo>();
-        private static readonly object _lock = new object();
+        internal static readonly Dictionary<int, VirtualThingInfo> _virtualThings = new Dictionary<int, VirtualThingInfo>();
+        internal static readonly object _lock = new object();
+        private static bool _patchApplied = false;
+
+        // 缓存反射结果
+        private static MethodInfo _groupThingsMethod;
+        private static FieldInfo _tradeWindow_availableItems;
+        private static FieldInfo _tradeWindow_filteredAvailableItems;
+        private static FieldInfo _redPacketTab_availableItems;
+        private static FieldInfo _redPacketTab_filteredItems;
 
         public class VirtualThingInfo
         {
             public Building_StorageCore sourceCore;
             public ThingDef def;
-            public ThingDef stuffDef;
-            public int originalStackCount;
         }
 
-        /// <summary>
-        /// 注册一个虚拟 Thing（用于追踪）
-        /// </summary>
         public static void RegisterVirtualThing(Thing thing, Building_StorageCore core)
         {
             if (thing == null || core == null) return;
-
             lock (_lock)
             {
                 _virtualThings[thing.thingIDNumber] = new VirtualThingInfo
                 {
                     sourceCore = core,
-                    def = thing.def,
-                    stuffDef = thing.Stuff,
-                    originalStackCount = thing.stackCount
+                    def = thing.def
                 };
             }
         }
 
-        /// <summary>
-        /// 检查并消费虚拟 Thing（在 DeSpawn 或 Destroy 时调用）
-        /// </summary>
-        public static bool TryConsumeVirtualThing(Thing thing)
-        {
-            if (thing == null) return false;
-
-            VirtualThingInfo info;
-            lock (_lock)
-            {
-                if (!_virtualThings.TryGetValue(thing.thingIDNumber, out info))
-                {
-                    return false;
-                }
-                _virtualThings.Remove(thing.thingIDNumber);
-            }
-
-            if (info.sourceCore == null || !info.sourceCore.Spawned || !info.sourceCore.Powered)
-            {
-                return false;
-            }
-
-            // 计算实际消费的数量（可能被 SplitOff 过）
-            int consumed = info.originalStackCount;
-
-            // 从虚拟存储扣除
-            int deducted = info.sourceCore.DeductVirtualItems(info.def, consumed);
-
-            if (DigitalStorageSettings.enableDebugLog)
-            {
-                Log.Message($"[DigitalStorage] Phinix compat: consumed virtual thing {info.def.label} x{consumed}, deducted={deducted}");
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// 检查 Thing 是否是我们追踪的虚拟物品
-        /// </summary>
         public static bool IsVirtualThing(Thing thing)
         {
             if (thing == null) return false;
@@ -109,21 +60,33 @@ namespace DigitalStorage.HarmonyPatches
             }
         }
 
-        /// <summary>
-        /// 清理所有追踪（安全措施）
-        /// </summary>
-        public static void ClearTracking()
+        public static void DeductAndUntrack(Thing thing)
         {
+            if (thing == null) return;
+
+            VirtualThingInfo info;
             lock (_lock)
             {
-                _virtualThings.Clear();
+                if (!_virtualThings.TryGetValue(thing.thingIDNumber, out info))
+                    return;
+                _virtualThings.Remove(thing.thingIDNumber);
+            }
+
+            if (info.sourceCore != null && info.sourceCore.Spawned && info.sourceCore.Powered)
+            {
+                int deducted = info.sourceCore.DeductVirtualItems(info.def, thing.stackCount);
+                Log.Message($"[DigitalStorage][PH] Deducted: {info.def?.label} x{thing.stackCount}, actual={deducted}");
+            }
+            else
+            {
+                Log.Warning($"[DigitalStorage][PH] Deduct FAILED - core unavailable for {info.def?.label}");
             }
         }
 
         /// <summary>
-        /// 获取所有核心的虚拟物品作为临时 Thing 列表（用于注入到 Phinix 的物品列表）
+        /// 创建虚拟物品的 Thing 列表并注册追踪
         /// </summary>
-        public static List<Thing> GetVirtualThingsForPhinix()
+        public static List<Thing> CreateVirtualThings()
         {
             List<Thing> result = new List<Thing>();
 
@@ -138,11 +101,18 @@ namespace DigitalStorage.HarmonyPatches
                 {
                     if (itemData == null || itemData.def == null || itemData.stackCount <= 0) continue;
 
-                    Thing virtualThing = itemData.CreateThing();
-                    if (virtualThing != null)
+                    try
                     {
-                        RegisterVirtualThing(virtualThing, core);
-                        result.Add(virtualThing);
+                        Thing virtualThing = itemData.CreateThing();
+                        if (virtualThing != null)
+                        {
+                            RegisterVirtualThing(virtualThing, core);
+                            result.Add(virtualThing);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning($"[DigitalStorage][PH] CreateThing error: {ex.Message}");
                     }
                 }
             }
@@ -151,108 +121,380 @@ namespace DigitalStorage.HarmonyPatches
         }
 
         /// <summary>
-        /// 尝试应用 Phinix 兼容补丁（软依赖，Phinix 不存在时不报错）
+        /// 将虚拟物品注入到目标实例的 availableItems 字段中
         /// </summary>
-        public static void TryApplyPatches(Harmony harmony)
+        private static void InjectVirtualItems(object targetInstance, FieldInfo availableItemsField, FieldInfo filteredItemsField)
         {
+            if (targetInstance == null || availableItemsField == null) return;
+
             try
             {
-                // 检查 Phinix 是否加载
+                List<Thing> virtualThings = CreateVirtualThings();
+                if (virtualThings.Count == 0) return;
+
+                if (_groupThingsMethod == null)
+                {
+                    Log.Warning("[DigitalStorage][PH] GroupThings method not cached");
+                    return;
+                }
+
+                // 过滤：只要 Item 类别且非尸体
+                IEnumerable<Thing> filtered = virtualThings.Where(
+                    t => t.def.category == ThingCategory.Item && !t.def.IsCorpse);
+
+                // 调用 StackedThings.GroupThings 分组
+                object grouped = _groupThingsMethod.Invoke(null, new object[] { filtered });
+                if (grouped == null) return;
+
+                // 获取当前 availableItems 并追加
+                object currentItems = availableItemsField.GetValue(targetInstance);
+                if (currentItems == null) return;
+
+                MethodInfo addRangeMethod = currentItems.GetType().GetMethod("AddRange");
+                if (addRangeMethod != null)
+                {
+                    addRangeMethod.Invoke(currentItems, new object[] { grouped });
+                }
+
+                // 更新 filteredItems 使物品立即可见
+                if (filteredItemsField != null)
+                {
+                    // 直接设为同一个列表引用（和 Phinix 原版 PreOpen 行为一致）
+                    filteredItemsField.SetValue(targetInstance, currentItems);
+                }
+
+                Log.Message($"[DigitalStorage][PH] Injected {virtualThings.Count} virtual items into {targetInstance.GetType().Name}");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[DigitalStorage][PH] InjectVirtualItems error: {ex}");
+            }
+        }
+
+        // ========== Patch 入口 ==========
+
+        public static void TryApplyPatches(Harmony harmony)
+        {
+            if (_patchApplied) return;
+
+            try
+            {
+                // 查找 Phinix 程序集
                 Assembly phinixAssembly = null;
                 foreach (Assembly asm in AppDomain.CurrentDomain.GetAssemblies())
                 {
-                    if (asm.GetName().Name == "Phinix")
+                    string asmName = asm.GetName().Name;
+                    if (asmName == "PhinixClient" || asmName == "Phinix")
                     {
                         phinixAssembly = asm;
+                        Log.Message($"[DigitalStorage][PH] Found Phinix assembly: {asmName}");
                         break;
                     }
                 }
 
-                if (phinixAssembly == null)
-                {
-                    return; // Phinix 未加载，跳过
-                }
+                if (phinixAssembly == null) return;
 
-                // 找到 StackedThings.GroupThings 方法
+                // 缓存 StackedThings.GroupThings
                 Type stackedThingsType = phinixAssembly.GetType("PhinixClient.StackedThings");
-                if (stackedThingsType == null)
+                if (stackedThingsType != null)
                 {
-                    Log.Warning("[DigitalStorage] Phinix found but StackedThings type not found");
+                    _groupThingsMethod = stackedThingsType.GetMethod("GroupThings",
+                        BindingFlags.Public | BindingFlags.Static,
+                        null, new Type[] { typeof(IEnumerable<Thing>) }, null);
+                }
+
+                if (_groupThingsMethod == null)
+                {
+                    Log.Warning("[DigitalStorage][PH] StackedThings.GroupThings not found, aborting");
                     return;
                 }
 
-                MethodInfo groupThingsMethod = stackedThingsType.GetMethod("GroupThings",
-                    BindingFlags.Public | BindingFlags.Static,
-                    null,
-                    new Type[] { typeof(IEnumerable<Thing>) },
-                    null);
-
-                if (groupThingsMethod == null)
+                // ===== Patch TradeWindow.PreOpen =====
+                Type tradeWindowType = phinixAssembly.GetType("PhinixClient.TradeWindow");
+                if (tradeWindowType != null)
                 {
-                    Log.Warning("[DigitalStorage] Phinix StackedThings.GroupThings method not found");
-                    return;
+                    _tradeWindow_availableItems = tradeWindowType.GetField("availableItems",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+                    _tradeWindow_filteredAvailableItems = tradeWindowType.GetField("filteredAvailableItems",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+
+                    MethodInfo preOpenMethod = tradeWindowType.GetMethod("PreOpen",
+                        BindingFlags.Public | BindingFlags.Instance);
+
+                    if (preOpenMethod != null && _tradeWindow_availableItems != null)
+                    {
+                        harmony.Patch(preOpenMethod,
+                            postfix: new HarmonyMethod(typeof(PhinixCompatibility).GetMethod(
+                                nameof(TradeWindowPreOpenPostfix), BindingFlags.Public | BindingFlags.Static)));
+                        Log.Message("[DigitalStorage][PH] Patched TradeWindow.PreOpen");
+                    }
                 }
 
-                // Patch GroupThings 的参数，在调用前注入虚拟物品
-                MethodInfo prefixMethod = typeof(PhinixCompatibility).GetMethod(nameof(GroupThingsPrefix),
-                    BindingFlags.Public | BindingFlags.Static);
+                // ===== Patch PopSelected / DeleteSelected / GetSelectedThingsAsProto =====
+                if (stackedThingsType != null)
+                {
+                    MethodInfo popSelectedMethod = stackedThingsType.GetMethod("PopSelected",
+                        BindingFlags.Public | BindingFlags.Instance);
+                    if (popSelectedMethod != null)
+                    {
+                        harmony.Patch(popSelectedMethod,
+                            postfix: new HarmonyMethod(typeof(PhinixCompatibility).GetMethod(
+                                nameof(PopSelectedPostfix), BindingFlags.Public | BindingFlags.Static)));
+                        Log.Message("[DigitalStorage][PH] Patched PopSelected");
+                    }
 
-                harmony.Patch(groupThingsMethod, prefix: new HarmonyMethod(prefixMethod));
+                    MethodInfo deleteSelectedMethod = stackedThingsType.GetMethod("DeleteSelected",
+                        BindingFlags.Public | BindingFlags.Instance);
+                    if (deleteSelectedMethod != null)
+                    {
+                        harmony.Patch(deleteSelectedMethod,
+                            prefix: new HarmonyMethod(typeof(PhinixCompatibility).GetMethod(
+                                nameof(DeleteSelectedPrefix), BindingFlags.Public | BindingFlags.Static)));
+                        Log.Message("[DigitalStorage][PH] Patched DeleteSelected");
+                    }
 
-                Log.Message("[DigitalStorage] Phinix compatibility patches applied successfully");
+                    MethodInfo getSelectedAsProtoMethod = stackedThingsType.GetMethod("GetSelectedThingsAsProto",
+                        BindingFlags.Public | BindingFlags.Instance);
+                    if (getSelectedAsProtoMethod != null)
+                    {
+                        harmony.Patch(getSelectedAsProtoMethod,
+                            postfix: new HarmonyMethod(typeof(PhinixCompatibility).GetMethod(
+                                nameof(GetSelectedAsProtoPostfix), BindingFlags.Public | BindingFlags.Static)));
+                        Log.Message("[DigitalStorage][PH] Patched GetSelectedThingsAsProto");
+                    }
+                }
+
+                // ===== Patch RedPacketTab.RefreshAvailableItems =====
+                TryPatchRedPacket(harmony);
+
+                _patchApplied = true;
+                Log.Message("[DigitalStorage][PH] All Phinix compatibility patches applied");
             }
             catch (Exception ex)
             {
-                Log.Warning($"[DigitalStorage] Failed to apply Phinix compatibility patches: {ex.Message}");
+                Log.Warning($"[DigitalStorage][PH] TryApplyPatches FAILED: {ex}");
             }
         }
 
-        /// <summary>
-        /// Prefix for StackedThings.GroupThings - 注入虚拟存储物品到输入列表
-        /// </summary>
-        public static void GroupThingsPrefix(ref IEnumerable<Thing> things)
+        private static void TryPatchRedPacket(Harmony harmony)
         {
-            if (things == null) return;
+            try
+            {
+                Assembly redPacketAssembly = null;
+                foreach (Assembly asm in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    string asmName = asm.GetName().Name;
+                    if (asmName == "PhinixRedPacket" || asmName.IndexOf("RedPacket", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        redPacketAssembly = asm;
+                        Log.Message($"[DigitalStorage][PH] Found RedPacket assembly: {asmName}");
+                        break;
+                    }
+                }
+
+                if (redPacketAssembly == null) return;
+
+                Type redPacketTabType = redPacketAssembly.GetType("PhinixRedPacket.RedPacketTab");
+                if (redPacketTabType == null)
+                {
+                    Log.Warning("[DigitalStorage][PH] RedPacketTab type not found");
+                    return;
+                }
+
+                _redPacketTab_availableItems = redPacketTabType.GetField("availableItems",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                _redPacketTab_filteredItems = redPacketTabType.GetField("filteredItems",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+
+                MethodInfo refreshMethod = redPacketTabType.GetMethod("RefreshAvailableItems",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+
+                if (refreshMethod != null && _redPacketTab_availableItems != null)
+                {
+                    harmony.Patch(refreshMethod,
+                        postfix: new HarmonyMethod(typeof(PhinixCompatibility).GetMethod(
+                            nameof(RedPacketRefreshPostfix), BindingFlags.Public | BindingFlags.Static)));
+                    Log.Message("[DigitalStorage][PH] Patched RedPacketTab.RefreshAvailableItems");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[DigitalStorage][PH] TryPatchRedPacket error: {ex.Message}");
+            }
+        }
+
+        // ========== Harmony Postfix/Prefix ==========
+
+        public static void TradeWindowPreOpenPostfix(object __instance)
+        {
+            Log.Message("[DigitalStorage][PH] TradeWindow.PreOpen postfix triggered");
+            InjectVirtualItems(__instance, _tradeWindow_availableItems, _tradeWindow_filteredAvailableItems);
+        }
+
+        public static void RedPacketRefreshPostfix(object __instance)
+        {
+            Log.Message("[DigitalStorage][PH] RedPacketTab.RefreshAvailableItems postfix triggered");
+            InjectVirtualItems(__instance, _redPacketTab_availableItems, _redPacketTab_filteredItems);
+        }
+
+        public static void PopSelectedPostfix(object __instance, IEnumerable<Thing> __result)
+        {
+            if (__result == null) return;
 
             try
             {
-                // 清理之前的追踪（新一轮刷新）
-                ClearTracking();
-
-                List<Thing> virtualThings = GetVirtualThingsForPhinix();
-                if (virtualThings.Count > 0)
+                foreach (Thing thing in __result)
                 {
-                    things = things.Concat(virtualThings);
-
-                    if (DigitalStorageSettings.enableDebugLog)
+                    if (thing != null && IsVirtualThing(thing))
                     {
-                        Log.Message($"[DigitalStorage] Phinix compat: injected {virtualThings.Count} virtual item types");
+                        Log.Message($"[DigitalStorage][PH] PopSelected: deducting {thing.def?.defName} x{thing.stackCount} (id={thing.thingIDNumber})");
+                        DeductAndUntrack(thing);
                     }
                 }
             }
             catch (Exception ex)
             {
-                Log.Warning($"[DigitalStorage] Phinix GroupThings prefix error: {ex.Message}");
+                Log.Warning($"[DigitalStorage][PH] PopSelectedPostfix error: {ex.Message}");
+            }
+        }
+
+        public static void DeleteSelectedPrefix(object __instance)
+        {
+            try
+            {
+                Type type = __instance.GetType();
+                FieldInfo thingsField = type.GetField("Things", BindingFlags.Public | BindingFlags.Instance);
+                FieldInfo selectedField = type.GetField("Selected", BindingFlags.Public | BindingFlags.Instance);
+
+                if (thingsField == null || selectedField == null) return;
+
+                List<Thing> things = thingsField.GetValue(__instance) as List<Thing>;
+                int selected = (int)selectedField.GetValue(__instance);
+
+                if (things == null || selected <= 0) return;
+
+                int remaining = selected;
+                foreach (Thing thing in things)
+                {
+                    if (remaining <= 0) break;
+                    if (thing == null || !IsVirtualThing(thing)) continue;
+
+                    int take = System.Math.Min(thing.stackCount, remaining);
+                    if (take > 0)
+                    {
+                        VirtualThingInfo info;
+                        lock (_lock)
+                        {
+                            if (_virtualThings.TryGetValue(thing.thingIDNumber, out info))
+                            {
+                                if (info.sourceCore != null && info.sourceCore.Spawned && info.sourceCore.Powered)
+                                {
+                                    int deducted = info.sourceCore.DeductVirtualItems(info.def, take);
+                                    Log.Message($"[DigitalStorage][PH] DeleteSelected: deducted {info.def?.label} x{take}, actual={deducted}");
+                                }
+
+                                if (take >= thing.stackCount)
+                                {
+                                    _virtualThings.Remove(thing.thingIDNumber);
+                                }
+                            }
+                        }
+                        remaining -= take;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[DigitalStorage][PH] DeleteSelectedPrefix error: {ex.Message}");
+            }
+        }
+
+        public static void GetSelectedAsProtoPostfix(object __instance)
+        {
+            try
+            {
+                Type type = __instance.GetType();
+                FieldInfo thingsField = type.GetField("Things", BindingFlags.Public | BindingFlags.Instance);
+                FieldInfo selectedField = type.GetField("Selected", BindingFlags.Public | BindingFlags.Instance);
+
+                if (thingsField == null || selectedField == null) return;
+
+                List<Thing> things = thingsField.GetValue(__instance) as List<Thing>;
+                int selected = (int)selectedField.GetValue(__instance);
+
+                if (things == null || selected <= 0) return;
+
+                bool hasVirtual = things.Any(t => t != null && IsVirtualThing(t));
+                if (!hasVirtual) return;
+
+                int remaining = selected;
+                foreach (Thing thing in things)
+                {
+                    if (remaining <= 0) break;
+                    if (thing == null) continue;
+
+                    int toTake = System.Math.Min(thing.stackCount, remaining);
+
+                    if (IsVirtualThing(thing) && toTake > 0)
+                    {
+                        VirtualThingInfo info;
+                        lock (_lock)
+                        {
+                            if (_virtualThings.TryGetValue(thing.thingIDNumber, out info))
+                            {
+                                if (info.sourceCore != null && info.sourceCore.Spawned && info.sourceCore.Powered)
+                                {
+                                    int deducted = info.sourceCore.DeductVirtualItems(info.def, toTake);
+                                    Log.Message($"[DigitalStorage][PH] GetSelectedAsProto: deducted {info.def?.label} x{toTake}, actual={deducted}");
+                                }
+                            }
+                        }
+                    }
+                    remaining -= toTake;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[DigitalStorage][PH] GetSelectedAsProtoPostfix error: {ex.Message}");
             }
         }
     }
 
-    /// <summary>
-    /// Patch Thing.DeSpawn：当 Phinix 对虚拟 Thing 调用 DeSpawn 时，从虚拟存储扣除
-    /// </summary>
     [HarmonyPatch(typeof(Thing), "DeSpawn")]
     public static class Patch_Thing_DeSpawn_PhinixCompat
     {
         public static bool Prefix(Thing __instance)
         {
-            // 虚拟 Thing 没有 Spawn，DeSpawn 会报错，需要拦截
             if (PhinixCompatibility.IsVirtualThing(__instance) && !__instance.Spawned)
             {
-                // 从虚拟存储扣除
-                PhinixCompatibility.TryConsumeVirtualThing(__instance);
-                return false; // 跳过原版 DeSpawn（因为没有 Spawn 过）
+                return false;
             }
             return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(Thing), "SplitOff")]
+    public static class Patch_Thing_SplitOff_PhinixCompat
+    {
+        public static void Postfix(Thing __instance, Thing __result)
+        {
+            if (__result == null || __result == __instance) return;
+
+            if (PhinixCompatibility.IsVirtualThing(__instance))
+            {
+                PhinixCompatibility.VirtualThingInfo info;
+                lock (PhinixCompatibility._lock)
+                {
+                    if (PhinixCompatibility._virtualThings.TryGetValue(__instance.thingIDNumber, out info))
+                    {
+                        PhinixCompatibility._virtualThings[__result.thingIDNumber] = new PhinixCompatibility.VirtualThingInfo
+                        {
+                            sourceCore = info.sourceCore,
+                            def = info.def
+                        };
+                    }
+                }
+            }
         }
     }
 }
