@@ -891,6 +891,59 @@ namespace DigitalStorage.Components
             return this.virtualStorage;
         }
 
+        /// <summary>
+        /// 获取虚拟存储中指定物品的数量（不含预留物品）
+        /// </summary>
+        public int GetVirtualItemCount(ThingDef def)
+        {
+            int total = 0;
+            foreach (StoredItemData item in this.virtualStorage)
+            {
+                if (item.def == def && item.stackCount > 0)
+                {
+                    total += item.stackCount;
+                }
+            }
+            return total;
+        }
+
+        /// <summary>
+        /// 从虚拟存储中按 ThingDef 扣除指定数量（忽略 stuff，用于轨道交易）
+        /// 返回实际扣除的数量
+        /// </summary>
+        public int DeductVirtualItems(ThingDef def, int count)
+        {
+            if (def == null || count <= 0) return 0;
+
+            int remaining = count;
+
+            // 使用 ToList 避免遍历时修改集合
+            foreach (StoredItemData item in this.virtualStorage.ToList())
+            {
+                if (item.def != def || item.stackCount <= 0)
+                {
+                    continue;
+                }
+
+                if (remaining <= 0)
+                {
+                    break;
+                }
+
+                int toDeduct = System.Math.Min(item.stackCount, remaining);
+                item.stackCount -= toDeduct;
+                remaining -= toDeduct;
+
+                if (item.stackCount <= 0)
+                {
+                    this.virtualStorage.Remove(item);
+                    this.itemLookup.Remove(item.uniqueId);
+                }
+            }
+
+            return count - remaining;
+        }
+
         private void RebuildLookup()
         {
             this.itemLookup.Clear();
