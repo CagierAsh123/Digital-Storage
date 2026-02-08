@@ -72,6 +72,8 @@
   <DS_EnableDebugLogDesc>在日志中显示详细的调试信息（占位符创建、物品生成等）</DS_EnableDebugLogDesc>
   <DS_EnableConversionLog>启用转换日志</DS_EnableConversionLog>
   <DS_EnableConversionLogDesc>在日志中显示物品转换过程的详细信息（Tick检查、统计、转换等）</DS_EnableConversionLogDesc>
+  <DS_CountVirtualWealth>虚拟物品计入财富</DS_CountVirtualWealth>
+  <DS_CountVirtualWealthDesc>将数字化物品计入殖民地财富（影响故事叙事者威胁点）</DS_CountVirtualWealthDesc>
   <DS_DebugWarning>注意：启用后会产生大量日志，仅用于调试问题</DS_DebugWarning>
 
   <!-- ========== 升级系统 ========== -->

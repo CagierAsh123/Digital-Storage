@@ -93,7 +93,7 @@ namespace DigitalStorage.Services
                 return;
             }
 
-            int reservedCount = DigitalStorageSettings.reservedCountPerItem;
+            int reservedCount = DigitalStorageSettings.EffectiveReservedCount;
             if (DigitalStorageSettings.enableConversionLog)
             {
                 Log.Message($"[数字存储] AsyncItemConverter.StartAsyncConversion: 预留数量={reservedCount}");

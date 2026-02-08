@@ -114,6 +114,15 @@ namespace DigitalStorage.Components
 
         public override void DeSpawn(DestroyMode mode = DestroyMode.Vanish)
         {
+            // 拆除/摧毁时掉落虚拟存储中的物品（分帧，避免卡顿）
+            if (this.virtualStorage != null && this.virtualStorage.Count > 0 && this.Map != null && ShouldDropVirtualItems(mode))
+            {
+                DigitalStorageGameComponent gameComp = Current.Game?.GetComponent<DigitalStorageGameComponent>();
+                gameComp?.QueueDropVirtualItems(this.Map, this.Position, this.virtualStorage);
+                this.virtualStorage.Clear();
+                this.itemLookup.Clear();
+            }
+
             Map map = base.Map;
             if (map != null)
             {
@@ -134,6 +143,22 @@ namespace DigitalStorage.Components
             }
 
             base.DeSpawn(mode);
+        }
+
+        private static bool ShouldDropVirtualItems(DestroyMode mode)
+        {
+            switch (mode)
+            {
+                case DestroyMode.Deconstruct:
+                case DestroyMode.KillFinalize:
+                case DestroyMode.KillFinalizeLeavingsOnly:
+                case DestroyMode.FailConstruction:
+                case DestroyMode.Cancel:
+                case DestroyMode.Refund:
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         public override IEnumerable<Gizmo> GetGizmos()
@@ -229,8 +254,16 @@ namespace DigitalStorage.Components
         /// </summary>
         public int GetUsedCapacity()
         {
-            // 返回虚拟存储中的组数，而不是物品数量
-            return this.virtualStorage.Count;
+            int count = 0;
+            for (int i = 0; i < this.virtualStorage.Count; i++)
+            {
+                StoredItemData item = this.virtualStorage[i];
+                if (item != null && item.def != null && item.stackCount > 0)
+                {
+                    count++;
+                }
+            }
+            return count;
         }
 
         /// <summary>
@@ -315,7 +348,7 @@ namespace DigitalStorage.Components
                 SlotGroup slotGroup = base.GetSlotGroup();
                 if (slotGroup != null)
                 {
-                    int reservedCount = DigitalStorageSettings.reservedCountPerItem;
+                    int reservedCount = DigitalStorageSettings.EffectiveReservedCount;
                     int totalItems = slotGroup.HeldThings.Count();
                     
                     if (DigitalStorageSettings.enableConversionLog)
@@ -416,7 +449,7 @@ namespace DigitalStorage.Components
         /// </summary>
         private void MaintainReservedItems()
         {
-            int reservedCount = DigitalStorageSettings.reservedCountPerItem;
+            int reservedCount = DigitalStorageSettings.EffectiveReservedCount;
             SlotGroup slotGroup = base.GetSlotGroup();
             if (slotGroup == null)
             {
@@ -609,32 +642,64 @@ namespace DigitalStorage.Components
         /// </summary>
         private Thing ExtractItemForReserved(ThingDef def, int count, ThingDef stuff, QualityCategory quality)
         {
-            foreach (StoredItemData item in this.virtualStorage)
+            if (def == null || count <= 0)
             {
-                if (item.Matches(def, stuff) && item.quality == quality && item.stackCount >= count)
+                return null;
+            }
+
+            int remaining = count;
+            int extractedCount = 0;
+            StoredItemData template = null;
+
+            foreach (StoredItemData item in this.virtualStorage.ToList())
+            {
+                if (!item.Matches(def, stuff) || item.quality != quality || item.stackCount <= 0)
                 {
-                    item.stackCount -= count;
-                    
-                    if (item.stackCount <= 0)
-                    {
-                        this.virtualStorage.Remove(item);
-                        this.itemLookup.Remove(item.uniqueId);
-                    }
+                    continue;
+                }
 
-                    StoredItemData extractData = new StoredItemData
-                    {
-                        def = item.def,
-                        stuffDef = item.stuffDef,
-                        quality = item.quality,
-                        hitPoints = item.hitPoints,
-                        stackCount = count
-                    };
+                if (template == null)
+                {
+                    template = item;
+                }
 
-                    return extractData.CreateThing();
+                int take = Math.Min(item.stackCount, remaining);
+                if (take <= 0)
+                {
+                    continue;
+                }
+
+                item.stackCount -= take;
+                remaining -= take;
+                extractedCount += take;
+                     
+                if (item.stackCount <= 0)
+                {
+                    this.virtualStorage.Remove(item);
+                    this.itemLookup.Remove(item.uniqueId);
+                }
+
+                if (remaining <= 0)
+                {
+                    break;
                 }
             }
 
-            return null;
+            if (extractedCount <= 0 || template == null)
+            {
+                return null;
+            }
+
+            StoredItemData extractData = new StoredItemData
+            {
+                def = template.def,
+                stuffDef = template.stuffDef,
+                quality = template.quality,
+                hitPoints = template.hitPoints,
+                stackCount = extractedCount
+            };
+
+            return extractData.CreateThing();
         }
 
         /// <summary>
@@ -642,22 +707,46 @@ namespace DigitalStorage.Components
         /// </summary>
         public Thing ExtractItem(ThingDef def, int count, ThingDef stuff = null)
         {
-            int beforeCount = GetItemCount(def, stuff);
+            if (def == null || count <= 0)
+            {
+                return null;
+            }
+
+            int beforeCount = GetVirtualItemCount(def);
+            int remaining = count;
+            int extractedCount = 0;
+            StoredItemData template = null;
             
             if (DigitalStorageSettings.enableDebugLog)
             {
                 Log.Message($"[数字存储] ExtractItem: 开始提取, {def?.label ?? "null"} x{count}, stuff={stuff?.label ?? "null"}, 提取前虚拟存储数量={beforeCount}");
             }
             
-            foreach (StoredItemData item in this.virtualStorage)
+            foreach (StoredItemData item in this.virtualStorage.ToList())
             {
-                if (item.Matches(def, stuff) && item.stackCount >= count)
+                if (!item.Matches(def, stuff) || item.stackCount <= 0)
                 {
-                    item.stackCount -= count;
-                    
+                    continue;
+                }
+
+                if (template == null)
+                {
+                    template = item;
+                }
+
+                int take = Math.Min(item.stackCount, remaining);
+                if (take <= 0)
+                {
+                    continue;
+                }
+
+                item.stackCount -= take;
+                remaining -= take;
+                extractedCount += take;
+                     
                     if (DigitalStorageSettings.enableDebugLog)
                     {
-                        Log.Message($"[数字存储] ExtractItem: 找到匹配物品, 提取前={item.stackCount + count}, 提取后={item.stackCount}, 提取数量={count}");
+                        Log.Message($"[数字存储] ExtractItem: 找到匹配物品, 提取前={item.stackCount + take}, 提取后={item.stackCount}, 提取数量={take}");
                     }
                     
                     if (item.stackCount <= 0)
@@ -671,32 +760,39 @@ namespace DigitalStorage.Components
                         }
                     }
 
-                    StoredItemData extractData = new StoredItemData
-                    {
-                        def = item.def,
-                        stuffDef = item.stuffDef,
-                        quality = item.quality,
-                        hitPoints = item.hitPoints,
-                        stackCount = count
-                    };
-
-                    int afterCount = GetItemCount(def, stuff);
-                    
-                    if (DigitalStorageSettings.enableDebugLog)
-                    {
-                        Log.Message($"[数字存储] ExtractItem: 提取完成, 提取前虚拟存储={beforeCount}, 提取后虚拟存储={afterCount}, 差异={beforeCount - afterCount}");
-                    }
-
-                    return extractData.CreateThing();
+                if (remaining <= 0)
+                {
+                    break;
                 }
             }
 
-            if (DigitalStorageSettings.enableDebugLog)
+            if (extractedCount <= 0 || template == null)
             {
-                Log.Message($"[数字存储] ExtractItem: 未找到匹配物品或数量不足, {def?.label ?? "null"} x{count}");
+                if (DigitalStorageSettings.enableDebugLog)
+                {
+                    Log.Message($"[数字存储] ExtractItem: 未找到匹配物品或数量不足, {def?.label ?? "null"} x{count}");
+                }
+                return null;
             }
 
-            return null;
+            StoredItemData extractData = new StoredItemData
+            {
+                def = template.def,
+                stuffDef = template.stuffDef,
+                quality = template.quality,
+                hitPoints = template.hitPoints,
+                stackCount = extractedCount
+            };
+
+            int afterCount = GetVirtualItemCount(def);
+
+            if (DigitalStorageSettings.enableDebugLog)
+            {
+                Log.Message($"[数字存储] ExtractItem: 提取完成, 请求={count}, 实际={extractedCount}, 提取前虚拟存储={beforeCount}, 提取后虚拟存储={afterCount}, 差异={beforeCount - afterCount}");
+            }
+
+            return extractData.CreateThing();
+
         }
 
         /// <summary>

@@ -8,14 +8,28 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using DigitalStorage.Components;
+using DigitalStorage.Data;
 using DigitalStorage.Services;
 using RimWorld;
+using UnityEngine;
 using Verse;
 
 namespace DigitalStorage.Services
 {
     public class DigitalStorageGameComponent : GameComponent
     {
+        private const int MaxSpawnPerTick = 16;
+
+        private class PendingVirtualDrop
+        {
+            public Map map;
+            public IntVec3 center;
+            public StoredItemData data;
+            public int remaining;
+        }
+
+        private readonly Queue<PendingVirtualDrop> pendingDrops = new Queue<PendingVirtualDrop>();
+
         public DigitalStorageGameComponent(Game game)
         {
         }
@@ -28,9 +42,12 @@ namespace DigitalStorage.Services
         public override void GameComponentUpdate()
         {
             base.GameComponentUpdate();
-            
+             
             // 每帧更新异步物品转换器（分帧处理，减少 GC 压力）
             AsyncItemConverter.Update();
+
+            // 每帧分批掉落虚拟物品（核心拆除时）
+            ProcessPendingDrops();
         }
 
         public override void ExposeData()
@@ -44,6 +61,102 @@ namespace DigitalStorage.Services
                     this.globalCores = new List<Building_StorageCore>();
                 }
                 this.RebuildCache();
+            }
+        }
+
+        public void QueueDropVirtualItems(Map map, IntVec3 center, IEnumerable<StoredItemData> items)
+        {
+            if (map == null || items == null)
+            {
+                return;
+            }
+
+            foreach (StoredItemData item in items)
+            {
+                if (item == null || item.def == null || item.stackCount <= 0)
+                {
+                    continue;
+                }
+
+                PendingVirtualDrop drop = new PendingVirtualDrop
+                {
+                    map = map,
+                    center = center,
+                    data = new StoredItemData
+                    {
+                        def = item.def,
+                        stuffDef = item.stuffDef,
+                        quality = item.quality,
+                        hitPoints = item.hitPoints,
+                        stackCount = item.stackCount,
+                        uniqueId = item.uniqueId
+                    },
+                    remaining = item.stackCount
+                };
+
+                this.pendingDrops.Enqueue(drop);
+            }
+        }
+
+        private void ProcessPendingDrops()
+        {
+            if (this.pendingDrops.Count == 0)
+            {
+                return;
+            }
+
+            int budget = MaxSpawnPerTick;
+
+            while (budget > 0 && this.pendingDrops.Count > 0)
+            {
+                PendingVirtualDrop drop = this.pendingDrops.Peek();
+
+                if (drop.map == null || drop.data == null || drop.data.def == null || drop.remaining <= 0)
+                {
+                    this.pendingDrops.Dequeue();
+                    continue;
+                }
+
+                int stackLimit = Mathf.Max(1, drop.data.def.stackLimit);
+                int take = Mathf.Min(stackLimit, drop.remaining);
+
+                StoredItemData chunk = new StoredItemData
+                {
+                    def = drop.data.def,
+                    stuffDef = drop.data.stuffDef,
+                    quality = drop.data.quality,
+                    hitPoints = drop.data.hitPoints,
+                    stackCount = take
+                };
+
+                Thing thing = chunk.CreateThing();
+                if (thing != null)
+                {
+                    IntVec3 spawnPos = drop.center;
+                    if (!spawnPos.IsValid || !spawnPos.InBounds(drop.map) || spawnPos.Fogged(drop.map) || !spawnPos.Walkable(drop.map))
+                    {
+                        IntVec3 found;
+                        if (CellFinder.TryFindRandomCellNear(drop.center, drop.map, 6, c => c.InBounds(drop.map) && c.Walkable(drop.map), out found))
+                        {
+                            spawnPos = found;
+                        }
+                    }
+
+                    if (!spawnPos.IsValid || !spawnPos.InBounds(drop.map))
+                    {
+                        spawnPos = drop.center.InBounds(drop.map) ? drop.center : drop.map.Center;
+                    }
+
+                    GenSpawn.Spawn(thing, spawnPos, drop.map, WipeMode.Vanish);
+                }
+
+                drop.remaining -= take;
+                budget--;
+
+                if (drop.remaining <= 0)
+                {
+                    this.pendingDrops.Dequeue();
+                }
             }
         }
 

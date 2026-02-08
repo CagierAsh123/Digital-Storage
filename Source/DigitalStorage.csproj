@@ -83,6 +83,7 @@
     
     <!-- HarmonyPatches - 兼容性补丁 -->
     <Compile Include="HarmonyPatches\Patch_ResourceCounter.cs" />
+    <Compile Include="HarmonyPatches\Patch_WealthWatcher.cs" />
     <Compile Include="HarmonyPatches\Patch_RecipeWorkerCounter_CountProducts.cs" />
     <Compile Include="HarmonyPatches\Patch_TradeUtility.cs" />
     <Compile Include="HarmonyPatches\Patch_TradeAction.cs" />

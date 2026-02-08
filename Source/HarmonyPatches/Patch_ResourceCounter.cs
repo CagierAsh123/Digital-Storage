@@ -9,7 +9,7 @@ using Verse;
 namespace DigitalStorage.HarmonyPatches
 {
     /// <summary>
-    /// 补丁：让 ResourceCounter.GetCount 也统计核心中的材料（包括预留物品和虚拟存储）
+    /// 补丁：让 ResourceCounter.GetCount 也统计核心中的材料（仅虚拟存储，避免与预留物品重复统计）
     /// </summary>
     [HarmonyPatch(typeof(ResourceCounter), "GetCount")]
     public static class Patch_ResourceCounter_GetCount
@@ -30,7 +30,7 @@ namespace DigitalStorage.HarmonyPatches
                 return;
             }
 
-            // 统计所有核心中的该资源数量（GetItemCount 已经包括预留物品和虚拟存储）
+            // 统计所有核心中的该资源数量（只统计虚拟存储，预留物品已经在原版结果里）
             int totalInCores = 0;
 
             foreach (Building_StorageCore core in gameComp.GetAllCores())
@@ -40,7 +40,7 @@ namespace DigitalStorage.HarmonyPatches
                     continue;
                 }
 
-                totalInCores += core.GetItemCount(rDef, null);
+                totalInCores += core.GetVirtualItemCount(rDef);
             }
 
             // 将核心中的数量加到原版结果中
@@ -52,7 +52,7 @@ namespace DigitalStorage.HarmonyPatches
     }
 
     /// <summary>
-    /// 补丁：让 ResourceCounter.AllCountedAmounts 也包含核心中的材料
+    /// 补丁：让 ResourceCounter.AllCountedAmounts 也包含核心中的材料（仅虚拟存储）
     /// </summary>
     [HarmonyPatch(typeof(ResourceCounter), "AllCountedAmounts", MethodType.Getter)]
     public static class Patch_ResourceCounter_AllCountedAmounts
@@ -83,7 +83,7 @@ namespace DigitalStorage.HarmonyPatches
                 // 创建一个新字典，包含原版结果和核心中的材料
                 Dictionary<ThingDef, int> newResult = new Dictionary<ThingDef, int>(__result);
 
-                // 统计所有核心中的材料（GetItemCount 已经包括预留物品和虚拟存储）
+                // 统计所有核心中的材料（只统计虚拟存储）
                 foreach (Building_StorageCore core in gameComp.GetAllCores())
                 {
                     if (core == null || !core.Spawned || !core.Powered)
@@ -109,25 +109,7 @@ namespace DigitalStorage.HarmonyPatches
                         }
                     }
 
-                    // 也统计预留物品
-                    SlotGroup slotGroup = core.GetSlotGroup();
-                    if (slotGroup != null)
-                    {
-                        foreach (Thing thing in slotGroup.HeldThings)
-                        {
-                            if (thing != null && thing.Spawned && thing.def.resourceReadoutPriority != ResourceCountPriority.Uncounted)
-                            {
-                                if (newResult.ContainsKey(thing.def))
-                                {
-                                    newResult[thing.def] += thing.stackCount;
-                                }
-                                else
-                                {
-                                    newResult[thing.def] = thing.stackCount;
-                                }
-                            }
-                        }
-                    }
+                    // 不统计预留物品（原版 __result 已经包含）
                 }
 
                 _cachedAllCountedAmounts = newResult;

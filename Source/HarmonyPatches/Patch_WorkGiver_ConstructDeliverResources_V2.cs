@@ -171,7 +171,7 @@ namespace DigitalStorage.HarmonyPatches
                         // ===== 本地图逻辑（原有逻辑不变） =====
                         Thing reservedThing = core.FindReservedItem(def, null);
                         int reservedCount = reservedThing?.stackCount ?? 0;
-                        int virtualCount = core.GetItemCount(def, null);
+                        int virtualCount = core.GetVirtualItemCount(def);
                         int totalAvailable = reservedCount + virtualCount;
 
                         if (LOG) Log.Message($"[建造] 本地图: reservedCount={reservedCount}, virtualCount={virtualCount}, totalAvailable={totalAvailable}");

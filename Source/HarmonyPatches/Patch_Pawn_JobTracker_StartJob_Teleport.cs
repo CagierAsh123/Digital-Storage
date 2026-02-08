@@ -117,7 +117,7 @@ namespace DigitalStorage.HarmonyPatches
 
             if (hasVirtualMaterial)
             {
-                pawn.ClearReservationsForJob(job);
+                // 保留原有预约，避免其它 pawn 抢走已分配材料
             }
         }
         
@@ -186,8 +186,7 @@ namespace DigitalStorage.HarmonyPatches
                 // 更新Job的target
                 job.targetA = thingToTeleport;
                 
-                // 清理预留（因为位置变了）
-                pawn.ClearReservationsForJob(job);
+                // 保留原有预约（ReservationManager 追踪的是 Thing 引用而不是位置）
                 
                 if (DigitalStorageSettings.enableDebugLog)
                     Log.Message($"[数字存储] HaulToContainer 传送: {thingToTeleport.Label} x{thingToTeleport.stackCount} 到 {pawn.Position}");

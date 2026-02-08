@@ -5,7 +5,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using DigitalStorage.Components;
 using DigitalStorage.Data;
 using DigitalStorage.Services;
@@ -231,7 +230,7 @@ namespace DigitalStorage.HarmonyPatches
                             if (billFilterAllows)
                             {
                                 int reservedCount = reservedThing.stackCount;
-                                int virtualCount = core.GetItemCount(reservedThing.def, reservedThing.Stuff);
+                                int virtualCount = core.GetVirtualItemCount(reservedThing.def);
 
                                 if (reservedCount + virtualCount >= neededCount)
                                 {
@@ -336,49 +335,6 @@ namespace DigitalStorage.HarmonyPatches
                 GenSpawn.Spawn(extractedLocal, position, map, WipeMode.Vanish);
                 return extractedLocal;
             }
-        }
-
-        private static Thing FindMaterialOnMapFallback(Pawn pawn, IngredientCount ingredient, Bill_Production billProd, int neededCount)
-        {
-            return GenClosest.ClosestThingReachable(
-                pawn.Position,
-                pawn.Map,
-                ThingRequest.ForGroup(ThingRequestGroup.HaulableEver),
-                PathEndMode.ClosestTouch,
-                TraverseParms.For(pawn, Danger.Deadly, TraverseMode.ByPawn, false, false, true),
-                9999f,
-                t => t.Spawned &&
-                     ingredient.filter.Allows(t) &&
-                     (billProd.ingredientFilter == null || billProd.ingredientFilter.Allows(t) || ingredient.IsFixedIngredient) &&
-                     !t.IsForbidden(pawn) &&
-                     pawn.CanReserve(t, 1, -1, null, false) &&
-                     t.stackCount >= neededCount &&
-                     !t.IsNotFresh(),
-                null, 0, -1, false, RegionType.Set_Passable, false, false);
-        }
-
-        private static Building_StorageCore FindCoreWithItem(DigitalStorageGameComponent gameComp, Thing item)
-        {
-            foreach (Building_StorageCore core in gameComp.GetAllCores())
-            {
-                if (core == null || !core.Spawned || !core.Powered)
-                {
-                    continue;
-                }
-
-                SlotGroup slotGroup = core.GetSlotGroup();
-                if (slotGroup != null)
-                {
-                    foreach (Thing thing in slotGroup.HeldThings)
-                    {
-                        if (thing == item)
-                        {
-                            return core;
-                        }
-                    }
-                }
-            }
-            return null;
         }
 
         private static int GetCountNeeded(IConstructible c, ThingDef def, Pawn pawn, bool forced)

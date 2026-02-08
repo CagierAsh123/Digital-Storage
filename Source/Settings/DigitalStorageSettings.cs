@@ -9,6 +9,8 @@ namespace DigitalStorage.Settings
         public static bool enableDebugLog = false;
         public static bool enableConversionLog = false; // 转换日志（Tick检查、AsyncItemConverter等）
         public static int reservedCountPerItem = 100; // 每种物品预留数量
+        public static bool countVirtualWealth = true; // 虚拟物品是否计入财富
+        public static int EffectiveReservedCount => Mathf.Clamp(reservedCountPerItem, 10, 1000);
 
         public override void ExposeData()
         {
@@ -16,6 +18,8 @@ namespace DigitalStorage.Settings
             Scribe_Values.Look(ref enableDebugLog, "enableDebugLog", false);
             Scribe_Values.Look(ref enableConversionLog, "enableConversionLog", false);
             Scribe_Values.Look(ref reservedCountPerItem, "reservedCountPerItem", 100);
+            Scribe_Values.Look(ref countVirtualWealth, "countVirtualWealth", true);
+            reservedCountPerItem = Mathf.Clamp(reservedCountPerItem, 10, 1000);
             base.ExposeData();
         }
 
@@ -62,6 +66,10 @@ namespace DigitalStorage.Settings
             
             listingStandard.CheckboxLabeled("DS_EnableConversionLog".Translate(), ref enableConversionLog, 
                 "DS_EnableConversionLogDesc".Translate());
+            listingStandard.Gap(6f);
+
+            listingStandard.CheckboxLabeled("DS_CountVirtualWealth".Translate(), ref countVirtualWealth,
+                "DS_CountVirtualWealthDesc".Translate());
             listingStandard.Gap(6f);
             
             // 警告

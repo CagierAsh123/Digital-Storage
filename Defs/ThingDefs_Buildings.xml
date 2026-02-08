@@ -42,7 +42,7 @@
     <uiIconScale>0.9</uiIconScale>
     <fillPercent>0.5</fillPercent>
     <statBases>
-      <MaxHitPoints>10000</MaxHitPoints>
+      <MaxHitPoints>100000</MaxHitPoints>
       <WorkToBuild>2000</WorkToBuild>
       <Mass>50</Mass>
     </statBases>
