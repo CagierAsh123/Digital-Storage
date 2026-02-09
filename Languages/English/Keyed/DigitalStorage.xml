@@ -74,6 +74,8 @@
   <DS_EnableConversionLogDesc>Show detailed conversion process info in log (tick checks, statistics, conversion, etc.)</DS_EnableConversionLogDesc>
   <DS_CountVirtualWealth>Count virtual items as wealth</DS_CountVirtualWealth>
   <DS_CountVirtualWealthDesc>Include digitized items in colony wealth calculation (storyteller threat points)</DS_CountVirtualWealthDesc>
+  <DS_InterfaceInstantDigitize>Input interface instant digitize</DS_InterfaceInstantDigitize>
+  <DS_InterfaceInstantDigitizeDesc>When enabled, items placed on input interface are digitized immediately instead of being dropped near core first</DS_InterfaceInstantDigitizeDesc>
   <DS_DebugWarning>Warning: Enabling these will produce a large amount of log output, only use for debugging</DS_DebugWarning>
 
   <!-- ========== Upgrade System ========== -->

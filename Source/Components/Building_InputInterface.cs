@@ -159,13 +159,50 @@ namespace DigitalStorage.Components
                 return;
             }
 
-            // 传送物品到核心
-            if (newItem.Spawned)
+            // 方案A：接口即时数字化（默认开启，体验更丝滑，不会堵口）
+            if (DigitalStorageSettings.interfaceInstantDigitize)
+            {
+                boundCore.StoreItem(newItem);
+                if (newItem.Spawned)
+                {
+                    newItem.DeSpawn(DestroyMode.Vanish);
+                }
+                newItem.Destroy(DestroyMode.Vanish);
+                FleckMaker.ThrowLightningGlow(boundCore.DrawPos, boundCore.Map, 0.5f);
+
+                if (DigitalStorageSettings.enableDebugLog)
+                {
+                    Log.Message($"[数字存储] 输入接口即时数字化: {newItem.Label} 到 {boundCore.NetworkName}");
+                }
+                return;
+            }
+
+            // 方案B：保留旧行为（先传送到核心附近），但做失败回滚，避免物品卡住
+            bool wasSpawned = newItem.Spawned;
+            IntVec3 fallbackPos = this.Position;
+            Map fallbackMap = this.Map;
+
+            if (wasSpawned)
             {
                 newItem.DeSpawn(DestroyMode.Vanish);
             }
-            
-            GenPlace.TryPlaceThing(newItem, boundCore.Position, boundCore.Map, ThingPlaceMode.Near);
+
+            bool placed = GenPlace.TryPlaceThing(newItem, boundCore.Position, boundCore.Map, ThingPlaceMode.Near);
+            if (!placed)
+            {
+                // 回滚：放回接口附近，避免吞物或卡住
+                if (fallbackMap != null)
+                {
+                    GenPlace.TryPlaceThing(newItem, fallbackPos, fallbackMap, ThingPlaceMode.Near);
+                }
+
+                if (DigitalStorageSettings.enableDebugLog)
+                {
+                    Log.Warning($"[数字存储] 输入接口传送失败，已回滚: {newItem.Label}");
+                }
+                return;
+            }
+
             FleckMaker.ThrowLightningGlow(boundCore.DrawPos, boundCore.Map, 0.5f);
 
             if (DigitalStorageSettings.enableDebugLog)
