@@ -237,7 +237,7 @@ namespace DigitalStorage.UI
                 return;
             }
 
-            int actualCount = Mathf.Min(count, item.stackCount);
+            int actualCount = (int)System.Math.Min(count, item.stackCount);
             int stackLimit = item.def.stackLimit;
             int totalExtracted = 0;
 

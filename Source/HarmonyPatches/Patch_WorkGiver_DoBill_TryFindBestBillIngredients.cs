@@ -230,7 +230,7 @@ namespace DigitalStorage.HarmonyPatches
                             if (billFilterAllows)
                             {
                                 int reservedCount = reservedThing.stackCount;
-                                int virtualCount = core.GetVirtualItemCount(reservedThing.def);
+                                long virtualCount = core.GetVirtualItemCount(reservedThing.def);
 
                                 if (reservedCount + virtualCount >= neededCount)
                                 {

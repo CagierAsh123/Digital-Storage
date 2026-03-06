@@ -25,7 +25,7 @@ namespace DigitalStorage.Services
             public Map map;
             public IntVec3 center;
             public StoredItemData data;
-            public int remaining;
+            public long remaining;
         }
 
         private readonly Queue<PendingVirtualDrop> pendingDrops = new Queue<PendingVirtualDrop>();
@@ -118,7 +118,7 @@ namespace DigitalStorage.Services
                 }
 
                 int stackLimit = Mathf.Max(1, drop.data.def.stackLimit);
-                int take = Mathf.Min(stackLimit, drop.remaining);
+                int take = (int)System.Math.Min(stackLimit, drop.remaining);
 
                 StoredItemData chunk = new StoredItemData
                 {

@@ -143,7 +143,7 @@ namespace DigitalStorage.HarmonyPatches
                     {
                         // ===== 跨地图逻辑 =====
                         // 只查虚拟存储（远程核心的预留物品在另一张地图上，本地 pawn 拿不到）
-                        int virtualCount = core.GetVirtualItemCount(def);
+                        int virtualCount = (int)Math.Min(core.GetVirtualItemCount(def), int.MaxValue);
 
                         if (LOG) Log.Message($"[建造] 跨地图: virtualCount={virtualCount}");
 
@@ -171,8 +171,8 @@ namespace DigitalStorage.HarmonyPatches
                         // ===== 本地图逻辑（原有逻辑不变） =====
                         Thing reservedThing = core.FindReservedItem(def, null);
                         int reservedCount = reservedThing?.stackCount ?? 0;
-                        int virtualCount = core.GetVirtualItemCount(def);
-                        int totalAvailable = reservedCount + virtualCount;
+                        int virtualCount = (int)Math.Min(core.GetVirtualItemCount(def), int.MaxValue);
+                        long totalAvailable = (long)reservedCount + virtualCount;
 
                         if (LOG) Log.Message($"[建造] 本地图: reservedCount={reservedCount}, virtualCount={virtualCount}, totalAvailable={totalAvailable}");
 

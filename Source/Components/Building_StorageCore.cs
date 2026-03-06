@@ -616,14 +616,14 @@ namespace DigitalStorage.Components
             // 如果找到匹配，合并
             if (match != null)
             {
-                match.stackCount += data.stackCount;
-                // 如果 hitPoints 不同，取加权平均值
+                // 如果 hitPoints 不同，取加权平均值（必须在合并 stackCount 之前计算）
                 if (data.hitPoints > 0 && match.hitPoints > 0)
                 {
-                    int totalHitPoints = (match.hitPoints * match.stackCount) + (data.hitPoints * data.stackCount);
-                    int totalCount = match.stackCount + data.stackCount;
-                    match.hitPoints = totalHitPoints / totalCount;
+                    long totalHitPoints = (long)match.hitPoints * match.stackCount + (long)data.hitPoints * data.stackCount;
+                    long totalCount = match.stackCount + data.stackCount;
+                    match.hitPoints = (int)(totalHitPoints / totalCount);
                 }
+                match.stackCount += data.stackCount;
                 // 如果物品有品质组件，且新物品品质更低，更新为更低的品质（表示混合品质）
                 if (hasQuality && data.quality < match.quality)
                 {
@@ -663,7 +663,7 @@ namespace DigitalStorage.Components
                     template = item;
                 }
 
-                int take = Math.Min(item.stackCount, remaining);
+                int take = (int)Math.Min(item.stackCount, remaining);
                 if (take <= 0)
                 {
                     continue;
@@ -672,7 +672,7 @@ namespace DigitalStorage.Components
                 item.stackCount -= take;
                 remaining -= take;
                 extractedCount += take;
-                     
+
                 if (item.stackCount <= 0)
                 {
                     this.virtualStorage.Remove(item);
@@ -712,7 +712,7 @@ namespace DigitalStorage.Components
                 return null;
             }
 
-            int beforeCount = GetVirtualItemCount(def);
+            long beforeCount = GetVirtualItemCount(def);
             int remaining = count;
             int extractedCount = 0;
             StoredItemData template = null;
@@ -734,7 +734,7 @@ namespace DigitalStorage.Components
                     template = item;
                 }
 
-                int take = Math.Min(item.stackCount, remaining);
+                int take = (int)Math.Min(item.stackCount, remaining);
                 if (take <= 0)
                 {
                     continue;
@@ -743,7 +743,7 @@ namespace DigitalStorage.Components
                 item.stackCount -= take;
                 remaining -= take;
                 extractedCount += take;
-                     
+
                     if (DigitalStorageSettings.enableDebugLog)
                     {
                         Log.Message($"[数字存储] ExtractItem: 找到匹配物品, 提取前={item.stackCount + take}, 提取后={item.stackCount}, 提取数量={take}");
@@ -784,7 +784,7 @@ namespace DigitalStorage.Components
                 stackCount = extractedCount
             };
 
-            int afterCount = GetVirtualItemCount(def);
+            long afterCount = GetVirtualItemCount(def);
 
             if (DigitalStorageSettings.enableDebugLog)
             {
@@ -827,9 +827,9 @@ namespace DigitalStorage.Components
         /// <summary>
         /// 获取指定物品的总数量（包括预留物品和虚拟存储）
         /// </summary>
-        public int GetItemCount(ThingDef def, ThingDef stuff = null)
+        public long GetItemCount(ThingDef def, ThingDef stuff = null)
         {
-            int total = 0;
+            long total = 0;
 
             // 计算预留物品数量
             SlotGroup slotGroup = base.GetSlotGroup();
@@ -952,9 +952,9 @@ namespace DigitalStorage.Components
         /// <summary>
         /// 获取虚拟存储中指定物品的数量（不含预留物品）
         /// </summary>
-        public int GetVirtualItemCount(ThingDef def)
+        public long GetVirtualItemCount(ThingDef def)
         {
-            int total = 0;
+            long total = 0;
             foreach (StoredItemData item in this.virtualStorage)
             {
                 if (item.def == def && item.stackCount > 0)
@@ -988,7 +988,7 @@ namespace DigitalStorage.Components
                     break;
                 }
 
-                int toDeduct = System.Math.Min(item.stackCount, remaining);
+                int toDeduct = (int)System.Math.Min(item.stackCount, remaining);
                 item.stackCount -= toDeduct;
                 remaining -= toDeduct;
 

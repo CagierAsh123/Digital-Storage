@@ -21,7 +21,7 @@ namespace DigitalStorage.UI
         {
             this.item = item;
             this.parentDialog = parentDialog;
-            this.maxAmount = Mathf.Min(item.stackCount, item.def?.stackLimit ?? 1);
+            this.maxAmount = (int)System.Math.Min(item.stackCount, item.def?.stackLimit ?? 1);
             this.amountBuffer = this.maxAmount.ToString();
             
             this.doCloseButton = false;

@@ -115,12 +115,12 @@ namespace DigitalStorage.Services
         /// <summary>
         /// 获取虚拟存储中指定物品的总数量
         /// </summary>
-        public static int GetVirtualItemCount(ThingDef def, ThingDef stuff = null)
+        public static long GetVirtualItemCount(ThingDef def, ThingDef stuff = null)
         {
             var gameComp = Current.Game?.GetComponent<DigitalStorageGameComponent>();
             if (gameComp == null) return 0;
 
-            int total = 0;
+            long total = 0;
             foreach (var core in gameComp.GetAllCores())
             {
                 if (core != null && core.Spawned && core.Powered)

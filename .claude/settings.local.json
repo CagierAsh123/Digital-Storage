@@ -3,7 +3,12 @@
     "allow": [
       "Bash(cp:*)",
       "mcp__rimworld-code-rag__rough_search",
-      "mcp__rimworld-code-rag__get_item"
+      "mcp__rimworld-code-rag__get_item",
+      "mcp__memorix__memorix_search",
+      "mcp__memorix__memorix_retention",
+      "Bash(\"/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe\":*)",
+      "Bash(dotnet msbuild:*)",
+      "Bash(dotnet build:*)"
     ]
   }
 }

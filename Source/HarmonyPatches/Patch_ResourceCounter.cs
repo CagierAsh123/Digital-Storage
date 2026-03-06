@@ -31,7 +31,7 @@ namespace DigitalStorage.HarmonyPatches
             }
 
             // 统计所有核心中的该资源数量（只统计虚拟存储，预留物品已经在原版结果里）
-            int totalInCores = 0;
+            long totalInCores = 0;
 
             foreach (Building_StorageCore core in gameComp.GetAllCores())
             {
@@ -46,7 +46,7 @@ namespace DigitalStorage.HarmonyPatches
             // 将核心中的数量加到原版结果中
             if (totalInCores > 0)
             {
-                __result += totalInCores;
+                __result = (int)Math.Min((long)__result + totalInCores, int.MaxValue);
             }
         }
     }
@@ -101,11 +101,11 @@ namespace DigitalStorage.HarmonyPatches
 
                         if (newResult.ContainsKey(item.def))
                         {
-                            newResult[item.def] += item.stackCount;
+                            newResult[item.def] = (int)Math.Min((long)newResult[item.def] + item.stackCount, int.MaxValue);
                         }
                         else
                         {
-                            newResult[item.def] = item.stackCount;
+                            newResult[item.def] = (int)Math.Min(item.stackCount, int.MaxValue);
                         }
                     }
 

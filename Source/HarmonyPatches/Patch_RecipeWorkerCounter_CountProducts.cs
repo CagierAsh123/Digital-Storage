@@ -37,7 +37,7 @@ namespace DigitalStorage.HarmonyPatches
             }
 
             // 统计虚拟存储中的物品数量
-            int virtualCount = 0;
+            long virtualCount = 0;
 
             foreach (Building_StorageCore core in gameComp.GetAllCores())
             {
@@ -65,7 +65,7 @@ namespace DigitalStorage.HarmonyPatches
             }
 
             // 将虚拟存储中的数量加入总数
-            __result += virtualCount;
+            __result = (int)System.Math.Min((long)__result + virtualCount, int.MaxValue);
         }
 
         /// <summary>

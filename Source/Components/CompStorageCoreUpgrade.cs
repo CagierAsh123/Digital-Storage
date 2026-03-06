@@ -154,7 +154,7 @@ namespace DigitalStorage.Components
             {
                 if (cost == null || cost.thingDef == null) continue;
 
-                int available = this.parent.Map.resourceCounter.GetCount(cost.thingDef);
+                long available = this.parent.Map.resourceCounter.GetCount(cost.thingDef);
 
                 Building_StorageCore core = this.parent as Building_StorageCore;
                 if (core != null)

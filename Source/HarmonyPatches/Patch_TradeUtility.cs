@@ -203,7 +203,7 @@ namespace DigitalStorage.HarmonyPatches
 
                     // 创建临时 Thing 对象（不 Spawn）
                     Thing tradeThing = ThingMaker.MakeThing(itemData.def, itemData.stuffDef);
-                    tradeThing.stackCount = itemData.stackCount;
+                    tradeThing.stackCount = (int)System.Math.Min(itemData.stackCount, int.MaxValue);
                     
                     // 设置品质
                     CompQuality qualityComp = tradeThing.TryGetComp<CompQuality>();
@@ -239,7 +239,7 @@ namespace DigitalStorage.HarmonyPatches
             public Building_StorageCore sourceCore;
             public ThingDef def;
             public ThingDef stuffDef;
-            public int stackCount;
+            public long stackCount;
             public QualityCategory quality;
             public int hitPoints;
         }

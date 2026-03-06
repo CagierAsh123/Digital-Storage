@@ -13,7 +13,7 @@ namespace DigitalStorage.Data
         public ThingDef stuffDef;
         public QualityCategory quality = QualityCategory.Normal;
         public int hitPoints = -1;
-        public int stackCount = 1;
+        public long stackCount = 1;
         
         // 用于唯一标识，方便查找和修改
         public string uniqueId;
@@ -45,7 +45,7 @@ namespace DigitalStorage.Data
             Scribe_Defs.Look(ref this.stuffDef, "stuffDef");
             Scribe_Values.Look(ref this.quality, "quality", QualityCategory.Normal);
             Scribe_Values.Look(ref this.hitPoints, "hitPoints", -1);
-            Scribe_Values.Look(ref this.stackCount, "stackCount", 1);
+            Scribe_Values.Look(ref this.stackCount, "stackCount", 1L);
             Scribe_Values.Look(ref this.uniqueId, "uniqueId", null);
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit && string.IsNullOrEmpty(this.uniqueId))
@@ -65,7 +65,7 @@ namespace DigitalStorage.Data
             }
 
             Thing thing = ThingMaker.MakeThing(this.def, this.stuffDef);
-            thing.stackCount = this.stackCount;
+            thing.stackCount = (int)Math.Min(this.stackCount, int.MaxValue);
 
             if (this.hitPoints > 0)
             {

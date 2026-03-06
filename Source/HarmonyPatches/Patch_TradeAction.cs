@@ -6,6 +6,7 @@ using DigitalStorage.Services;
 using DigitalStorage.Settings;
 using HarmonyLib;
 using RimWorld;
+using RimWorld.Planet;
 using Verse;
 
 namespace DigitalStorage.HarmonyPatches
@@ -66,6 +67,59 @@ namespace DigitalStorage.HarmonyPatches
             TradeItemTracker.UnregisterTradeItem(toGive);
 
             // 阻止原版逻辑（因为物品不在地图上）
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 远行队在据点交易：卖出虚拟存储物品时从核心扣除
+    /// </summary>
+    [HarmonyPatch(typeof(Settlement_TraderTracker), "GiveSoldThingToTrader")]
+    public static class Patch_Settlement_TraderTracker_GiveSoldThingToTrader
+    {
+        public static bool Prefix(Thing toGive, int countToGive, Pawn playerNegotiator)
+        {
+            if (toGive == null)
+            {
+                return true;
+            }
+
+            // 检查是否是虚拟存储中的物品
+            var tradeInfo = TradeItemTracker.GetTradeItemInfo(toGive);
+            if (tradeInfo == null)
+            {
+                // 不是虚拟存储物品，使用原版逻辑
+                return true;
+            }
+
+            // 从虚拟存储扣除物品
+            if (tradeInfo.sourceCore != null && tradeInfo.sourceCore.Spawned && tradeInfo.sourceCore.Powered)
+            {
+                int deducted = 0;
+                if (tradeInfo.stuffDef != null)
+                {
+                    Thing extracted = tradeInfo.sourceCore.ExtractItem(tradeInfo.def, countToGive, tradeInfo.stuffDef);
+                    if (extracted != null)
+                    {
+                        deducted = extracted.stackCount;
+                        extracted.Destroy(DestroyMode.Vanish);
+                    }
+                }
+                else
+                {
+                    deducted = tradeInfo.sourceCore.DeductVirtualItems(tradeInfo.def, countToGive);
+                }
+
+                if (DigitalStorageSettings.enableDebugLog)
+                {
+                    Log.Message($"[DigitalStorage] Trade deducted (settlement): {tradeInfo.def.label} x{deducted}/{countToGive}");
+                }
+            }
+
+            // 清理追踪
+            TradeItemTracker.UnregisterTradeItem(toGive);
+
+            // 阻止原版逻辑（因为物品不在远行队背包中）
             return false;
         }
     }
