@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp:*)",
+      "mcp__rimworld-code-rag__rough_search",
+      "mcp__rimworld-code-rag__get_item"
+    ]
+  }
+}
