@@ -36,6 +36,27 @@ namespace DigitalStorage.HarmonyPatches
                 return;
             }
 
+            // 检查 Bill 是否指定了存储区范围
+            ISlotGroup includeSlotGroup = bill.GetIncludeSlotGroup();
+
+            // 检查是否走了原版快速路径（CountAsResource + 默认过滤条件 + 无范围限制）
+            // 快速路径使用 resourceCounter.GetCount()，而 Patch_ResourceCounter_GetCount 已经加了虚拟存储
+            // 所以这里不需要重复加
+            bool isResourceFastPath = targetDef.CountAsResource
+                && !bill.includeEquipped
+                && (bill.includeTainted || !targetDef.IsApparel || !targetDef.apparel.careIfWornByCorpse)
+                && includeSlotGroup == null
+                && bill.hpRange.min == 0f && bill.hpRange.max == 1f
+                && bill.qualityRange.min == QualityCategory.Awful
+                && bill.qualityRange.max == QualityCategory.Legendary
+                && !bill.limitToAllowedStuff;
+
+            if (isResourceFastPath)
+            {
+                // Patch_ResourceCounter_GetCount 已经处理了，不重复计数
+                return;
+            }
+
             // 统计虚拟存储中的物品数量
             long virtualCount = 0;
 
@@ -44,6 +65,24 @@ namespace DigitalStorage.HarmonyPatches
                 if (core == null || !core.Spawned || !core.Powered)
                 {
                     continue;
+                }
+
+                // 如果 Bill 指定了存储区范围，只统计该存储区对应的核心
+                if (includeSlotGroup != null)
+                {
+                    SlotGroup coreSlotGroup = core.GetSlotGroup();
+                    if (coreSlotGroup == null || coreSlotGroup != includeSlotGroup)
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    // 无范围限制时，只统计同一张地图上的核心
+                    if (core.Map != bill.Map)
+                    {
+                        continue;
+                    }
                 }
 
                 // 遍历核心中的所有物品

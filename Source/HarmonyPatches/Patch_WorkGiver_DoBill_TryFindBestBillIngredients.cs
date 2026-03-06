@@ -57,7 +57,7 @@ namespace DigitalStorage.HarmonyPatches
                 int neededCount = ingredient.CountRequiredOfFor(anyDef, billProd.recipe, billProd);
 
                 // 先查核心（本地图优先，再查跨地图）
-                var coreResult = FindMaterialInCores(gameComp, ingredient, billProd, neededCount, pawn);
+                var coreResult = FindMaterialInCores(gameComp, ingredient, billProd, neededCount, pawn, billGiver);
                 if (coreResult.core != null && coreResult.def != null)
                 {
                     if (DigitalStorageSettings.enableDebugLog)
@@ -67,7 +67,7 @@ namespace DigitalStorage.HarmonyPatches
                 }
 
                 // 核心没有，查地图
-                Thing mapThing = FindMaterialOnMap(pawn, ingredient, billProd, neededCount);
+                Thing mapThing = FindMaterialOnMap(pawn, ingredient, billProd, neededCount, billGiver);
                 if (mapThing != null)
                 {
                     if (DigitalStorageSettings.enableDebugLog)
@@ -160,33 +160,38 @@ namespace DigitalStorage.HarmonyPatches
             }
         }
 
-        private static Thing FindMaterialOnMap(Pawn pawn, IngredientCount ingredient, Bill_Production billProd, int neededCount)
+        private static Thing FindMaterialOnMap(Pawn pawn, IngredientCount ingredient, Bill_Production billProd, int neededCount, Thing billGiver)
         {
+            float searchRadius = billProd.ingredientSearchRadius;
             return GenClosest.ClosestThingReachable(
                 pawn.Position,
                 pawn.Map,
                 ThingRequest.ForGroup(ThingRequestGroup.HaulableEver),
                 PathEndMode.ClosestTouch,
                 TraverseParms.For(pawn, Danger.Deadly, TraverseMode.ByPawn, false, false, true),
-                9999f,
+                searchRadius,
                 t => t.Spawned &&
                      ingredient.filter.Allows(t) &&
                      (billProd.ingredientFilter == null || billProd.ingredientFilter.Allows(t) || ingredient.IsFixedIngredient) &&
                      !t.IsForbidden(pawn) &&
                      pawn.CanReserve(t, 1, -1, null, false) &&
                      t.stackCount >= neededCount &&
-                     !t.IsNotFresh(),
+                     !t.IsNotFresh() &&
+                     (float)(t.Position - billGiver.Position).LengthHorizontalSquared < searchRadius * searchRadius,
                 null, 0, -1, false, RegionType.Set_Passable, false, false);
         }
 
         /// <summary>
         /// 在所有核心中查找材料。本地图核心优先，跨地图核心需要芯片。
+        /// 本地图核心需要在 Bill 的材料搜索范围内。
         /// </summary>
         private static (Building_StorageCore core, ThingDef def, ThingDef stuff, Thing reservedThing, bool isCrossMap) FindMaterialInCores(
-            DigitalStorageGameComponent gameComp, IngredientCount ingredient, Bill_Production billProd, int neededCount, Pawn pawn)
+            DigitalStorageGameComponent gameComp, IngredientCount ingredient, Bill_Production billProd, int neededCount, Pawn pawn, Thing billGiver)
         {
             bool hasChip = PawnStorageAccess.HasTerminalImplant(pawn);
             Map pawnMap = pawn.Map;
+            float searchRadius = billProd.ingredientSearchRadius;
+            float radiusSq = searchRadius * searchRadius;
 
             // 两轮遍历：第一轮本地图，第二轮跨地图
             for (int pass = 0; pass < 2; pass++)
@@ -208,6 +213,16 @@ namespace DigitalStorage.HarmonyPatches
                     if (isCrossMap && !hasChip)
                     {
                         continue;
+                    }
+
+                    // 本地图：检查核心是否在 Bill 的材料搜索范围内
+                    if (!isCrossMap && billGiver != null)
+                    {
+                        float distSq = (float)(core.Position - billGiver.Position).LengthHorizontalSquared;
+                        if (distSq >= radiusSq)
+                        {
+                            continue;
+                        }
                     }
 
                     // 本地图：先检查预留物品
