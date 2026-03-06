@@ -217,7 +217,14 @@ namespace DigitalStorage.Components
                 {
                     this.reservedItemCounts = new Dictionary<string, int>();
                 }
-                
+
+                // 清理无效条目（mod 移除后 def 变为 null）
+                int removed = this.virtualStorage.RemoveAll(item => item == null || item.def == null);
+                if (removed > 0)
+                {
+                    Log.Warning($"[数字存储] 存储核心清理了 {removed} 个无效条目（可能是已移除的 mod 物品）");
+                }
+
                 // 重建查找表
                 RebuildLookup();
             }

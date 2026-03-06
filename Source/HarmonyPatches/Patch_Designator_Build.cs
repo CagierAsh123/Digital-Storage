@@ -72,6 +72,7 @@ namespace DigitalStorage.HarmonyPatches
                 
                 foreach (ThingDef thingDef2 in __instance.Map.resourceCounter.AllCountedAmounts.Keys.OrderByDescending(delegate(ThingDef d)
                 {
+                    if (d == null) return float.PositiveInfinity;
                     StuffProperties stuffProps = d.stuffProps;
                     if (stuffProps == null)
                     {
@@ -80,6 +81,9 @@ namespace DigitalStorage.HarmonyPatches
                     return stuffProps.commonality;
                 }).ThenBy((ThingDef d) => d.BaseMarketValue))
                 {
+                    // 跳过无效的 ThingDef（mod 移除后可能为 null）
+                    if (thingDef2 == null) continue;
+
                     // 现在 godMode 为 true，所以这个检查会通过
                     if (thingDef2.IsStuff && thingDef2.stuffProps.CanMake(thingDef) && 
                         (DebugSettings.godMode || __instance.Map.listerThings.ThingsOfDef(thingDef2).Count > 0))

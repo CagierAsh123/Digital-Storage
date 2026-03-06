@@ -94,6 +94,11 @@ namespace DigitalStorage.HarmonyPatches
                     // 遍历虚拟存储
                     foreach (var item in core.GetAllStoredItems())
                     {
+                        if (item.def == null)
+                        {
+                            continue;
+                        }
+
                         if (item.def.resourceReadoutPriority == ResourceCountPriority.Uncounted)
                         {
                             continue;
