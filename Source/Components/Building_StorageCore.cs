@@ -163,22 +163,34 @@ namespace DigitalStorage.Components
 
         public override IEnumerable<Gizmo> GetGizmos()
         {
+            // 遍历 base.GetGizmos()（Building_Storage），但过滤掉物品选择 Gizmo
+            // 原版 Building_Storage 会为 slotGroup.HeldThings 中每个物品生成一个选择按钮
+            // 这些按钮的 defaultLabel 包含 "CommandSelectStoredThing" 翻译后的文本
             foreach (Gizmo gizmo in base.GetGizmos())
             {
+                // 过滤掉物品选择 Gizmo（它们是 Command 类型，icon 是物品贴图）
+                Command cmd = gizmo as Command;
+                if (cmd != null && cmd.defaultLabel != null)
+                {
+                    bool isStoredThingGizmo = false;
+                    SlotGroup sg = base.GetSlotGroup();
+                    if (sg != null)
+                    {
+                        foreach (Thing t in sg.HeldThings)
+                        {
+                            if (cmd.defaultLabel.Contains(t.LabelShortCap))
+                            {
+                                isStoredThingGizmo = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (isStoredThingGizmo)
+                        continue;
+                }
                 yield return gizmo;
             }
-            
-            yield return new Command_Action
-            {
-                defaultLabel = "DS_ViewStorage".Translate(),
-                defaultDesc = "DS_ViewStorageDesc".Translate(),
-                icon = ContentFinder<Texture2D>.Get("UI/Commands/LaunchReport", true),
-                action = delegate()
-                {
-                    Find.WindowStack.Add(new DigitalStorage.UI.Dialog_VirtualStorage(this));
-                }
-            };
-            
+
             yield return new Command_Action
             {
                 defaultLabel = "DS_RenameNetwork".Translate(),
@@ -233,11 +245,6 @@ namespace DigitalStorage.Components
         public override string GetInspectString()
         {
             StringBuilder sb = new StringBuilder();
-            string baseStr = base.GetInspectString();
-            if (!string.IsNullOrEmpty(baseStr))
-            {
-                sb.AppendLine(baseStr);
-            }
             sb.AppendLine("DS_InspectNetwork".Translate(this.NetworkName));
             sb.AppendLine("DS_InspectCapacity".Translate(this.GetUsedCapacity(), this.GetCapacity()));
             if (!this.Powered)

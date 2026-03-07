@@ -116,6 +116,7 @@
     <!-- UI - 用户界面 -->
     <Compile Include="UI\Dialog_VirtualStorage.cs" />
     <Compile Include="UI\Dialog_ExtractAmount.cs" />
+    <Compile Include="UI\ITab_VirtualStorage.cs" />
     
     <!-- Threading - 多线程支持 -->
     <Compile Include="Threading\JobScheduler.cs" />

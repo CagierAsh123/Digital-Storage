@@ -24,6 +24,16 @@
   <DS_Confirm>确定</DS_Confirm>
   <DS_Cancel>取消</DS_Cancel>
 
+  <!-- ========== ITab_VirtualStorage ========== -->
+  <DS_TabVirtualStorage>虚拟存储</DS_TabVirtualStorage>
+  <DS_TabHeader>虚拟存储 ({0}/{1} 组)</DS_TabHeader>
+  <DS_EmptyStorage>空</DS_EmptyStorage>
+  <DS_ExtractAll>全部取出</DS_ExtractAll>
+  <DS_ExtractSlider>取出 {0}:</DS_ExtractSlider>
+  <DS_PendingSection>等待吸收 ({0})</DS_PendingSection>
+  <DS_VirtualSection>虚拟存储 ({0})</DS_VirtualSection>
+  <DS_PendingTooltip>{0} x{1}</DS_PendingTooltip>
+
   <!-- ========== Dialog_VirtualStorage ========== -->
   <DS_VirtualStorageTitle>虚拟存储 - {0}</DS_VirtualStorageTitle>
   <DS_CapacityInfo>容量: {0} / {1}  |  物品种类: {2}</DS_CapacityInfo>

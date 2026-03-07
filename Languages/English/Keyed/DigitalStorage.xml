@@ -24,6 +24,16 @@
   <DS_Confirm>Confirm</DS_Confirm>
   <DS_Cancel>Cancel</DS_Cancel>
 
+  <!-- ========== ITab_VirtualStorage ========== -->
+  <DS_TabVirtualStorage>Virtual Storage</DS_TabVirtualStorage>
+  <DS_TabHeader>Virtual Storage ({0}/{1} groups)</DS_TabHeader>
+  <DS_EmptyStorage>Empty</DS_EmptyStorage>
+  <DS_ExtractAll>Extract all</DS_ExtractAll>
+  <DS_ExtractSlider>Extract {0}:</DS_ExtractSlider>
+  <DS_PendingSection>Pending Absorption ({0})</DS_PendingSection>
+  <DS_VirtualSection>Virtual Storage ({0})</DS_VirtualSection>
+  <DS_PendingTooltip>{0} x{1}</DS_PendingTooltip>
+
   <!-- ========== Dialog_VirtualStorage ========== -->
   <DS_VirtualStorageTitle>Virtual Storage - {0}</DS_VirtualStorageTitle>
   <DS_CapacityInfo>Capacity: {0} / {1}  |  Item types: {2}</DS_CapacityInfo>

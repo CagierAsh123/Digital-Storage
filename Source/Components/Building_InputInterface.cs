@@ -15,6 +15,7 @@ namespace DigitalStorage.Components
     {
         private Building_StorageCore boundCore;
         private CompPowerTrader powerComp;
+        private string savedCoreNetworkName;
 
         public Building_StorageCore BoundCore => boundCore;
 
@@ -26,18 +27,37 @@ namespace DigitalStorage.Components
         {
             base.SpawnSetup(map, respawningAfterLoad);
             powerComp = GetComp<CompPowerTrader>();
-            
-            // 只在新建时自动连接，加载存档时不自动连接
-            if (!respawningAfterLoad && boundCore == null && Map != null)
+
+            if (boundCore == null && Map != null)
             {
                 TryAutoConnect();
+                // 如果还没连上（核心可能还没spawn），延迟到所有建筑放置完后重试
+                if (boundCore == null && !string.IsNullOrEmpty(savedCoreNetworkName))
+                {
+                    LongEventHandler.ExecuteWhenFinished(delegate
+                    {
+                        if (this.Spawned && this.boundCore == null)
+                        {
+                            TryAutoConnect();
+                            RefreshStoreSettings();
+                        }
+                    });
+                }
             }
             RefreshStoreSettings();
         }
 
         public override void DeSpawn(DestroyMode mode = DestroyMode.Vanish)
         {
-            SetBoundCore(null);
+            // Vanish/WillReplace（奥德赛飞船迁移等）保留连接信息，到新地图后自动重连
+            if (mode == DestroyMode.Vanish || mode == DestroyMode.WillReplace)
+            {
+                boundCore = null;
+            }
+            else
+            {
+                SetBoundCore(null);
+            }
             base.DeSpawn(mode);
         }
 
@@ -45,6 +65,7 @@ namespace DigitalStorage.Components
         {
             base.ExposeData();
             Scribe_References.Look(ref boundCore, "boundCore");
+            Scribe_Values.Look(ref savedCoreNetworkName, "savedCoreNetworkName");
         }
 
         public override string GetInspectString()
@@ -113,13 +134,32 @@ namespace DigitalStorage.Components
         public void SetBoundCore(Building_StorageCore core)
         {
             boundCore = core;
+            savedCoreNetworkName = core?.NetworkName;
             RefreshStoreSettings();
         }
 
         private void TryAutoConnect()
         {
             if (Map == null) return;
-            
+
+            // 优先：按保存的网络名查找同地图核心
+            if (!string.IsNullOrEmpty(savedCoreNetworkName))
+            {
+                DigitalStorageGameComponent gameComp = Current.Game?.GetComponent<DigitalStorageGameComponent>();
+                if (gameComp != null)
+                {
+                    foreach (Building_StorageCore core in gameComp.GetAllCores())
+                    {
+                        if (core != null && core.Spawned && core.Map == Map && core.NetworkName == savedCoreNetworkName)
+                        {
+                            SetBoundCore(core);
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // 回退：查找相邻核心
             foreach (IntVec3 cell in GenAdj.CellsAdjacent8Way(this))
             {
                 if (!cell.InBounds(Map))

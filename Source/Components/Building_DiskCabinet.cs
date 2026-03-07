@@ -219,7 +219,7 @@ namespace DigitalStorage.Components
             {
                 if (!cell.InBounds(base.Map))
                     continue;
-                    
+
                 Building building = cell.GetFirstBuilding(base.Map);
                 Building_StorageCore core = building as Building_StorageCore;
                 if (core != null)
