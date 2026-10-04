@@ -87,6 +87,7 @@ namespace DigitalStorage.Core
 
             IThingHolder holder = t.ParentHolder as IThingHolder;
             if (holder == null) return false;
+            if (holder is Building_StorageCore core && !core.HaulSourceEnabled) return false;
 
             ThingOwner owner = holder.GetDirectlyHeldThings();
             if (owner == null || !owner.Contains(t)) return false;

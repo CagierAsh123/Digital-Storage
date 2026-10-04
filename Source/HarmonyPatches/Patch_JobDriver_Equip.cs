@@ -100,11 +100,17 @@ namespace DigitalStorage.HarmonyPatches
 
             // 走到容器那里（不是走到容器内容物 —— 内容物没有自己的格子）。
             yield return Toils_Goto.GotoThing(TargetIndex.B, PathEndMode.ClosestTouch)
-                .FailOnDespawnedNullOrForbidden(TargetIndex.B);
+                .FailOnDespawnedNullOrForbidden(TargetIndex.B)
+                .FailOn(() => holder is DigitalStorage.Components.Building_StorageCore core && !core.HaulSourceEnabled);
 
             Toil equip = ToilMaker.MakeToil("DS_EquipFromContainer");
             equip.initAction = delegate
             {
+                if (holder is DigitalStorage.Components.Building_StorageCore core && !core.HaulSourceEnabled)
+                {
+                    driver.EndJobWith(JobCondition.Incompletable);
+                    return;
+                }
                 Thing target = job.GetTarget(TargetIndex.A).Thing;
                 ThingWithComps weapon = target as ThingWithComps;
                 if (weapon == null || weapon.Destroyed)

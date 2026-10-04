@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using DigitalStorage.Components;
+using RimWorld;
 using HarmonyLib;
 using Verse;
 using Verse.AI;
@@ -57,6 +60,36 @@ namespace DigitalStorage.HarmonyPatches
                 return false;
             }
             return true;
+        }
+    }
+    // 作业排队后可能断电, 实际取出前仍需检查
+    [HarmonyPatch(typeof(Toils_Haul), nameof(Toils_Haul.StartCarryThing))]
+    internal static class Patch_StartCarryThing_CorePower
+    {
+        private static void Postfix(TargetIndex haulableInd, Toil __result)
+        {
+            __result.AddFailCondition(() =>
+            {
+                Thing target = __result.actor.CurJob.GetTarget(haulableInd).Thing;
+                return target?.ParentHolder is Building_StorageCore core && !core.HaulSourceEnabled;
+            });
+        }
+    }
+
+    [HarmonyPatch(typeof(JobDriver_Wear), "MakeNewToils")]
+    internal static class Patch_JobDriver_Wear_CorePower
+    {
+        private static IEnumerable<Toil> Postfix(IEnumerable<Toil> __result, JobDriver_Wear __instance)
+        {
+            foreach (Toil toil in __result)
+            {
+                toil.AddFailCondition(() =>
+                {
+                    Thing apparel = __instance.job.GetTarget(TargetIndex.A).Thing;
+                    return apparel?.ParentHolder is Building_StorageCore core && !core.ApparelSourceEnabled;
+                });
+                yield return toil;
+            }
         }
     }
 }
