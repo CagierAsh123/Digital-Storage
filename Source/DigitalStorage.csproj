@@ -121,6 +121,7 @@
     <Compile Include="HarmonyPatches\Patch_DrugPaths.cs" />
     <Compile Include="HarmonyPatches\Patch_ResourceCounter_HaulSources.cs" />
     <Compile Include="HarmonyPatches\Patch_SlotGroup_HeldThings.cs" />
+    <Compile Include="HarmonyPatches\Patch_Bill_Production_CoreGroups.cs" />
     <Compile Include="HarmonyPatches\Patch_DesignatorBuild_ProcessInput.cs" />
     <Compile Include="HarmonyPatches\Patch_ResourceDeliverJobFor.cs" />
     <Compile Include="HarmonyPatches\Patch_RecipeDef_MissingIngredients.cs" />
