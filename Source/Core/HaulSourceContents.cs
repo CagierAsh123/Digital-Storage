@@ -307,20 +307,23 @@ namespace DigitalStorage.Core
         public static Thing ExtractToFeet(Thing t, int count, Pawn pawn)
         {
             if (pawn == null) return null;
-            return ExtractTo(t, count, pawn.Position, pawn.Map);
+            return ExtractTo(t, count, pawn.Position, pawn.Map, out _);
         }
 
         /// <summary>
         /// <see cref="ExtractToFeet"/> 的通用形态：取出后落到 <paramref name="pos"/>。
         /// 与 pawn 解耦，供 ITab / 其它非 job 场景复用。
         /// </summary>
-        public static Thing ExtractTo(Thing t, int count, IntVec3 pos, Map map)
+        public static Thing ExtractTo(Thing t, int count, IntVec3 pos, Map map, out int extracted, bool forbid = false)
         {
+            extracted = 0;
             if (t == null || t.Destroyed || map == null) return null;
             if (count <= 0 || !pos.IsValid) return null;
 
             IThingHolder holder = t.ParentHolder as IThingHolder;
             if (holder == null) return null;
+            Building_StorageCore core = holder as Building_StorageCore;
+            if (core != null && !core.HaulSourceEnabled) return null;
             ThingOwner owner = holder.GetDirectlyHeldThings();
             if (owner == null || !owner.Contains(t)) return null;
 
@@ -341,16 +344,20 @@ namespace DigitalStorage.Core
             }
             if (taken == null) return null;
 
-            if (!GenPlace.TryPlaceThing(taken, pos, map, ThingPlaceMode.Near, null, null, default))
-            {
-                // 放不下 → 退回容器，避免物品消失
-                if (!owner.TryAdd(taken, true))
-                    GenPlace.TryPlaceThing(taken, pos, map, ThingPlaceMode.Near);
-                return null;
-            }
-
-            Components.CompAutoIngest.MarkWithdrawn(taken);
-            return taken;
+            // 落地可能合堆, 数量与存活目标必须分开记录
+            Thing placed = null;
+            GenPlace.TryPlaceThing(taken, pos, map, ThingPlaceMode.Near, out Thing lastPlaced,
+                (result, amount) =>
+                {
+                    placed = result;
+                    Components.CompAutoIngest.MarkWithdrawn(result);
+                    if (forbid) result.SetForbidden(true, false);
+                });
+            int remaining = taken.Destroyed ? 0 : (taken.holdingOwner == null && !taken.Spawned ? taken.stackCount : 0);
+            extracted = take - remaining;
+            if (remaining > 0 && !owner.TryAdd(taken, true))
+                GenPlace.TryPlaceThing(taken, pos, map, ThingPlaceMode.Near);
+            return extracted > 0 ? placed ?? lastPlaced : null;
         }
 
         /// <summary>
@@ -366,33 +373,31 @@ namespace DigitalStorage.Core
         /// <para><paramref name="forbid"/>：取出后设为禁止（3.0 语义）。防止刚取出来就被
         /// 原版搬运工或自动收纳送回去，形成"取—送"死循环。</para>
         /// </summary>
-        public static int ExtractMatchingTo(int count, IntVec3 pos, Map map,
+        public static int ExtractMatchingTo(Building_StorageCore core, int count, IntVec3 pos, Map map,
             Predicate<Thing> filter, bool forbid = true)
         {
-            if (filter == null || count <= 0 || map == null) return 0;
+            if (core == null || !core.HaulSourceEnabled || filter == null || count <= 0 || map == null) return 0;
 
             int got = 0;
             while (got < count)
             {
-                // 每次重新找最大堆：上一轮可能已把它取空
-                Thing next = FindBest(map, t => t.stackCount, t => filter(t));
+                Thing next = null;
+                ThingOwner held = core.GetDirectlyHeldThings();
+                for (int i = 0; i < held.Count; i++)
+                {
+                    Thing candidate = held[i];
+                    if (candidate == null || candidate.Destroyed || !filter(candidate)) continue;
+                    if (next == null || candidate.stackCount > next.stackCount) next = candidate;
+                }
                 if (next == null) break;
 
                 int want = Math.Min(count - got, next.stackCount);
-                Thing taken = ExtractTo(next, want, pos, map);
-                if (taken == null) break; // 放不下 → 停止，避免死循环
-
-                if (forbid) taken.SetForbidden(true, false);
-                got += taken.stackCount;
+                ExtractTo(next, want, pos, map, out int extracted, forbid);
+                if (extracted <= 0) break;
+                got += extracted;
             }
             return got;
         }
 
-        /// <summary>按 def 取出（右键菜单用）。</summary>
-        public static int ExtractDefTo(ThingDef def, int count, IntVec3 pos, Map map, bool forbid = true)
-        {
-            if (def == null) return 0;
-            return ExtractMatchingTo(count, pos, map, t => t.def == def, forbid);
-        }
     }
 }

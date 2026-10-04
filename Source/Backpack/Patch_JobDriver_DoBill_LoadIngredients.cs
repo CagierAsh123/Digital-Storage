@@ -69,12 +69,7 @@ namespace DigitalStorage.Backpack
             return toil;
         }
 
-        /// <summary>
-        /// 取料本体。**整段 try/catch 是硬要求**：这个 toil 被前置进**每一个** DoBill 作业
-        /// （<c>JobDriver_DoBill.MakeNewToils</c>），异常一旦抛出去，这个 pawn 的每一条 bill 作业
-        /// 都会在第一步就失败 —— 玩家看到的就是"这个小人干不了活"。
-        /// 失败时什么都不做：原版后面的 toil 照旧走"走到核心去拿"的老路，最坏只是慢。
-        /// </summary>
+        // 初始化异常不能中断所有 bill 作业
         private static void LoadIngredients(Toil toil)
         {
             try
@@ -109,8 +104,15 @@ namespace DigitalStorage.Backpack
                     Thing t = queue[i].Thing;
                     if (t == null || t.Destroyed) continue;
                     if (t.Spawned) continue;                              // 地上的：原版自己会走过去
-                    if (!(t.ParentHolder is Building_StorageCore)) continue; // 只管核心内容物
+                    Building_StorageCore sourceCore = t.ParentHolder as Building_StorageCore;
+                    if (sourceCore == null) continue;
                     if (giverInner != null && giverInner.Contains(t)) continue;
+                    // 断电不能回退原版, 否则仍会直接从容器取料
+                    if (!sourceCore.IsUsableNow)
+                    {
+                        actor.jobs.curDriver.EndJobWith(JobCondition.Incompletable);
+                        return;
+                    }
 
                     // 数量未知就**不动**（宁可不取，也不能超量）：countQueue 由原版
                     // TryStartNewDoBillJob:338 与 targetQueueB 平行填充，正常永远对得上。
@@ -122,35 +124,19 @@ namespace DigitalStorage.Backpack
                     Thing absorbed = bag.TryAbsorb(t, counts[i]);
                     if (absorbed == null)
                     {
-                        // ★ 跨图源吸不进背包时**必须收工**（2026-10-02 跨图阶段新增）。
-                        //
-                        // 本图源失败可以先放着 —— 原版会走到核心门口自己拿，是既有的退化路径。
-                        // 但跨图源失败就完全不同了：队列里这一项指向的是**另一张图**上的容器，
-                        // GotoThing(canGotoSpawnedParent: true) 会把它的 SpawnedParentOrMe 解析成
-                        // a 图上的核心建筑，然后**照 a 图的坐标在 b 图上寻路**（不报错，就是走错地方）。
-                        // 宁可直接判定作业不可能完成 —— 原版的 nextTickToSearchForIngredients
-                        // 会让它在 500~600 tick 后重新找料，那时多半就拿得到别的了。
-                        Building_StorageCore remote = t.ParentHolder as Building_StorageCore;
-                        if (remote != null && remote.Spawned && remote.Map != actor.Map)
+                        // 跨图源无法就地回退, 放弃作业以免错误寻路
+                        if (!sourceCore.IsUsableNow || sourceCore.Map != actor.Map)
                         {
                             if (DigitalStorage.Settings.DigitalStorageSettings.enableDebugLog)
                                 Log.Warning("[DS] 跨图取料：源已被截走（" + t.def.defName
-                                    + " @ " + remote.Map + "），本作业放弃，等待下轮重找");
+                                    + " @ " + sourceCore.Map + "），本作业放弃，等待下轮重找");
                             actor.jobs.curDriver.EndJobWith(JobCondition.Incompletable);
                             return;
                         }
                         continue;
                     }
 
-                    // ★★ 决定性的一步：把作业队列那一项**改指到背包里那件**。
-                    //
-                    // 拆堆时（要 15、原摞 75）进背包的是 SplitOff **新建的 Thing**，
-                    // 而 targetQueueB 还指着核心里原来那一摞 ⇒ 不改指的话，
-                    // 原版 GotoThing(..., canGotoSpawnedParent: true) 解析出来**还是核心**
-                    // ⇒ 小人照样走向核心。2026-10-02 实测就是这么走的：
-                    //   "#0 钢铁 需要 15 → 实际取到 15；SpawnedParentOrMe=数字存储核心"
-                    // （早期实验版没测出这个，是因为它检查的是**背包里那件**，
-                    //   而不是**作业队列指着的那件** —— 测错了对象。）
+                    // 每个队列项必须指向自己的独立原料
                     if (!ReferenceEquals(absorbed, t))
                     {
                         queue[i] = new LocalTargetInfo(absorbed); // GetTargetQueue 返回的就是 job 的列表本体

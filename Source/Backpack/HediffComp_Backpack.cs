@@ -10,10 +10,7 @@ namespace DigitalStorage.Backpack
 {
     public class HediffCompProperties_Backpack : HediffCompProperties
     {
-        /// <summary>
-        /// 背包最多容纳的堆数。**只挡"从核心取料"这一条路**：装不下时该件原料留在核心不动，
-        /// 原版 bill 退回"小人走到核心去拿"的老路 —— 退化，但不丢物、不报错。
-        /// </summary>
+        // 每个原料队列目标需要独立堆位
         public int capacityStacks = 8;
 
         public HediffCompProperties_Backpack()
@@ -142,6 +139,8 @@ namespace DigitalStorage.Backpack
                 owner = (holder == null) ? null : holder.GetDirectlyHeldThings();
             }
             if (owner == null || owner.Owner is Map || !owner.Contains(source)) return null;
+            Building_StorageCore core = owner.Owner as Building_StorageCore;
+            if (core != null && !core.IsUsableNow) return null;
 
             int want = (count < source.stackCount) ? count : source.stackCount;
             if (want <= 0) return null;
@@ -161,25 +160,17 @@ namespace DigitalStorage.Backpack
             }
             if (taken == null) return null;
 
-            if (held.TryAdd(taken, true)) return taken;
+            if (held.TryAdd(taken, false)) return taken;
 
             Return(owner, taken);
             return null;
         }
 
-        /// <summary>
-        /// 背包还装不装得下这件东西：能并进已有堆，或者还有空位。
-        /// <c>props.capacityStacks</c> 是**软上限** —— 满了就这一件不取，交给原版老路。
-        /// </summary>
+        // 队列目标不能合堆销毁, 每件原料都需要独立空位
         private bool CanFit(Thing t)
         {
             ThingOwner held = GetDirectlyHeldThings();
-            for (int i = 0; i < held.Count; i++)
-            {
-                Thing existing = held[i];
-                if (existing == null || existing.def == null) continue;
-                if (existing.CanStackWith(t) && existing.stackCount < existing.def.stackLimit) return true;
-            }
+            if (held.Contains(t)) return true;
             return held.Count < Props.capacityStacks;
         }
 
@@ -197,7 +188,7 @@ namespace DigitalStorage.Backpack
                 return;
             }
 
-            if (!GetDirectlyHeldThings().TryAdd(taken, true))
+            if (!GetDirectlyHeldThings().TryAdd(taken, false))
                 Log.Error("[DigitalStorage] 背包：物品退不回原容器也放不下：" + taken);
         }
 
@@ -221,8 +212,6 @@ namespace DigitalStorage.Backpack
             // 注意远行队 / 太空里 pawn.MapHeld 为 null ⇒ 上面已经 return 0，料跟着人走。
             if (core == null) core = FindNearestCoreGlobal(pawn.PositionHeld);
             if (core == null) return 0;
-            ThingOwner target = core.GetDirectlyHeldThings();
-            if (target == null) return 0;
 
             int moved = 0;
             for (int i = held.Count - 1; i >= 0; i--)
@@ -230,11 +219,7 @@ namespace DigitalStorage.Backpack
                 Thing t = held[i];
                 if (t == null) continue;
 
-                Thing taken = held.Take(t, t.stackCount);
-                if (taken == null) continue;
-
-                if (target.TryAdd(taken, true)) moved += taken.stackCount;
-                else Return(held, taken);
+                moved += core.TryStore(t, t.stackCount);
             }
             return moved;
         }

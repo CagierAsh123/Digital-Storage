@@ -69,7 +69,7 @@ namespace DigitalStorage.AI
 
                     if (def.IsNutritionGivingIngestible)
                     {
-                        if (!pawn.WillEat(def, pawn, careIfNotAcceptableForTitle: true)) { rejectedByGate++; return false; }
+                        if (!pawn.WillEat(t, pawn, careIfNotAcceptableForTitle: true)) { rejectedByGate++; return false; }
                     }
                     else if (def.IsDrug)
                     {

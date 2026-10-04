@@ -107,11 +107,11 @@ namespace DigitalStorage.AI
                 return src == null || src.Destroyed;
             });
 
-            // 容器被拆 / 断电 → 放弃（核心必须通电，这是保留下来的唯一门）
+            // 已取出的材料不再依赖原核心供电
             this.FailOn(() =>
             {
                 Building_StorageCore core = TargetCore;
-                return core != null && (!core.Spawned || !core.Powered);
+                return core != null && ReferenceEquals(SourceThing?.ParentHolder, core) && !core.IsUsableNow;
             });
 
             // 0) 目的地被别人订走了 → **干净地退出**（Incompletable）。
@@ -182,6 +182,8 @@ namespace DigitalStorage.AI
                 IThingHolder holder = source.ParentHolder as IThingHolder;
                 ThingOwner owner = holder?.GetDirectlyHeldThings();
                 if (owner == null || !owner.Contains(source)) { EndJobWith(JobCondition.Incompletable); return; }
+                Building_StorageCore core = holder as Building_StorageCore;
+                if (core != null && !core.IsUsableNow) { EndJobWith(JobCondition.Incompletable); return; }
 
                 // 裁剪到 pawn 负重上限（Bug #2）
                 int maxCarry = actor.carryTracker.AvailableStackSpace(source.def);
@@ -201,14 +203,18 @@ namespace DigitalStorage.AI
                 }
                 if (taken == null) { EndJobWith(JobCondition.Incompletable); return; }
 
-                int carried = actor.carryTracker.TryStartCarry(taken, taken.stackCount, false);
-                if (carried < taken.stackCount)
+                // 携带拆堆会改变 taken.stackCount, 必须提前保存请求量
+                int requested = taken.stackCount;
+                int carried = actor.carryTracker.TryStartCarry(taken, requested, false);
+                if (carried < requested)
                 {
-                    // 背不下（或部分背下）→ 剩余退回容器，避免取出后悬空丢失
-                    if (!owner.TryAdd(taken, true))
+                    if (!taken.Destroyed && taken.holdingOwner == null && !owner.TryAdd(taken, true))
                         GenPlace.TryPlaceThing(taken, actor.Position, actor.Map, ThingPlaceMode.Near);
                     EndJobWith(JobCondition.Incompletable);
+                    return;
                 }
+
+                job.SetTarget(TargetIndex.B, actor.carryTracker.CarriedThing);
             };
             return toil;
         }

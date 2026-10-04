@@ -249,7 +249,7 @@ namespace DigitalStorage.UI
             Map map = core.Map;
             if (map == null) return;
 
-            int got = HaulSourceContents.ExtractMatchingTo(amount, core.Position, map,
+            int got = HaulSourceContents.ExtractMatchingTo(core, amount, core.Position, map,
                 t => t.def == row.def && t.Stuff == row.stuff && QualityOrdinalOf(t) == row.qualityOrdinal);
 
             if (got <= 0)
