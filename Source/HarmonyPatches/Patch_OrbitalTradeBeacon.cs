@@ -1,99 +1,194 @@
 using System;
 using System.Collections.Generic;
-using DigitalStorage.Core;
+using System.Reflection;
+using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
+using DigitalStorage.Components;
 using HarmonyLib;
 using RimWorld;
 using Verse;
 
 namespace DigitalStorage.HarmonyPatches
 {
-    /// <summary>
-    /// 让轨道交易看见存储核心的内容物。
-    ///
-    /// <para><b>为什么必须 patch</b>：<c>TradeUtility.AllLaunchableThingsForTrade</c> 遍历信标
-    /// 格子里的物品，而它对"容器里的东西"的支持是**硬编码类型白名单**
-    /// （<c>GeneBank</c> → genepacks、<c>Building_Bookcase</c> → <c>HeldBooks</c>、
-    /// <c>Building_OutfitStand</c> → <c>HeldItems</c>），**没有通用的 <c>IThingHolder</c> 递归**。</para>
-    ///
-    /// <para><b>4.0 的做法就是"排进那个白名单"</b>，并且**逐条对齐原版分支的形状**：
-    /// <list type="bullet">
-    /// <item>只取容器的**直接**内容物（<c>HaulSourceContents.CollectDirect</c>），
-    ///   与原版 <c>HeldBooks</c> / <c>HeldItems</c> 一致 —— 递归会把尸体里的 pawn、
-    ///   缩小件里的 building 也交出来，那不是可交易物。</item>
-    /// <item>用与原版分支**同一个** <see cref="TradeUtility.PlayerSellableNow"/> 过滤。</item>
-    /// </list></para>
-    ///
-    /// <para><b>⚠️ 本 Postfix 有一条硬约束：绝不能让调用方的惰性序列塌掉。</b>
-    /// <c>TradeSession.deal.AllTradeables</c> 是由惰性序列（LINQ/迭代器）构建的，
-    /// **序列一旦中断抛异常，整张交易列表就是空的** —— 表现是"连白银都不显示"，
-    /// 看起来与 mod 毫无关系，极难定位。
-    /// 而 C# **不允许在 <c>try/catch</c> 里 <c>yield return</c>**，所以这里必须
-    /// **先在 try/catch 里把我们的追加物化成 <c>List</c>，再统一 yield**。
-    /// 这样本方法在任何输入下的最坏结果都只是"少显示我们那部分"，不会波及原版内容；
-    /// 同时把异常原文打进日志（<c>ErrorOnce</c>），下一次测试就能直接看到真凶。</para>
-    ///
-    /// <para><b>因此 3.0 的整层注入机制被删除</b>：<c>TradeDS_Helper</c>（提款造
-    /// unspawned Thing → 注入 Tradeable → 关窗回滚 → 成交后退账）+
-    /// <c>Patch_DialogTrade</c>（PostOpen/CacheTradeables/PostClose/TryExecute 四个补丁）。
-    /// 它们当初存在**只是因为账本里的东西不是真 Thing**、原版列表里根本没有它们。
-    /// （用户环境未安装 DTI，本次故障与 DTI 时序无关。）</para>
-    ///
-    /// <para><b>顺带发现</b>：<c>Pawn_TraderTracker.ColonyThingsWillingToBuy:124</c>
-    /// **原本就在枚举** <c>map.listerBuildings.AllColonistBuildingsOfType&lt;IHaulSource&gt;()</c>
-    /// 并 yield <c>GetDirectlyHeldThings()</c> ⇒ 访客/商队交易**零补丁**就能看见我们的容器
-    /// （且原版那里也只取直接内容物，与本节的做法一致）。
-    /// 只有轨道信标这条（走格子）需要补。</para>
-    /// </summary>
+    // 只追加可用核心的直接内容物, 避免改变原版容器规则
     [HarmonyPatch(typeof(TradeUtility), "AllLaunchableThingsForTrade")]
     static class Patch_AllLaunchableThingsForTrade
     {
         static IEnumerable<Thing> Postfix(IEnumerable<Thing> __result, Map map, ITrader trader)
         {
-            // 原版结果原样转发。不把它包进 try/catch —— 原版自己的异常应当照原样暴露。
+            var yielded = new HashSet<Thing>(ThingIdentityComparer.Instance);
             if (__result != null)
             {
                 foreach (Thing thing in __result)
                 {
+                    if (yielded.Add(thing)) yield return thing;
+                }
+            }
+
+            foreach (Thing thing in DigitalStorageTradeUtility.CoreContents(map, trader))
+            {
+                if (yielded.Add(thing)) yield return thing;
+            }
+        }
+    }
+
+    // 只补地面扫描失败后的候选, 让原版负责数量和交易转移
+    [HarmonyPatch(typeof(TradeUtility), "LaunchThingsOfType", new[] { typeof(ThingDef), typeof(int), typeof(Map), typeof(TradeShip) })]
+    internal static class Patch_LaunchThingsOfType
+    {
+        private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase __originalMethod)
+        {
+            var code = new List<CodeInstruction>(instructions);
+            MethodInfo min = AccessTools.Method(typeof(Math), nameof(Math.Min), new[] { typeof(int), typeof(int) });
+            MethodInfo error = AccessTools.Method(typeof(Log), nameof(Log.Error), new[] { typeof(string) });
+            MethodInfo paymentThing = AccessTools.Method(typeof(DigitalStorageTradeUtility), nameof(DigitalStorageTradeUtility.PaymentThing));
+            FieldInfo stackCount = AccessTools.Field(typeof(Thing), nameof(Thing.stackCount));
+            MethodBody body = __originalMethod.GetMethodBody();
+            if (min == null || error == null || paymentThing == null || stackCount == null || body == null)
+                throw new InvalidOperationException("[DigitalStorage] LaunchThingsOfType payment hook metadata is unavailable.");
+
+            int countStart = -1;
+            int thingLocal = -1;
+            for (int i = 3; i < code.Count; i++)
+            {
+                if (!code[i].Calls(min) || code[i - 1].opcode != OpCodes.Ldfld || !stackCount.Equals(code[i - 1].operand)
+                    || !LoadsArgument(code[i - 3], 1)) continue;
+                int local = LocalIndex(code[i - 2], false);
+                if (local < 0 || local >= body.LocalVariables.Count || body.LocalVariables[local].LocalType != typeof(Thing)) continue;
+                if (countStart >= 0)
+                    throw new InvalidOperationException("[DigitalStorage] LaunchThingsOfType has multiple payment count sites.");
+                countStart = i - 3;
+                thingLocal = local;
+            }
+            if (countStart < 0)
+                throw new InvalidOperationException("[DigitalStorage] LaunchThingsOfType payment count site was not found.");
+
+            CodeInstruction store = null;
+            for (int i = 1; i < countStart; i++)
+            {
+                if (code[i - 1].opcode != OpCodes.Ldnull || LocalIndex(code[i], true) != thingLocal) continue;
+                if (store != null)
+                    throw new InvalidOperationException("[DigitalStorage] LaunchThingsOfType has multiple payment candidate initializers.");
+                store = code[i];
+            }
+
+            int check = -1;
+            for (int i = 0; i + 2 < countStart; i++)
+            {
+                if (LocalIndex(code[i], false) != thingLocal
+                    || (code[i + 1].opcode != OpCodes.Brtrue && code[i + 1].opcode != OpCodes.Brtrue_S)
+                    || !(code[i + 1].operand is Label target) || !code[countStart].labels.Contains(target)
+                    || code[i + 2].opcode != OpCodes.Ldstr || !Equals(code[i + 2].operand, "Could not find any ")) continue;
+
+                bool logsError = false;
+                bool returns = false;
+                for (int j = i + 3; j < countStart; j++)
+                {
+                    if (code[j].Calls(error)) logsError = true;
+                    if (logsError && code[j].opcode == OpCodes.Ret) returns = true;
+                }
+                if (!returns) continue;
+                if (check >= 0)
+                    throw new InvalidOperationException("[DigitalStorage] LaunchThingsOfType has multiple missing-payment checks.");
+                check = i;
+            }
+            if (store == null || check < 0)
+                throw new InvalidOperationException("[DigitalStorage] LaunchThingsOfType missing-payment branch did not match the supported vanilla shape.");
+
+            var first = new CodeInstruction(code[check].opcode, code[check].operand);
+            first.labels.AddRange(code[check].labels);
+            first.blocks.AddRange(code[check].blocks);
+            code[check].labels.Clear();
+            code[check].blocks.Clear();
+            code.InsertRange(check, new[]
+            {
+                first,
+                CodeInstruction.LoadArgument(0),
+                CodeInstruction.LoadArgument(2),
+                CodeInstruction.LoadArgument(3),
+                new CodeInstruction(OpCodes.Call, paymentThing),
+                new CodeInstruction(store.opcode, store.operand)
+            });
+            return code;
+        }
+
+        private static bool LoadsArgument(CodeInstruction instruction, int index)
+        {
+            if (index == 1 && instruction.opcode == OpCodes.Ldarg_1) return true;
+            return (instruction.opcode == OpCodes.Ldarg || instruction.opcode == OpCodes.Ldarg_S)
+                && Convert.ToInt32(instruction.operand) == index;
+        }
+
+        private static int LocalIndex(CodeInstruction instruction, bool store)
+        {
+            OpCode opcode = instruction.opcode;
+            if (opcode == (store ? OpCodes.Stloc_0 : OpCodes.Ldloc_0)) return 0;
+            if (opcode == (store ? OpCodes.Stloc_1 : OpCodes.Ldloc_1)) return 1;
+            if (opcode == (store ? OpCodes.Stloc_2 : OpCodes.Ldloc_2)) return 2;
+            if (opcode == (store ? OpCodes.Stloc_3 : OpCodes.Ldloc_3)) return 3;
+            if (opcode != (store ? OpCodes.Stloc : OpCodes.Ldloc) && opcode != (store ? OpCodes.Stloc_S : OpCodes.Ldloc_S)) return -1;
+            if (instruction.operand is LocalBuilder builder) return builder.LocalIndex;
+            if (instruction.operand is LocalVariableInfo local) return local.LocalIndex;
+            return Convert.ToInt32(instruction.operand);
+        }
+    }
+
+    internal static class DigitalStorageTradeUtility
+    {
+        internal static IEnumerable<Thing> CoreContents(Map map, ITrader trader)
+        {
+            List<IHaulSource> sources = map?.haulDestinationManager?.AllHaulSourcesListForReading;
+            if (sources == null) yield break;
+
+            for (int i = 0; i < sources.Count; i++)
+            {
+                Building_StorageCore core = sources[i] as Building_StorageCore;
+                if (core == null || !core.IsUsableNow || !core.HaulSourceEnabled) continue;
+
+                ThingOwner held = core.GetDirectlyHeldThings();
+                if (held == null) continue;
+                for (int j = 0; j < held.Count; j++)
+                {
+                    Thing thing = held[j];
+                    if (!SellableContent(thing, trader)) continue;
                     yield return thing;
                 }
             }
+        }
 
-            if (map == null) yield break;
-
-            // 2) 我们的追加部分：先在 try/catch 里物化，再 yield（见类注释的硬约束）。
-            List<Thing> additions = null;
-            try
+        internal static Thing PaymentThing(Thing groundThing, ThingDef resDef, Map map, TradeShip trader)
+        {
+            if (groundThing != null) return groundThing;
+            List<IHaulSource> sources = map?.haulDestinationManager?.AllHaulSourcesListForReading;
+            if (sources == null) return null;
+            for (int i = 0; i < sources.Count; i++)
             {
-                additions = new List<Thing>();
-                var contents = new List<Thing>();
-                HaulSourceContents.CollectDirect(map, contents);
-                for (int i = 0; i < contents.Count; i++)
+                Building_StorageCore core = sources[i] as Building_StorageCore;
+                if (core == null || !core.IsUsableNow || !core.HaulSourceEnabled) continue;
+                ThingOwner held = core.GetDirectlyHeldThings();
+                if (held == null) continue;
+                for (int j = 0; j < held.Count; j++)
                 {
-                    Thing t = contents[i];
-                    if (t == null || t.def == null || t.Destroyed) continue;
-
-                    // 直接内容物不会是 pawn；防御 PlayerSellableNow 在 trader == null 时读 trader.Faction
-                    // （FactionDialogMaker.AmountSendableSilver / ColonyHasEnoughSilver 都不传 trader）。
-                    if (t is Pawn) continue;
-
-                    // 与原版容器分支同一把尺子
-                    if (!TradeUtility.PlayerSellableNow(t, trader)) continue;
-                    additions.Add(t);
+                    Thing thing = held[j];
+                    if (thing != null && thing.def == resDef && SellableContent(thing, trader)) return thing;
                 }
             }
-            catch (Exception e)
-            {
-                // 只报一次，避免刷屏；带上异常原文，下一次测试即可定位真凶。
-                Log.ErrorOnce("[DigitalStorage] 追加容器内容物到交易列表时抛异常"
-                    + "（已降级为只显示原版内容，交易列表不会因此变空）: " + e, 0x5D51A);
-                additions = null;
-            }
-
-            if (additions != null)
-            {
-                for (int i = 0; i < additions.Count; i++)
-                    yield return additions[i];
-            }
+            return null;
         }
+
+        private static bool SellableContent(Thing thing, ITrader trader)
+        {
+            return thing != null && !thing.Destroyed && thing.def != null && thing.stackCount > 0
+                && !(thing is Pawn) && TradeUtility.PlayerSellableNow(thing, trader);
+        }
+    }
+
+    internal sealed class ThingIdentityComparer : IEqualityComparer<Thing>
+    {
+        internal static readonly ThingIdentityComparer Instance = new ThingIdentityComparer();
+
+        public bool Equals(Thing left, Thing right) => ReferenceEquals(left, right);
+
+        public int GetHashCode(Thing thing) => thing == null ? 0 : RuntimeHelpers.GetHashCode(thing);
     }
 }

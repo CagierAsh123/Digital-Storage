@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using DigitalStorage.Core;
 using HarmonyLib;
 using RimWorld;
 using RimWorld.Planet;
@@ -78,11 +77,14 @@ namespace DigitalStorage.HarmonyPatches
         /// </summary>
         internal static IEnumerable<Thing> Append(IEnumerable<Thing> original)
         {
+            // 原版容器与核心内容物可能指向同一件东西, 统一按身份去重
+            var yielded = new HashSet<Thing>(ThingIdentityComparer.Instance);
+
             if (original != null)
             {
                 foreach (Thing t in original)
                 {
-                    yield return t;
+                    if (yielded.Add(t)) yield return t;
                 }
             }
 
@@ -91,7 +93,8 @@ namespace DigitalStorage.HarmonyPatches
 
             for (int i = 0; i < additions.Count; i++)
             {
-                yield return additions[i];
+                Thing thing = additions[i];
+                if (yielded.Add(thing)) yield return thing;
             }
         }
 
@@ -112,26 +115,8 @@ namespace DigitalStorage.HarmonyPatches
 
                 for (int i = 0; i < maps.Count; i++)
                 {
-                    // CoreSources 返回的是**复用缓冲**：立刻抽干，中间不调任何也会用它的事。
-                    List<IHaulSource> cores = HaulSourceContents.CoreSources(maps[i]);
-                    for (int j = 0; j < cores.Count; j++)
-                    {
-                        ThingOwner held = cores[j].GetDirectlyHeldThings();
-                        if (held == null) continue;
-
-                        for (int k = 0; k < held.Count; k++)
-                        {
-                            Thing t = held[k];
-                            if (t == null || t.def == null || t.Destroyed) continue;
-
-                            // 与原版容器分支同一把尺子。pawn 不由这里列（原版走 AllSellableColonyPawns，
-                            // 而 PlayerSellableNow 的 pawn 分支会读 trader.Faction，这里也没必要冒险）。
-                            if (t is Pawn) continue;
-                            if (!TradeUtility.PlayerSellableNow(t, trader)) continue;
-
-                            result.Add(t);
-                        }
-                    }
+                    // 与轨道交易共用同一套准入规则(可用/取出开关/可卖), 避免两处漂移
+                    result.AddRange(DigitalStorageTradeUtility.CoreContents(maps[i], trader));
                 }
 
                 return result;
