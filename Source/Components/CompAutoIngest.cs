@@ -289,16 +289,13 @@ namespace DigitalStorage.Components
             if (map == null) return false;
             IntVec3 originalPos = t.PositionHeld;
 
-            t.DeSpawn();
-            if (core.GetDirectlyHeldThings().TryAdd(t, true))
-            {
-                // 刻意**不**调 core.Notify_SettingsChanged()：那是"设置变了"的通知，
-                // 会对核心里的每一堆跑一次完整储存搜索（≈1.6ms/几百堆）。
-                // 内容物增加不需要任何原版侧失效 —— 详见 Building_StorageCore.Notify_SettingsChanged 的注释。
-                return true;
-            }
+            int take = Math.Min(t.stackCount, core.GetDirectlyHeldThings().GetCountCanAccept(t));
+            if (take <= 0) return false;
+            Thing taken = t.SplitOff(take);
+            if (taken.Spawned) taken.DeSpawn();
+            if (core.TryStore(taken, take) == take) return true;
 
-            GenPlace.TryPlaceThing(t, originalPos, map, ThingPlaceMode.Near);
+            GenPlace.TryPlaceThing(taken, originalPos, map, ThingPlaceMode.Near);
             return false;
         }
 

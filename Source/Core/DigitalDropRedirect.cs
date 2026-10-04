@@ -101,13 +101,11 @@ namespace DigitalStorage.Core
         public static bool TryIngestUnspawned(Building_StorageCore target, Thing t)
         {
             if (target == null || t == null || t.Destroyed) return false;
-            if (target.Map == null) return false;
+            if (target.Map == null || t.Spawned || t.holdingOwner != null) return false;
             if (!target.Accepts(t)) return false;
-            if (!target.GetDirectlyHeldThings().TryAdd(t, true)) return false;
-            // 刻意**不**调 target.Notify_SettingsChanged()：内容物增加不需要原版侧失效，
-            // 而那个通知会对核心里的每一堆跑一次完整储存搜索。
-            // 详见 Building_StorageCore.Notify_SettingsChanged 的注释。
-            return true;
+            int count = t.stackCount;
+            if (target.GetDirectlyHeldThings().GetCountCanAccept(t) < count) return false;
+            return target.TryStore(t, count) == count;
         }
     }
 }

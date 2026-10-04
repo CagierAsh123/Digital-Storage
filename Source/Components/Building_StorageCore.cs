@@ -73,23 +73,10 @@ namespace DigitalStorage.Components
 
         private StoragePriority storagePriorityField = StoragePriority.Preferred;
 
-        /// <summary>
-        /// 武器是否可进容器。<b>4.0 起为 true</b>（"全放开"：真实 Thing 存得住什么就存什么）。
-        ///
-        /// 之所以曾经必须为 false：<c>Verse.AI/JobDriver_Equip.cs</c> 硬编码了具体类
-        /// （:22 <c>ParentHolder is Building_OutfitStand</c>，:28 / :35 / :55 硬转换），
-        /// 容器里的武器会让它走 :101 的 else 分支 —— 对**未 Spawn 的物品**调 <c>DeSpawn()</c>（报错），
-        /// 然后在物品**仍在容器里**时 <c>pawn.equipment.AddEquipment(...)</c>。
-        ///
-        /// 现在由 <c>HarmonyPatches/Patch_JobDriver_Equip.cs</c> 接管：
-        /// 目标是通用 <see cref="IHaulSource"/> 容器内容物时，自己走"走到容器 → 取出 → 装备"这条链。
-        /// 原版衣架路径零影响（卫语句显式排除 <c>Building_OutfitStand</c>）。
-        /// </summary>
-        private bool allowWeaponsInStorage = true;
 
         public Building_StorageCore()
         {
-            innerContainer = new ThingOwner<Thing>(this);
+            innerContainer = new CoreStorageContainer(this);
             // 双保险：即便外面漏了 ShouldTickContents，容器自身也不再 tick 内容。
             // ThingOwner.DoTick() 会线性遍历每个物品调 DoTick()，而容器里的物品是未 Spawned 的
             // —— 实测报错 "Got temperature for null map" ← CompRottable.TickInterval ← ThingOwner.DoTick。
@@ -143,41 +130,13 @@ namespace DigitalStorage.Components
 
         // ===== IHaulSource（取出方向） =====
 
-        public bool HaulSourceEnabled => haulSourceEnabled;
+        public bool HaulSourceEnabled => haulSourceEnabled && IsUsableNow;
 
         // ===== IHaulDestination（放入方向） =====
 
-        public bool HaulDestinationEnabled => haulDestinationEnabled;
+        public bool HaulDestinationEnabled => haulDestinationEnabled && IsUsableNow;
 
-        /// <summary>
-        /// 原版问"这个目的地收不收这件东西"。被
-        /// <c>StoreUtility.TryFindBestBetterNonSlotGroupStorageFor</c>（<c>StoreUtility.cs:262</c>）
-        /// 与 <c>JobDriver_HaulToContainer</c> 的失败条件调用，**每次找目的地都会跑**，要保持便宜。
-        ///
-        /// <b>【甲-1】按"东西在哪边"分流 —— 这个方法就是出库语义的开关：</b>
-        ///
-        /// <c>ListerHaulables.ShouldBeHaulable</c> 靠
-        /// <c>IsInAnyStorage() =&gt; CurrentHaulDestinationOf(t)?.Accepts(t) ?? false</c>
-        /// 判断"它还在有效存储里吗"。
-        ///
-        /// <list type="bullet">
-        /// <item><b>已经在容器里</b> → <b>只按过滤器作答</b>。
-        ///   改过滤器 → Allows 变 false → IsInAnyStorage 变 false → ShouldBeHaulable 变 true
-        ///   → WorkGiver_Haul 建 HaulToCell 作业 → 搬运工来容器里取走（原版容器感知）。
-        ///   这里**绝不能**掺容量规则：一旦 maxStacks 满，容器里所有"放不下"的东西都会被判为
-        ///   无处可去，原版会把已有库存全搬出去。</item>
-        /// <item><b>要进来的</b> → 过滤器 + 容量 + 真收得下。
-        ///   否则 <c>HaulAIUtility.cs:191</c> 的 job.count 会是 0 → <c>StartCarryThing</c> 抛异常。
-        ///   <b>容量是硬上限</b>：堆数不得超过 <see cref="maxStacks"/>，但**已有堆允许被补满**
-        ///   —— 判定顺序刻意与原版 <c>ThingOwner.TryAdd</c> 一致
-        ///   （那边是先尝试合并进已有堆、合并不掉才查 <c>Count &lt; maxStacks</c>）。
-        ///   旧实现有一条例外"满了仍接受容器里已有的 def"（<c>ContainerHasDef</c>）⇒ 堆数能无限涨
-        ///   （实测 1000+ 堆 / 上限 500），把研究阶梯 500/1000/1500/3000 整个架空了，已删。</item>
-        /// </list>
-        ///
-        /// 这也和原版一致：<c>Building_Storage.Accepts</c> 只看过滤器，容量由 <c>MaxItemsInCell</c> 在放置时管
-        /// —— 我们的"容器容量"是原版没有的概念，只能自己在这一个函数里回答。
-        /// </summary>
+        // 已有库存只检查筛选, 入库再检查电力和容量
         public bool Accepts(Thing t)
         {
             if (t == null || t.def == null) return false;
@@ -189,29 +148,10 @@ namespace DigitalStorage.Components
 
             if (ReferenceEquals(t.ParentHolder, this)) return allowed;
 
-            if (!allowed) return false;
-            if (innerContainer.Count >= maxStacks && !HasRoomInExistingStack(t)) return false;
+            if (!allowed || !Powered) return false;
             return innerContainer.GetCountCanAccept(t) > 0;
         }
 
-        /// <summary>
-        /// 容器里有没有"还能再吃下这口"的同堆 —— 即**能合并进已有堆、且不新增堆**。
-        /// **只在上限已满时调用**，所以 O(N) 线性扫描是可以接受的（不进热路径）。
-        ///
-        /// <para>合并判据直接用原版 <c>Thing.CanStackWith</c>（def + 材质 + 都不是圣物 + 都是 Item 类），
-        /// 绝不另写一套近似逻辑 —— 那样两边会漂移，出现"Accepts 说能收、TryAdd 却合并失败"的假象。</para>
-        /// </summary>
-        private bool HasRoomInExistingStack(Thing t)
-        {
-            for (int i = 0; i < innerContainer.Count; i++)
-            {
-                Thing existing = innerContainer[i];
-                if (existing == null || existing.Destroyed) continue;
-                if (existing.stackCount >= existing.def.stackLimit) continue;
-                if (existing.CanStackWith(t)) return true;
-            }
-            return false;
-        }
 
         // ===== IApparelSource（穿戴方向） =====
         //
@@ -222,12 +162,9 @@ namespace DigitalStorage.Components
         //
         // 没有它：Wear 走 else 分支的 GotoThing(A) + FailOnDespawnedNullOrForbidden(A)，
         // 内容物 Spawned=false ⇒ 当场 Incompletable ⇒ 一 tick 十次。
-        //
-        // 注意：**衣物走接口（可扩展），武器走具体类（JobDriver_Equip 写死 Building_OutfitStand）**
-        // —— 这是原版自己的不一致，也是 allowWeaponsInStorage 默认 false 的原因。
-        public bool ApparelSourceEnabled => haulSourceEnabled;
+        public bool ApparelSourceEnabled => HaulSourceEnabled;
 
-        public bool RemoveApparel(Apparel apparel) => innerContainer.Remove(apparel);
+        public bool RemoveApparel(Apparel apparel) => ApparelSourceEnabled && innerContainer.Remove(apparel);
 
         // ===== IStoreSettingsParent =====
 
@@ -244,7 +181,6 @@ namespace DigitalStorage.Components
                 // 完全一致 —— 否则过滤器窗口里会出现 UI 看不见/勾不到的条目。
                 storeSettings.filter.SetAllowAll(GetParentFilterPublic());
                 storeSettings.Priority = storagePriorityField;
-                ApplyWeaponFilter();
             }
             return storeSettings;
         }
@@ -254,29 +190,8 @@ namespace DigitalStorage.Components
             return (def != null && def.building != null) ? def.building.fixedStorageSettings : null;
         }
 
-        /// <summary>把 <see cref="allowWeaponsInStorage"/> 落到过滤器上。Accepts 直接查过滤器 ⇒ 同时改了进出两侧。</summary>
-        private void ApplyWeaponFilter()
-        {
-            if (storeSettings == null || storeSettings.filter == null) return;
-            storeSettings.filter.SetAllow(ThingCategoryDefOf.Weapons, allowWeaponsInStorage);
-        }
 
-        /// <summary>
-        /// 「<b>设置</b>变了」通知：过滤器 / 优先级 / 通断 变了才该调它。
-        ///
-        /// <para><b>⚠️ 别拿它当"内容物变了"使</b>（吸货 / 直塞 / 生产入库都**不该**调）：
-        /// 它走的是原版 <c>ListerHaulables.Notify_HaulSourceChanged</c> —— 对**核心里的每一堆**
-        /// 跑一次完整储存搜索（<c>ShouldBeHaulable</c> → <c>IsInValidBestStorage</c> →
-        /// <c>TryFindBestBetterStorageFor</c>，实测 ~1.8µs/件，几百堆 ⇒ 约 1.6ms），
-        /// 外加一次列表重排。自动收纳每 15 tick 吸 <c>rate</c> 件 ⇒ 吸货越勤白烧越多。</para>
-        ///
-        /// <para>而内容物增加时原版侧**没有需要失效的缓存**：新东西是 <c>DeSpawn</c> 进来的，
-        /// <c>ListerHaulables.Notify_DeSpawned</c> 已经把它从待搬表摘掉；
-        /// <c>Accepts</c> 以及每个目的地的判定都是被问到时现算。
-        /// "核心里存在过滤器不收的东西"这条自愈由
-        /// <c>Performance/Patch_ListerHaulables_CoreSweep</c> 在轮转时逐件核对负责
-        /// （它会主动退回原版全量判定）。</para>
-        /// </summary>
+        // 筛选, 优先级和通断变化才重算库存
         public void Notify_SettingsChanged()
         {
             if (!Spawned || MapHeld == null) return;
@@ -361,6 +276,44 @@ namespace DigitalStorage.Components
 
         public ThingFilter StorageFilter => GetStoreSettings().filter;
 
+        public int TryStore(Thing t, int count)
+        {
+            if (t == null || t.Destroyed || count <= 0 || !Accepts(t)) return 0;
+            if (ReferenceEquals(t.holdingOwner, innerContainer)) return 0;
+            int take = Math.Min(count, innerContainer.GetCountCanAccept(t));
+            if (take <= 0) return 0;
+
+            ThingOwner previousOwner = t.holdingOwner;
+            if (t.Spawned) return 0;
+            Thing taken = t.SplitOff(take);
+            if (taken == null) return 0;
+            if (ReferenceEquals(taken, t)) previousOwner?.Remove(taken);
+            // 入库不改变设置, 无需重算全部库存
+            if (innerContainer.TryAdd(taken, true)) return take;
+
+            // 未存入的部分留在原持有者, 不改变调用方的余量身份
+            if (!ReferenceEquals(taken, t)) t.TryAbsorbStack(taken, false);
+            else previousOwner?.TryAdd(taken, false);
+            return 0;
+        }
+
+        private void EnsureContainer()
+        {
+            if (innerContainer is CoreStorageContainer) return;
+            ThingOwner<Thing> old = innerContainer;
+            var replacement = new CoreStorageContainer(this);
+            if (old != null)
+            {
+                while (old.Count > 0)
+                {
+                    Thing item = old[old.Count - 1];
+                    old.Remove(item);
+                    replacement.AddLoaded(item);
+                }
+            }
+            innerContainer = replacement;
+        }
+
         public bool Powered => GetComp<CompPowerTrader>()?.PowerOn ?? true;
 
         /// <summary>
@@ -395,7 +348,7 @@ namespace DigitalStorage.Components
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
             base.SpawnSetup(map, respawningAfterLoad);
-            if (innerContainer == null) innerContainer = new ThingOwner<Thing>(this);
+            EnsureContainer();
             GetStoreSettings();
 
             // StoreUtility.TryFindBestBetterNonSlotGroupStorageFor:267 有
@@ -469,7 +422,6 @@ namespace DigitalStorage.Components
             Scribe_Values.Look(ref haulDestinationEnabled, "haulDestinationEnabled", true);
             Scribe_Values.Look(ref maxStacksField, "maxStacks", CoreTier.BaseStacks);
             Scribe_Values.Look(ref storagePriorityField, "storagePriority", StoragePriority.Preferred);
-            Scribe_Values.Look(ref allowWeaponsInStorage, "allowWeaponsInStorage", false);
 
             // 3.0 遗留数据（键名必须与 3.0 逐字一致；4.0 自己的存档里这些是 null）
             Scribe_Deep.Look(ref legacyLedger, "ledger");
@@ -478,10 +430,10 @@ namespace DigitalStorage.Components
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
-                if (innerContainer == null) innerContainer = new ThingOwner<Thing>(this);
+                EnsureContainer();
                 innerContainer.dontTickContents = true;
+                // 保存的筛选已经完整恢复, 不再重置武器分类
                 GetStoreSettings();
-                ApplyWeaponFilter();
             }
         }
 

@@ -73,6 +73,7 @@
 
     <Compile Include="Core\CoreTier.cs" />
     <Compile Include="Core\HaulSourceContents.cs" />
+    <Compile Include="Core\CoreStorageContainer.cs" />
     <Compile Include="Core\ItemGroup.cs" />
     <Compile Include="Core\ContainerAutoLoader.cs" />
     <Compile Include="Core\DigitalDropRedirect.cs" />
