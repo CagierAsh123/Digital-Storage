@@ -101,7 +101,9 @@ namespace DigitalStorage.UI
                 if (target != null) existing.SetComp(target);
                 return;
             }
-            Find.WindowStack.Add(new Window_CraftAutomation(target));
+            // ★ AE2 风格（T1-④）：所有入口（制作自动化主按钮 / ITab / gizmo）统一打开新的 AE2 界面；
+            //   旧面板没有退役 —— 可从新界面右下角的「打开制作面板」按钮进入（加配方/选材料/存储设置都还在那里）。
+            Find.WindowStack.Add(new DigitalStorage.UI.Window_AE2CraftPanel(target));
         }
 
         private void SetComp(CompBillAutomation c)

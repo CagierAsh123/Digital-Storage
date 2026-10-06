@@ -81,7 +81,7 @@ namespace DigitalStorage.AI
 
             // ② 产物（唯一漏斗）。生成期间抑制"大师/传奇"信件 —— 工厂量产会把信件栏刷爆；
             //    品质信息由左上角那条完成提示带上（见 CompBillAutomation.NoteProduct / DescribeProduct）。
-            Thing dominant = DominantIngredient(bill.recipe, ingredients);
+            Thing dominant = DominantIngredient(bill.recipe, ingredients, line.StuffDef);
             List<Thing> products;
             bool prevSuppress = BillAutomationScope.SuppressCraftLetters;
             BillAutomationScope.SuppressCraftLetters = true;
@@ -158,10 +158,36 @@ namespace DigitalStorage.AI
                 Thing p = products[i];
                 if (p == null || p.Destroyed) continue;
 
-                if (core != null && DigitalDropRedirect.TryIngestUnspawned(core, p))
+                if (core != null)
                 {
-                    comp.NoteProduct(p, true);
-                    continue;
+                    if (DigitalDropRedirect.TryIngestUnspawned(core, p))
+                    {
+                        comp.NoteProduct(p, true);
+                        continue;
+                    }
+                    // 适配：核心明明全收却仍被判不收 ⇒ 直接往核心容器里塞，并写日志说明是哪一关挡的
+                    try
+                    {
+                        StorageSettings __st = core.GetStoreSettings();
+                        bool __filterOk = (__st == null || __st.filter == null) || __st.filter.Allows(p);
+                        int __can = core.GetDirectlyHeldThings().GetCountCanAccept(p);
+                        Log.Warning("[适配] 产物未过 Accepts：def=" + p.def.defName
+                            + " 已生成=" + core.Spawned
+                            + " 接收开关=" + core.HaulDestinationEnabled
+                            + " 过滤放行=" + __filterOk
+                            + " 现有堆数=" + core.GetDirectlyHeldThings().Count
+                            + " 还能吃=" + __can);
+                        if (core.GetDirectlyHeldThings().TryAdd(p, true))
+                        {
+                            comp.NoteProduct(p, true);
+                            Log.Warning("[适配] 已绕过 Accepts 直接入库：" + p.def.defName);
+                            continue;
+                        }
+                    }
+                    catch (Exception __ex)
+                    {
+                        Log.Warning("[适配] 兜底入库异常：" + __ex.Message);
+                    }
                 }
                 if (GenPlace.TryPlaceThing(p, cell, map, ThingPlaceMode.Near))
                 {
@@ -177,12 +203,31 @@ namespace DigitalStorage.AI
         }
 
         /// <summary>
-        /// 照抄原版 <c>Toils_Recipe.CalculateDominantIngredient:348-370</c>（去掉未完成品那一支 ——
-        /// v1 不做 UFT 配方）。这个值决定 stuff 类产物的材质与颜色，**传 null 会在 GenRecipe.cs:21 直接 NRE**。
+        /// 照抄原版 <c>Toils_Recipe.CalculateDominantIngredient</c>。
+        /// 这个值决定 stuff 类产物的材质与颜色，**传 null 会在 GenRecipe.cs:21 直接 NRE**。
+        ///
+        /// <para><b>未完成品（UFT）那一支现在补回来了。</b>原版对该配方的第一支是
+        /// <c>if (uft != null &amp;&amp; uft.def.MadeFromStuff) return uft.ingredients.First(ing =&gt; ing.def == uft.Stuff);</c>
+        /// —— 即"认未完成品身上那个 stuff"。代理不造 UFT，但把同一件事记在
+        /// <see cref="CraftLine.StuffDef"/> 上（取活时定，见 <see cref="BillProbe.UftStuffDef"/>），
+        /// 于是这里用 <paramref name="preferredStuff"/> 复现同一支，保证"算工时用的材质"与"做产物用的材质"一致。</para>
+        ///
+        /// <para>普通配方的 <paramref name="preferredStuff"/> 恒为 null，行为和改之前完全一样。</para>
         /// </summary>
-        private static Thing DominantIngredient(RecipeDef recipe, List<Thing> ingredients)
+        internal static Thing DominantIngredient(RecipeDef recipe, IList<Thing> ingredients, ThingDef preferredStuff)
         {
             if (ingredients == null || ingredients.Count == 0) return null;
+
+            // ★ UFT 配方：取活时定下的主材质优先（= 原版 uft.ingredients.First(ing => ing.def == uft.Stuff)）
+            if (preferredStuff != null)
+            {
+                for (int i = 0; i < ingredients.Count; i++)
+                {
+                    Thing t = ingredients[i];
+                    if (t != null && t.def == preferredStuff) return t;
+                }
+            }
+
             if (recipe.productHasIngredientStuff) return ingredients[0];
 
             bool stuffProduct = false;

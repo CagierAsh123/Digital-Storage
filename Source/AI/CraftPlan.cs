@@ -36,6 +36,26 @@ namespace DigitalStorage.AI
 
         public RecipeDef recipe;
 
+        /// <summary>
+        /// 这条订单<b>限定的材料</b>（null = 不限定，核心里有啥用啥）。
+        /// 界面入口：右键订单行。生效点：落在那条临时账单的 <c>ingredientFilter</c> 上
+        /// （见 <see cref="BillProbe"/> 的 <c>ApplyMaterial</c>）。
+        /// </summary>
+        public ThingDef allowedStuff;
+
+        /// <summary>
+        /// 这条订单<b>限定的风格</b>（null = 交给虚拟工人的文化自动决定）。
+        /// 生效点：<c>Bill.style</c>；原版 <c>GenRecipe.PostProcessProduct</c> 会把它落到产物上。
+        /// </summary>
+        public ThingStyleDef styleDef;
+
+        /// <summary>
+        /// ★ 第 2 步：这条订单是不是**合成 Job 建出来的**。
+        /// 取消 Job 时只剪"Job 建出来的、且没有别的 Job 还要"的订单 ⇒ 玩家自己加的订单永不被误删。
+        /// （老存档读不到 = false = 玩家自己的订单，行为与改之前完全一致。）
+        /// </summary>
+        public bool FromJob;
+
         public int mode = ModeForever;
 
         /// <summary>次数模式下的剩余件数。</summary>
@@ -181,6 +201,11 @@ namespace DigitalStorage.AI
             Scribe_Values.Look(ref paused, "paused", false);
             Scribe_Values.Look(ref suspended, "suspended", false);
             Scribe_Values.Look(ref completed, "completed", 0);
+            // ★ 我们加的字段。读不到就是 null = 原版行为 ⇒ 老存档照样能读；
+            //   反过来，带这两个字段的存档给回原版 mod 也只是多两个被忽略的节点，不损坏存档。
+            Scribe_Defs.Look(ref allowedStuff, "allowedStuff");
+            Scribe_Defs.Look(ref styleDef, "styleDef");
+            Scribe_Values.Look(ref FromJob, "fromJob", false);   // ★ 第 2 步：Job 归属标记
             // lines / CountBill / counted* 刻意不存：都是可重建的派生状态
             //（扣料只在完成那一刻 ⇒ 读档丢进度不丢料）。
         }

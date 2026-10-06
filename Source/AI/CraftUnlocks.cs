@@ -47,8 +47,10 @@ namespace DigitalStorage.AI
         /// <list type="number">
         /// <item><b>真的产出东西</b> —— 有 <c>products</c> 或有 <c>specialProducts</c>（熔炼/屠宰/切石）。
         ///   手术、植入体这类 <c>products</c> 为空的配方在建筑上本来也不会出现，这里再挡一道。</item>
-        /// <item><b>不需要未完成品</b> —— <c>UsesUnfinishedThing</c>（艺术/雕塑/生物塑型）要先造 UFT，
-        ///   是另一条链，v1 不做（用户拍板）。</item>
+        /// <item><b>未完成品（UFT）配方：现在能做</b> —— <c>UsesUnfinishedThing</c>（衣物、雕塑、艺术，
+        ///   以及 mod 的同类配方）。做法见 <see cref="BillProbe"/> 的 <c>WorkAmountFor</c>：原版把 UFT
+        ///   当作"跨 job 的进度载体"，而制作代理的进度本来就存在 <c>CraftLine</c> 上、一轮做完
+        ///   ⇒ <b>代理不造 UFT，直接出成品</b>（不会在地上留半成品、也不会出现"幽灵作者"的报废件）。</item>
         /// <item><b>不是手术</b> —— 手术配方的 <c>recipeUsers</c> 是人不是建筑，正常进不来，
         ///   但 mod 可能塞进来，挡一道便宜。</item>
         /// </list>
@@ -58,7 +60,8 @@ namespace DigitalStorage.AI
         private static bool IsAutomationCandidate(RecipeDef r)
         {
             if (r == null) return false;
-            if (r.UsesUnfinishedThing) return false;
+            // ⚠️ 这里**故意不再**挡 r.UsesUnfinishedThing（旧版是 `if (r.UsesUnfinishedThing) return false;`）。
+            //    UFT 配方改由 BillProbe 按"一步做到成品"的方式支持；不要把它加回来。
             if (r.IsSurgery) return false;
             bool produces = (r.products != null && r.products.Count > 0)
                 || (r.specialProducts != null && r.specialProducts.Count > 0);

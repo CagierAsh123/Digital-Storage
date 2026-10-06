@@ -1,21 +1,15 @@
+// =====================================================================================
+//  【本地新增文件／整块替换】Dialog_WithdrawAmount —— 取物数量窗（AE2 材质版）
+// -------------------------------------------------------------------------------------
+//  逻辑与构造参数完全不变（ITab 与右键菜单都用它）：只负责"问个数量 + 回调"。
+//  只把外观换成 AE2：WindowFrame 外框 + AE2 文字色 + 凹槽里的数值输入框 + 两颗 AE2 按钮。
+// =====================================================================================
 using System;
 using UnityEngine;
 using Verse;
 
 namespace DigitalStorage.UI
 {
-    /// <summary>
-    /// 取出数量对话框 —— 纯"问个数量，回调给你"的窗口。
-    ///
-    /// <para><b>4.0 改造</b>：原先它同时承担两种模式（ITab 直接落物品 / 右键派 job），
-    /// 参数是账本键 <c>ItemKey</c>。现在数据源是真实容器内容物，而"取出来之后干什么"
-    /// 因调用方而异，所以改成**只负责问数量 + 回调**：</para>
-    /// <list type="bullet">
-    /// <item>ITab 面板：回调里 <c>HaulSourceContents.ExtractMatchingTo</c> 把那一批（def+stuff+品质）
-    ///   取到核心旁。</item>
-    /// <item>右键菜单：回调里派 <c>DigitalStorage_WithdrawToSpot</c> job。</item>
-    /// </list>
-    /// </summary>
     public class Dialog_WithdrawAmount : Window
     {
         private readonly string title;
@@ -26,52 +20,67 @@ namespace DigitalStorage.UI
         private string amountStr;
         private int amount;
 
-        public override Vector2 InitialSize => new Vector2(360f, 220f);
+        public override Vector2 InitialSize { get { return new Vector2(360f, 220f); } }
 
-        /// <param name="title">标题里显示的名字（通常是物品名）。</param>
-        /// <param name="available">可用总数。</param>
-        /// <param name="maxCarry">pawn 能搬多少；0 = 不显示也不限制（面板模式）。</param>
-        /// <param name="onConfirm">确认回调，参数为数量。</param>
         public Dialog_WithdrawAmount(string title, int available, int maxCarry, Action<int> onConfirm)
         {
             this.title = title;
             this.available = Math.Max(available, 0);
             this.maxCarry = maxCarry;
             this.onConfirm = onConfirm;
-            this.upperBound = maxCarry > 0 ? Math.Min(this.available, maxCarry) : this.available;
+            this.upperBound = (maxCarry > 0) ? Math.Min(this.available, maxCarry) : this.available;
             if (this.upperBound <= 0) this.upperBound = 1;
 
             this.amount = this.upperBound;
             this.amountStr = this.amount.ToString();
             this.forcePause = true;
-            this.doCloseX = true;
-            this.absorbInputAroundWindow = true;
+            this.doCloseX = false;
+            this.absorbInputAroundWindow = false;   // ★ 让环世界继续处理全局按键（空格/加速/摄像机）
             this.closeOnClickedOutside = true;
+            this.doWindowBackground = false;   // ★ AE2：全自绘
         }
 
         public override void DoWindowContents(Rect inRect)
         {
-            Text.Font = GameFont.Small;
-            Widgets.Label(new Rect(0, 0, inRect.width, 28f), "DS_WithdrawTitle".Translate(title));
-            Widgets.Label(new Rect(0, 32f, inRect.width, 24f), "DS_WithdrawAvailable".Translate(available));
+            try
+            {
+            bool closeClicked;
+            Rect ri = AE2Draw.WindowFrame(inRect.ContractedBy(2f), "DS_WithdrawTitle".Translate(title).ToString(), out closeClicked);
+            if (closeClicked) { Close(); return; }
+
+            AE2Draw.HandlePauseHotkey();   // ★ 用户要求：界面开着时空格也能暂停/继续
+            float y = ri.y;
+            AE2Draw.Tiny(new Rect(ri.x + 2f, y, ri.width - 4f, 18f),
+                "DS_WithdrawAvailable".Translate(available).ToString(), AE2Draw.TextCol);
+            y += 20f;
             if (maxCarry > 0)
-                Widgets.Label(new Rect(0, 54f, inRect.width, 24f), "DS_WithdrawCarryLimit".Translate(maxCarry));
-
-            float inputY = maxCarry > 0 ? 78f : 64f;
-            Widgets.TextFieldNumeric(new Rect(0, inputY, inRect.width, 32f), ref amount, ref amountStr, 1, upperBound);
-
-            float btnY = inRect.height - 38f;
-            float btnW = inRect.width / 2f - 8f;
-
-            if (Widgets.ButtonText(new Rect(0, btnY, btnW, 32f), "DS_Confirm".Translate()))
             {
-                if (amount > 0) onConfirm?.Invoke(amount);
+                AE2Draw.Tiny(new Rect(ri.x + 2f, y, ri.width - 4f, 18f),
+                    "DS_WithdrawCarryLimit".Translate(maxCarry).ToString(), AE2Draw.TextDimCol);
+                y += 20f;
+            }
+            y += 6f;
+
+            // 数值输入框：AE2 凹槽 + 原版的 TextFieldNumeric（保留 1..upperBound 的夹取逻辑）
+            Rect box = new Rect(ri.x, y, ri.width, 30f);
+            AE2Draw.Sunken(box, AE2Draw.Slot);
+            Widgets.TextFieldNumeric(box.ContractedBy(4f), ref amount, ref amountStr, 1, upperBound);
+            y += 38f;
+
+            float btnW = ri.width / 2f - 6f;
+            Rect okR = new Rect(ri.x, y, btnW, 28f);
+            Rect cancelR = new Rect(ri.x + btnW + 12f, y, btnW, 28f);
+            if (AE2Draw.TextButton(okR, "DS_Confirm".Translate().ToString(), true))
+            {
+                if (amount > 0 && onConfirm != null) onConfirm(amount);
                 Close();
             }
-            if (Widgets.ButtonText(new Rect(btnW + 16f, btnY, btnW, 32f), "DS_Cancel".Translate()))
+            if (AE2Draw.TextButton(cancelR, "DS_Cancel".Translate().ToString()))
             {
                 Close();
             }
+            }
+            catch (Exception __uiEx) { Log.ErrorOnce("[DigitalStorage] AE2 界面绘制异常（只记一次，界面不会卡死）：" + __uiEx, 771003); }
         }
     }
 }

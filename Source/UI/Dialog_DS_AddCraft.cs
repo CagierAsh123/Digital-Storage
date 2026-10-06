@@ -136,7 +136,17 @@ namespace DigitalStorage.UI
                     GUI.color = Color.white;
                     Text.Anchor = TextAnchor.UpperLeft;
 
-                    if (!added && Widgets.ButtonInvisible(row)) comp.AddPlan(recipe);
+                    // ★ 第 2 步（AE2 内核）：点一下 = **提交一个合成请求**，整条中间产物链一起纳进这棵依赖树
+                    //   （以前是"只加这一条配方"，产物的上游得自己再一条条加 —— 那正是"只能做一种任务"）。
+                    if (!added && Widgets.ButtonInvisible(row))
+                    {
+                        CraftJob job = comp.SubmitJob(recipe, null, 1, true);
+                        if (job != null)
+                        {
+                            Messages.Message("DS_JOB_Submitted".Translate(recipe.LabelCap, 1, job.steps.Count),
+                                MessageTypeDefOf.NeutralEvent, historical: false);
+                        }
+                    }
                     ly += rowH;
                 }
 

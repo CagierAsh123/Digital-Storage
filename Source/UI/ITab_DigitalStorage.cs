@@ -1,3 +1,14 @@
+// =====================================================================================
+//  【本地新增文件／整块替换】ITab_DigitalStorage —— 存储核心内容物页签（AE2 材质版）
+// -------------------------------------------------------------------------------------
+//  这是**整块替换**：逻辑（按 def+材质+品质 聚合、6 组折叠、搜索、取出、搬运优先级、容量条）
+//  与文案 key 全部保留，只把绘制换成 AE2 材质（AE2Draw）：
+//    · 容量条 → AE2 凹槽 + 青色填充条（替掉 Widgets.FillableBar）
+//    · 优先级 / 取出 → AE2 凸起按钮
+//    · 搜索框 → AE2 输入框
+//    · 列表 → AE2 行（分组头 + 行），**不再用 BeginScrollView**，改用 AE2Draw.DragBar 自绘滚动
+//      （虚拟列表：先算每行的 y 位置，再只画落在可视区里的那些）
+// =====================================================================================
 using System;
 using System.Collections.Generic;
 using DigitalStorage.Components;
@@ -8,27 +19,17 @@ using Verse;
 
 namespace DigitalStorage.UI
 {
-    /// <summary>
-    /// 存储核心的内容物面板。
-    ///
-    /// <para><b>4.0 改造</b>：3.0 这个面板读的是账本（<c>core.Ledger.Stock</c> 的
-    /// <c>ItemKey</c> → 数量）。现在读的是 <c>core.innerContainer</c> —— **真实的 Thing**，
-    /// 所以行按**真实身份**分组：<c>def + stuff + 品质</c>。</para>
-    ///
-    /// <para>这正是「全放开」的意义所在：同一 def 的普通剑和传奇剑是**两行**，
-    /// 可以分别取出（3.0 的 <c>(def,stuff)</c> 键根本区分不出来）。</para>
-    ///
-    /// <para>6 组折叠展示沿用 <see cref="ItemGrouping"/>（原 <c>ItemGroup.cs</c> 保留，
-    /// 它与账本无关，只是 def → 面板分组的映射）。</para>
-    /// </summary>
     public class ITab_DigitalStorage : ITab
     {
-        private static readonly Vector2 WinSize = new Vector2(460f, 540f);
+        private static readonly Vector2 WinSize = new Vector2(470f, 560f);
         private readonly bool[] expanded = new bool[6];
-        private Vector2 scroll;
+        private float scrollFrac;          // ★ AE2：0~1 的滚动比例（DragBar 用）
         private string search = "";
 
-        private Building_StorageCore Core => SelThing as Building_StorageCore;
+        private const float HeaderRowH = 26f;
+        private const float ItemRowH = 24f;
+
+        private Building_StorageCore Core { get { return SelThing as Building_StorageCore; } }
 
         public ITab_DigitalStorage()
         {
@@ -36,12 +37,11 @@ namespace DigitalStorage.UI
             this.labelKey = "DS_TabDigitalStorage";
         }
 
-        public override bool IsVisible => Core != null;
+        public override bool IsVisible { get { return Core != null; } }
 
         // ===================================================================
-        // 行快照：按 真实身份（def + stuff + 品质）聚合
+        // 行快照：按 真实身份（def + 材质 + 品质）聚合（逻辑与原版一致）
         // ===================================================================
-
         private struct Row
         {
             public ThingDef def;
@@ -59,13 +59,9 @@ namespace DigitalStorage.UI
         private static int QualityOrdinalOf(Thing t)
         {
             CompQuality q = t.TryGetComp<CompQuality>();
-            return q != null ? (int)q.Quality : -1;
+            return (q != null) ? (int)q.Quality : -1;
         }
 
-        /// <summary>
-        /// 重建行快照。容器内容物只在取出/放入时变，所以按 (tick, 堆数) 做一次廉价的
-        /// 变更检测即可 —— 避免每帧 6 遍全表扫描（旧实现有同样的 P8 缓存思路）。
-        /// </summary>
         private void RebuildRowsIfNeeded(Building_StorageCore core, bool force = false)
         {
             int tick = Find.TickManager.TicksGame;
@@ -74,16 +70,16 @@ namespace DigitalStorage.UI
             cachedTick = tick;
             cachedCount = count;
 
-            var order = new List<(ThingDef def, ThingDef stuff, int q)>();
-            var counts = new Dictionary<(ThingDef, ThingDef, int), int>();
-            var labels = new Dictionary<(ThingDef, ThingDef, int), string>();
+            List<ValueTuple<ThingDef, ThingDef, int>> order = new List<ValueTuple<ThingDef, ThingDef, int>>();
+            Dictionary<ValueTuple<ThingDef, ThingDef, int>, int> counts = new Dictionary<ValueTuple<ThingDef, ThingDef, int>, int>();
+            Dictionary<ValueTuple<ThingDef, ThingDef, int>, string> labels = new Dictionary<ValueTuple<ThingDef, ThingDef, int>, string>();
 
             for (int i = 0; i < core.innerContainer.Count; i++)
             {
                 Thing t = core.innerContainer[i];
-                if (t?.def == null || t.Destroyed) continue;
+                if (t == null || t.def == null || t.Destroyed) continue;
 
-                var key = (t.def, t.Stuff, QualityOrdinalOf(t));
+                ValueTuple<ThingDef, ThingDef, int> key = new ValueTuple<ThingDef, ThingDef, int>(t.def, t.Stuff, QualityOrdinalOf(t));
                 int cur;
                 if (counts.TryGetValue(key, out cur))
                 {
@@ -100,25 +96,19 @@ namespace DigitalStorage.UI
             rows.Clear();
             for (int i = 0; i < order.Count; i++)
             {
-                var key = order[i];
-                rows.Add(new Row
-                {
-                    def = key.def,
-                    stuff = key.stuff,
-                    qualityOrdinal = key.q,
-                    label = labels[key],
-                    count = counts[key],
-                    group = ItemGrouping.GroupOf(key.def),
-                });
+                ValueTuple<ThingDef, ThingDef, int> key = order[i];
+                Row r = new Row();
+                r.def = key.Item1;
+                r.stuff = key.Item2;
+                r.qualityOrdinal = key.Item3;
+                r.label = labels[key];
+                r.count = counts[key];
+                r.group = ItemGrouping.GroupOf(key.Item1);
+                rows.Add(r);
             }
-            rows.Sort((a, b) => string.Compare(a.label, b.label, StringComparison.Ordinal));
+            rows.Sort(delegate (Row a, Row b) { return string.Compare(a.label, b.label, StringComparison.Ordinal); });
         }
 
-        /// <summary>
-        /// 行标签。带 <c>try/catch</c>：某些 def 的 <c>LabelNoCount</c> 会抛
-        /// （3.0 的 LedgerItemCollector 就为这个专门加了防护），UI 不能因此崩掉。
-        /// 顺带附上耐久百分比 —— 「全放开」让耐久有意义的物品（武器/护甲）能一眼区分。
-        /// </summary>
         private static string BuildLabel(Thing t)
         {
             string label;
@@ -134,107 +124,156 @@ namespace DigitalStorage.UI
 
         protected override void FillTab()
         {
+            try
+            {
             Building_StorageCore core = Core;
             if (core == null) return;
             RebuildRowsIfNeeded(core);
 
-            Rect rect = new Rect(0f, 0f, WinSize.x, WinSize.y).ContractedBy(10f);
-            Text.Font = GameFont.Small;
-            float y = 0f;
+            AE2Draw.HandlePauseHotkey();   // ★ 用户要求：界面开着时空格也能暂停/继续
+            Rect rect = new Rect(0f, 0f, WinSize.x, WinSize.y).ContractedBy(4f);
+            AE2Draw.PanelBox(rect);
+            Rect ri = rect.ContractedBy(6f);
+            float y = ri.y;
 
-            // 顶部：堆数占用条（上限 = maxStacks，由研究阶梯决定：Lv1 500 → Lv4 3000）
-            // 「堆」与「种」是两个口径，必须都写出来：
-            //   堆 = 容器里真实 Thing 的个数（能合并的算一堆）；stackLimit = 1 的东西（石块/武器/衣物）一件就是一堆。
-            //   种 = 按 def + 材质 + 品质 聚合出来的行数（下面分组标题里的那个"种"）。
-            Rect barRect = new Rect(rect.x, rect.y + y, rect.width, 22f);
+            // ---- 容量条（AE2：凹槽 + 青色填充）----
+            Rect barRect = new Rect(ri.x, y, ri.width - 100f, 22f);
+            Rect craftBtn = new Rect(ri.xMax - 96f, y, 96f, 22f);
+            if (AE2Draw.TextButton(craftBtn, "DS_AE2_OpenCraft".Translate().ToString(), true))
+            {
+                // 找不到代理就传 null ⇒ 新面板自己会挑一台；一台都没有会显示提示（原版文案）
+                Find.WindowStack.Add(new Window_AE2CraftPanel(NearestProxy(core)));
+            }
+            // ★ 用户要求：右上角让出 100px 给"打开制作代理界面"按钮
             int used = core.innerContainer.Count;
             int cap = core.maxStacks;
-            // FillableBar 自己不 clamp（内部就一句 rect.width *= fillPercent，Widgets.cs:2555）
-            // ⇒ 旧存档里已经超上限的核心会把条画到面板外，这里自己夹住。
-            Widgets.FillableBar(barRect, cap > 0 ? Mathf.Clamp01((float)used / cap) : 0f);
-            Text.Anchor = TextAnchor.MiddleCenter;
-            Widgets.Label(barRect, "DS_CapacityBarLv".Translate(CoreTier.Level, used, cap, rows.Count));
-            Text.Anchor = TextAnchor.UpperLeft;
+            AE2Draw.Bar(barRect, (cap > 0) ? Mathf.Clamp01((float)used / cap) : 0f, false);
+            AE2Draw.Tiny(new Rect(barRect.x, barRect.y + 3f, barRect.width, 16f),
+                "DS_CapacityBarLv".Translate(CoreTier.Level, used, cap, rows.Count).ToString(), AE2Draw.Hi);
             y += 26f;
 
-            // 搬运优先级
-            Widgets.Label(new Rect(rect.x, rect.y + y, 60f, 22f), "DS_Priority".Translate() + ":");
-            Rect prioRect = new Rect(rect.x + 62f, rect.y + y, 140f, 22f);
-            if (Widgets.ButtonText(prioRect, PriorityLabel(core.storagePriority)))
+            // ---- 搬运优先级（AE2 按钮 + 浮窗菜单）----
+            AE2Draw.Tiny(new Rect(ri.x, y + 3f, 54f, 16f), "DS_Priority".Translate().ToString() + ":", AE2Draw.TextCol);
+            Rect prioRect = new Rect(ri.x + 56f, y, 150f, 22f);
+            if (AE2Draw.TextButton(prioRect, PriorityLabel(core.storagePriority)))
             {
-                var options = new List<FloatMenuOption>();
+                List<FloatMenuOption> options = new List<FloatMenuOption>();
                 foreach (StoragePriority p in Enum.GetValues(typeof(StoragePriority)))
                 {
                     StoragePriority priority = p;
                     if (priority == StoragePriority.Unstored) continue;
-                    options.Add(new FloatMenuOption(PriorityLabel(priority), delegate
-                    {
-                        core.storagePriority = priority;
-                    }));
+                    options.Add(new FloatMenuOption(PriorityLabel(priority), delegate { core.storagePriority = priority; }));
                 }
                 Find.WindowStack.Add(new FloatMenu(options));
             }
             y += 26f;
 
-            // 搜索框
-            search = Widgets.TextField(new Rect(rect.x, rect.y + y, rect.width, 24f), search);
-            y += 30f;
+            // ---- 搜索框（AE2 输入框）----
+            search = AE2Draw.TextField(new Rect(ri.x, y, ri.width, 24f), search);
+            y += 28f;
 
-            // 列表区
-            Rect listOuter = new Rect(rect.x, rect.y + y, rect.width, rect.height - y);
-            Rect listInner = new Rect(0, 0, listOuter.width - 16f, CalcListHeight());
-            Widgets.BeginScrollView(listOuter, ref scroll, listInner);
+            // ---- 列表（虚拟列表 + AE2 侧面拖动条；不再用 BeginScrollView）----
+            Rect list = new Rect(ri.x, y, ri.width, ri.yMax - y);
+            DrawList(list, core);
+            }
+            catch (Exception __uiEx) { Log.ErrorOnce("[DigitalStorage] AE2 界面绘制异常（只记一次，界面不会卡死）：" + __uiEx, 771005); }
+        }
 
-            float ly = 0f;
+        /// <summary>把 6 组 + 行铺成一条虚拟列表，只画落在可视区里的部分。</summary>
+        private void DrawList(Rect list, Building_StorageCore core)
+        {
+            // ① 先排版：算出每一行的 y 与高度
+            List<int> lineGroup = new List<int>();      // -1 = 行，>=0 = 组头（组号）
+            List<int> lineRow = new List<int>();
+            List<float> lineY = new List<float>();
+            float total = 0f;
+
             for (int gi = 0; gi < 6; gi++)
             {
                 ItemGroup group = (ItemGroup)gi;
-
-                int gkinds = 0;
+                int kinds = 0;
                 long gcount = 0;
-                for (int ri = 0; ri < rows.Count; ri++)
+                for (int ri2 = 0; ri2 < rows.Count; ri2++)
                 {
-                    if (rows[ri].group != group) continue;
-                    if (!RowMatchesSearch(rows[ri])) continue;
-                    gkinds++;
-                    gcount += rows[ri].count;
+                    if (rows[ri2].group != group || !RowMatchesSearch(rows[ri2])) continue;
+                    kinds++;
+                    gcount += rows[ri2].count;
                 }
-                if (gkinds == 0) continue;
+                if (kinds == 0) continue;
 
-                Rect header = new Rect(0, ly, listInner.width, 26f);
-                if (Mouse.IsOver(header)) Widgets.DrawHighlight(header);
-                string arrow = expanded[gi] ? "▼" : "▶";
-                Widgets.Label(header, arrow + " " + ItemGrouping.LabelKeyOf(group).Translate()
-                    + "   x" + gcount + "   (" + gkinds + " " + "DS_Kinds".Translate() + ")");
-                if (Widgets.ButtonInvisible(header)) expanded[gi] = !expanded[gi];
-                ly += 28f;
-
-                if (!expanded[gi]) continue;
-
-                for (int ri = 0; ri < rows.Count; ri++)
+                lineGroup.Add(gi); lineRow.Add(-1); lineY.Add(total);
+                total += HeaderRowH + 2f;
+                if (expanded[gi])
                 {
-                    Row row = rows[ri];
-                    if (row.group != group || !RowMatchesSearch(row)) continue;
-
-                    Rect line = new Rect(12f, ly, listInner.width - 12f, 24f);
-                    if (Mouse.IsOver(line)) Widgets.DrawHighlight(line);
-
-                    Widgets.ThingIcon(new Rect(line.x, line.y, 22f, 22f), row.def, row.stuff);
-                    Widgets.Label(new Rect(line.x + 26f, line.y, line.width - 130f, 24f),
-                        row.label + "   x" + row.count);
-
-                    if (Widgets.ButtonText(new Rect(line.xMax - 100f, line.y, 100f, 22f), "DS_WithdrawBtn".Translate()))
+                    for (int ri2 = 0; ri2 < rows.Count; ri2++)
                     {
-                        Row captured = row;
-                        Find.WindowStack.Add(new Dialog_WithdrawAmount(captured.label, captured.count, 0,
-                            amount => ExtractRow(core, captured, amount)));
+                        if (rows[ri2].group != group || !RowMatchesSearch(rows[ri2])) continue;
+                        lineGroup.Add(-1); lineRow.Add(ri2); lineY.Add(total);
+                        total += ItemRowH + 1f;
                     }
-
-                    ly += 26f;
                 }
             }
 
-            Widgets.EndScrollView();
+            if (total <= 0f)
+            {
+                AE2Draw.Tiny(new Rect(list.x + 4f, list.y + 4f, list.width - 8f, 18f),
+                    (rows.Count == 0) ? "DS_EmptyCoreText".Translate().ToString() : "DS_KindsEmpty".Translate().ToString(),
+                    AE2Draw.TextDimCol);
+                return;
+            }
+
+            // ② 可视区 + 滚动偏移
+            float viewH = list.height;
+            float maxOffset = Mathf.Max(0f, total - viewH);
+            float offset = Mathf.Round(scrollFrac * maxOffset);
+
+            for (int i = 0; i < lineY.Count; i++)
+            {
+                float ly = lineY[i] - offset;
+                if (ly + HeaderRowH < 0f) continue;
+                if (ly > viewH) break;
+
+                if (lineGroup[i] >= 0)
+                {
+                    int gi = lineGroup[i];
+                    Rect header = new Rect(list.x, list.y + ly, list.width - 14f, HeaderRowH);
+                    bool hover = Mouse.IsOver(header);
+                    AE2Draw.Sunken(header, hover ? AE2Draw.SlotHover : AE2Draw.Slot);
+                    int kinds = 0; long gcount = 0;
+                    for (int ri2 = 0; ri2 < rows.Count; ri2++)
+                    {
+                        if (rows[ri2].group != (ItemGroup)gi || !RowMatchesSearch(rows[ri2])) continue;
+                        kinds++; gcount += rows[ri2].count;
+                    }
+                    string arrow = expanded[gi] ? "▼" : "▶";
+                    AE2Draw.Tiny(new Rect(header.x + 5f, header.y + 5f, header.width - 10f, 16f),
+                        arrow + " " + ItemGrouping.LabelKeyOf((ItemGroup)gi).Translate().ToString()
+                        + "   ×" + gcount + "   (" + kinds + " " + "DS_Kinds".Translate().ToString() + ")", AE2Draw.Hi);
+                    if (Widgets.ButtonInvisible(header)) expanded[gi] = !expanded[gi];
+                    continue;
+                }
+
+                Row row = rows[lineRow[i]];
+                Rect line = new Rect(list.x + 10f, list.y + ly, list.width - 24f, ItemRowH);
+                bool hov = Mouse.IsOver(line);
+                AE2Draw.Row(line, hov, false);
+                Rect icon = new Rect(line.x + 2f, line.y + 1f, 22f, 22f);
+                AE2Draw.SlotBox(icon, false);
+                Widgets.ThingIcon(icon.ContractedBy(1f), row.def, row.stuff);
+                AE2Draw.Tiny(new Rect(line.x + 28f, line.y + 4f, line.width - 140f, 16f),
+                    row.label + "   ×" + row.count, AE2Draw.TextCol);
+
+                if (AE2Draw.TextButton(new Rect(line.xMax - 92f, line.y + 1f, 90f, 22f), "DS_WithdrawBtn".Translate().ToString()))
+                {
+                    Row captured = row;
+                    Find.WindowStack.Add(new Dialog_WithdrawAmount(captured.label, captured.count, 0,
+                        delegate (int amount) { ExtractRow(core, captured, amount); }));
+                }
+            }
+
+            AE2Draw.DragBar(new Rect(list.xMax - 12f, list.y, 12f, list.height), ref scrollFrac,
+                Mathf.Clamp01(viewH / Mathf.Max(1f, total)));
+            AE2Draw.WheelScroll(list, ref scrollFrac);   // ★ 滚轮在列表里也能滚
         }
 
         private bool RowMatchesSearch(Row row)
@@ -243,38 +282,42 @@ namespace DigitalStorage.UI
             return row.label.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        /// <summary>把某一行（def + stuff + 品质）取出 amount 个，落到核心旁边。</summary>
+        /// <summary>把某一行（def + 材质 + 品质）取出 amount 个，落到核心旁边。</summary>
         private static void ExtractRow(Building_StorageCore core, Row row, int amount)
         {
             Map map = core.Map;
             if (map == null) return;
 
             int got = HaulSourceContents.ExtractMatchingTo(amount, core.Position, map,
-                t => t.def == row.def && t.Stuff == row.stuff && QualityOrdinalOf(t) == row.qualityOrdinal);
+                delegate (Thing t) { return t.def == row.def && t.Stuff == row.stuff && QualityOrdinalOf(t) == row.qualityOrdinal; });
 
             if (got <= 0)
                 Messages.Message("DS_NoSpaceNearCore".Translate(), core, MessageTypeDefOf.RejectInput);
         }
 
-        private float CalcListHeight()
+        /// <summary>离这个核心最近的制作代理（找不到返回 null ⇒ 新面板会自己挑一台或给提示）。</summary>
+        private static CompBillAutomation NearestProxy(Building_StorageCore core)
         {
-            float h = 0f;
-            for (int gi = 0; gi < 6; gi++)
+            Map map = (core != null && core.Map != null) ? core.Map : Find.CurrentMap;
+            if (map == null) return null;
+            CompBillAutomation best = null;
+            float bestD = float.MaxValue;
+            List<Thing> all = map.listerThings.AllThings;
+            for (int i = 0; i < all.Count; i++)
             {
-                int gkinds = 0;
-                for (int ri = 0; ri < rows.Count; ri++)
-                    if (rows[ri].group == (ItemGroup)gi && RowMatchesSearch(rows[ri])) gkinds++;
-                if (gkinds == 0) continue;
-                h += 28f;
-                if (expanded[gi]) h += gkinds * 26f;
+                Thing th = all[i];
+                if (th == null || !th.Spawned) continue;
+                CompBillAutomation c = th.TryGetComp<CompBillAutomation>();
+                if (c == null) continue;
+                float d = (core != null) ? th.Position.DistanceTo(core.Position) : 0f;
+                if (d < bestD) { bestD = d; best = c; }
             }
-            return h;
+            return best;
         }
 
         private static string PriorityLabel(StoragePriority p)
         {
-            // 键名必须与 vanilla Enums.xml 一致(StoragePriorityXxx,见 StoragePriorityHelper)，
-            // 错误键名(PriorityXxx)会被 Translate() 当缺失键 → 显示乱码(泰南语)
+            // 键名必须与 vanilla Enums.xml 一致（StoragePriorityXxx），错键名会显示成泰南语
             switch (p)
             {
                 case StoragePriority.Low: return "StoragePriorityLow".Translate();

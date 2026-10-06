@@ -161,7 +161,10 @@ namespace DigitalStorage.AI
                 line.Ingredients = things;
                 line.Counts = counts;
                 line.BaseRate = ComputeBaseRate(plan.recipe, bench, w);
-                line.WorkAmount = line.Bill.GetWorkAmount(LastIngredient(things, got));
+                line.AllowedStuff = plan.allowedStuff;
+                ApplyMaterial(line, plan);                      // ★ 限定材料：换进台子前把筛选器收紧
+                line.StuffDef = UftStuffDef(plan.recipe, things);
+                line.WorkAmount = WorkAmountFor(plan.recipe, line.Bill, things, got, line.StuffDef);
             line.WorkLeft = line.WorkAmount;
             line.NextAcquireTick = 0;
             line.BlockKey = null;
@@ -282,6 +285,107 @@ namespace DigitalStorage.AI
         {
             if (things != null && things.Length > 0) return things[things.Length - 1];
             return job.GetTarget(TargetIndex.B).Thing;
+        }
+
+        /// <summary>
+        /// 把这条产线的"限定材料"落到那条临时账单上：除选中的材料外全部禁掉，
+        /// 并把它设成**固定原料**（原版 <c>Bill.IsFixedOrAllowedIngredient</c> 对固定原料直接放行，
+        /// 于是无论核心/地图/商队那边怎么筛，取料都只看这一种）。
+        ///
+        /// <para>只允许"配方本来就接受"的材料：既查配方槽位筛选器，也查
+        /// <c>recipe.defaultIngredientFilter</c>（衣物默认禁金/银/玻璃钢等，只查前者会漏）。</para>
+        /// </summary>
+        private static void ApplyMaterial(CraftLine line, CraftPlan plan)
+        {
+            if (line == null || plan == null || plan.allowedStuff == null) return;
+            Bill_Production bill = line.Bill;
+            if (bill == null || bill.ingredientFilter == null) return;
+            ThingDef want = plan.allowedStuff;
+
+            List<ThingDef> all = DefDatabase<ThingDef>.AllDefsListForReading;
+            for (int i = 0; i < all.Count; i++)
+            {
+                ThingDef d = all[i];
+                if (d == null || d == want) continue;
+                bill.ingredientFilter.SetAllow(d, false);
+            }
+            bill.ingredientFilter.SetAllow(want, true);
+        }
+
+        /// <summary>配方到底接不接受这种材料（两层筛选都要过）。</summary>
+        internal static bool RecipeAcceptsStuff(RecipeDef recipe, ThingDef d)
+        {
+            if (recipe == null || d == null || !d.IsStuff) return false;
+            if (recipe.defaultIngredientFilter != null && !recipe.defaultIngredientFilter.Allows(d)) return false;
+            if (recipe.ingredients != null)
+            {
+                for (int i = 0; i < recipe.ingredients.Count; i++)
+                {
+                    IngredientCount ic = recipe.ingredients[i];
+                    if (ic == null || ic.IsFixedIngredient) continue;
+                    if (ic.filter != null && ic.filter.Allows(d)) return true;
+                }
+            }
+            // 没有可自选槽位时，退一步：只要默认筛选允许就算（例如整条配方只有一个固定原料）
+            return recipe.ingredients == null || recipe.ingredients.Count == 0;
+        }
+
+        /// <summary>这条配方可以被选的材料（供界面用，已按两层筛选校验）。</summary>
+        internal static List<ThingDef> UsableStuffs(RecipeDef recipe)
+        {
+            List<ThingDef> list = new List<ThingDef>();
+            if (recipe == null) return list;
+            List<ThingDef> all = DefDatabase<ThingDef>.AllDefsListForReading;
+            for (int i = 0; i < all.Count; i++)
+            {
+                ThingDef d = all[i];
+                if (d == null || !d.IsStuff) continue;
+                if (!RecipeAcceptsStuff(recipe, d)) continue;
+                list.Add(d);
+            }
+            list.Sort((a, b) => string.Compare(a.LabelCap, b.LabelCap, StringComparison.CurrentCulture));
+            return list;
+        }
+
+        /// <summary>
+        /// 未完成品（UFT）配方的<b>主材质</b> —— 复现原版
+        /// <c>Toils_Recipe.MakeUnfinishedThingIfNeeded</c> 里的
+        /// <c>ThingDef stuff = (recipe.unfinishedThingDef.MadeFromStuff ? thing.def : null);</c>
+        /// （<c>thing</c> 即 dominant）。其余情况返回 null。
+        /// </summary>
+        private static ThingDef UftStuffDef(RecipeDef recipe, Thing[] things)
+        {
+            if (recipe == null || recipe.unfinishedThingDef == null) return null;
+            if (!recipe.unfinishedThingDef.MadeFromStuff) return null;
+            Thing dominant = BillCraftFunnel.DominantIngredient(recipe, things, null);
+            return (dominant == null) ? null : dominant.def;
+        }
+
+        /// <summary>
+        /// 这一轮的工作量。原版取值链（1.6）：
+        /// <code>
+        /// Bill.GetWorkAmount(thing) => recipe.WorkAmountTotal(thing) => recipe.WorkAmountForStuff(thing.Stuff)
+        /// </code>
+        /// 关键：**这条链只读 <c>thing.Stuff</c>**。原版在 UFT 配方上传的是那个未完成品（带着 stuff），
+        /// 而代理以前传的是原料（<c>Thing.Stuff</c> 为 null）⇒ 工时整体跑偏（多数偏快）。
+        /// 代理不需要造未完成品：<c>WorkAmountForStuff</c> 是 public 的，拿取活时定下的主材质问同一个方法，
+        /// 结果与 <c>bill.GetWorkAmount(未完成品)</c> 相同。<b>普通配方仍然照抄原版</b>，不趁机改速度。
+        /// </summary>
+        private static float WorkAmountFor(RecipeDef recipe, Bill_Production bill, Thing[] things, Job got, ThingDef uftStuff)
+        {
+            if (recipe != null && recipe.unfinishedThingDef != null)
+            {
+                try
+                {
+                    return recipe.WorkAmountForStuff(uftStuff);
+                }
+                catch (Exception e)
+                {
+                    Log.ErrorOnce("[DigitalStorage] 制作代理算不出未完成品配方的工作量（退回普通取值）："
+                        + recipe.defName + " :: " + e, recipe.shortHash * 31 + 7717);
+                }
+            }
+            return bill.GetWorkAmount(LastIngredient(things, got));
         }
 
         /// <summary>

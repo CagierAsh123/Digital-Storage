@@ -37,6 +37,12 @@ namespace DigitalStorage.Components
         /// <summary>面板里的配方列表（**进存档**）。</summary>
         private List<CraftPlan> plans = new List<CraftPlan>();
 
+        /// <summary>
+        /// ★ 第 2 步（AE2 合成内核）：合成 Job 列表（**进存档**）= AE2 的那张 job 表。
+        /// 一个 Job = 一次合成请求 + 它那棵依赖树；<see cref="plans"/> 依旧是执行层。
+        /// </summary>
+        private List<CraftJob> jobs = new List<CraftJob>();
+
         /// <summary>本次扫描到的、范围内能承载 bill 的建筑（不存）。</summary>
         private readonly List<Thing> benches = new List<Thing>();
 
@@ -53,6 +59,20 @@ namespace DigitalStorage.Components
 
         /// <summary>超频档位：0 = 关，1 = 3GHz，2 = 6GHz，3 = 9GHz。</summary>
         private int overclockTier;
+
+        // =================================================================================
+        // ★ U1 组（AE2 合成 CPU 语义）：
+        //   · 合成存储 = 1k / 4k / 16k / 64k —— 一次合成请求最大能有多大，装不下就拒绝提交
+        //     （AE2 的 CraftingCpuLogic.submitJob 返回 TOO_SMALL ⇒ 客户端显示 CPU_TOO_SMALL）
+        //   · 并行处理单元 0..8 —— 同一个步骤最多同时占 1+单元数 张工作台（AE2 的 co-processor）
+        //   两项都进存档；老存档没有这两个节点 ⇒ 用默认 4k / 4，行为与改之前完全一致。
+        // =================================================================================
+
+        /// <summary>合成存储档位：0 = 1k，1 = 4k，2 = 16k，3 = 64k。</summary>
+        private int craftingStorageTier = 3;
+
+        /// <summary>并行处理单元数量（0..8）：同一个步骤最多同时占 1 + 这个数 张工作台。</summary>
+        private int parallelUnits = 8;
 
         /// <summary>是否在地图上画出 13×13 扫描范围（gizmo 切换，进存档）。</summary>
         private bool showRange;
@@ -115,7 +135,7 @@ namespace DigitalStorage.Components
         /// </summary>
         public List<IntVec3> RangeCellsForDrawing()
         {
-            int radius = Math.Max(0, Props.scanRadius);
+            int radius = ScanRadius;
             IntVec3 center = parent.PositionHeld;
 
             if (rangeCells == null || rangeCachedCenter != center || rangeCachedRadius != radius)
@@ -239,6 +259,9 @@ namespace DigitalStorage.Components
 
             int now = Find.TickManager.TicksGame;
 
+            // ★ 第 2 步验证件：载入后自动跑一次内核自测，把结果写进 Player.log（每会话一次）
+            KernelSelfTest.TickOnce(this, now);
+
             // ① 扫描工作台（低频）+ 刷新"能做哪些配方"
             if (now >= nextScanTick)
             {
@@ -273,7 +296,45 @@ namespace DigitalStorage.Components
         /// **只认 <c>Building</c>**：Pawn / Corpse 也是 <c>IBillGiver</c>（手术、屠宰），
         /// 但它们不是"工作台"，也不该出现在制作面板里。</para>
         /// </summary>
-        private void RescanBenches(Map map)
+                /// <summary>
+        /// 通用配方兼容（新写）：把"玩家当前能做"的所有配方并入可做清单 ——
+        /// 这样任何 mod 新增的配方（没有挂到任何工作台上）也能被制作代理接单。
+        /// </summary>
+        private void MergePlayerCraftableRecipes()
+        {
+            try
+            {
+                List<RecipeDef> all = DefDatabase<RecipeDef>.AllDefsListForReading;
+                for (int i = 0; i < all.Count; i++)
+                {
+                    RecipeDef r = all[i];
+                    if (r == null || r.ProducedThingDef == null) continue;      // 只收有产物的
+                    if (r.researchPrerequisite != null && !r.researchPrerequisite.IsFinished) continue;   // 研究未解锁
+                    if (r.recipeUsers == null || r.recipeUsers.Count == 0) continue;                       // 没有任何工作台（= 被隐藏的测试配方）
+                    // 只在"范围内**已有**的工作台能做这条配方"时才并入（读到了制作点再加）
+                    bool hasBench = false;
+                    for (int k = 0; k < r.recipeUsers.Count && !hasBench; k++)
+                    {
+                        ThingDef u = r.recipeUsers[k];
+                        if (u == null) continue;
+                        for (int b = 0; b < benchDefs.Count; b++)
+                        {
+                            if (benchDefs.Contains(u)) { hasBench = true; break; }
+                        }
+                    }
+                    if (!hasBench) continue;
+                    // MergePlayerCraftableRecipesV2
+                    if (unlocked.Contains(r)) continue;
+                    unlocked.Add(r);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.WarningOnce("[DigitalStorage] 并入全部可用配方时出错（已忽略）：" + ex.Message, 889912);
+            }
+        }
+
+private void RescanBenches(Map map)
         {
             if (slotsMap != null && slotsMap != map) ReleaseAll();
             slotsMap = map;
@@ -281,7 +342,7 @@ namespace DigitalStorage.Components
             benches.Clear();
             benchDefs.Clear();
 
-            int radius = Math.Max(0, Props.scanRadius);
+            int radius = ScanRadius;
             CellRect rect = CellRect.CenteredOn(parent.PositionHeld, radius);
             List<Thing> all = map.listerThings.ThingsInGroup(ThingRequestGroup.PotentialBillGiver);
 
@@ -301,6 +362,7 @@ namespace DigitalStorage.Components
             }
 
             CraftUnlocks.MenuRecipes(benchDefs, unlocked);
+            MergePlayerCraftableRecipes();   // ★ 通用兼容：并入所有玩家可做的配方
         }
 
         // ===================================================================
@@ -318,6 +380,14 @@ namespace DigitalStorage.Components
         /// </summary>
         private void SyncLines(Map map)
         {
+            int now = Find.TickManager.TicksGame;
+
+            // ★ 第 2 步：先刷新 Job 状态（根步骤达标 ⇒ Job 完成 + toast）。
+            RefreshJobStates(map, now);
+
+            // 台子够不够用：下面"缺料的步骤让位"只在**真的抢台子**时才做
+            bool atLineCap = TotalLines() >= Math.Max(1, Props.maxSlots);
+
             for (int p = plans.Count - 1; p >= 0; p--)
             {
                 CraftPlan plan = plans[p];
@@ -325,6 +395,36 @@ namespace DigitalStorage.Components
                 {
                     CraftLine line = plan.lines[i];
                     Thing b = line.Bench;
+
+                    // ★ 第 2 步（AE2：加工位是**临时占用**的 —— 材料不齐的步骤根本推不下去）：
+                    //   空闲产线在两种情况下让位（**正在做的那一件照做**：HasWork 时一律不动）：
+                    //     ① 这一轮不需要开工了（维持达标 / 挂起 / 做完）——"到位即还台子"；
+                    //     ② 因为**缺料**被挡住超过 2.5 秒，而且台子已经不够用 ——"等料不占位"。
+                    if (!line.HasWork && line.Bill != null)
+                    {
+                        if (IsStarvedForMaterials(line))
+                        {
+                            if (line.BlockedSinceTick <= 0) line.BlockedSinceTick = now;
+                        }
+                        else
+                        {
+                            line.BlockedSinceTick = 0;
+                        }
+
+                        bool yieldForDone = !plan.CanStartNewWork;
+                        bool yieldForStarved = atLineCap && line.BlockedSinceTick > 0
+                            && now - line.BlockedSinceTick >= 150;
+                        if (yieldForDone || yieldForStarved)
+                        {
+                            ReleaseLine(plan, i);
+                            continue;
+                        }
+                    }
+                    else if (line.BlockedSinceTick != 0)
+                    {
+                        line.BlockedSinceTick = 0;
+                    }
+
                     if (!plan.Maintained || b == null || b.Destroyed || !b.Spawned
                         || !BenchUsable(b) || !CanCraft(b, plan.recipe))
                     {
@@ -343,10 +443,14 @@ namespace DigitalStorage.Components
                 }
             }
 
+            // ★ 第 2 步：分配顺序 = **上游优先**（中间产物先拿台子，根最后）——
+            //   AE2 里这一步是自然涌现的（拿不到料就跳过），DS 必须显式排。
+            List<CraftPlan> order = JobOrderedPlans();
+
             int free = Math.Max(1, Props.maxSlots) - TotalLines();
-            for (int p = 0; p < plans.Count && free > 0; p++)
+            for (int p = 0; p < order.Count && free > 0; p++)
             {
-                CraftPlan plan = plans[p];
+                CraftPlan plan = order[p];
                 if (!plan.Maintained) continue;
 
                 // 维持数量模式：先按原版计数器数一遍，决定这一轮要不要开新活
@@ -354,7 +458,9 @@ namespace DigitalStorage.Components
                 RefreshTargetStateIfStale(plan, map);
                 if (!plan.CanStartNewWork) continue;
 
-                int want = FreeBenchCountFor(plan.recipe);
+                // ★ U1 组：并行处理单元 = 同一个步骤最多同时占几张台子（AE2 的 co-processor）。
+                //   默认 4 ⇒ 每步最多 5 张，比"一个步骤吃掉范围内所有空闲台子"温和，也给了可调余地。
+                int want = Mathf.Min(FreeBenchCountFor(plan.recipe), Mathf.Max(1, ParallelPerStep));
                 for (int i = plan.lines.Count; i < want && free > 0; i++)
                 {
                     Thing bench = PickBench(plan.recipe);
@@ -643,7 +749,7 @@ namespace DigitalStorage.Components
                 int now = Find.TickManager.TicksGame;
                 if (now < nextWorkerAttemptTick) return null;
                 nextWorkerAttemptTick = now + 250;
-                worker = DigitalWorkerFactory.Create(Props.skillLevel, "数字制作工", "Craft" + Props.skillLevel);
+                worker = DigitalWorkerFactory.Create(Props.skillLevel, "制作代理", "代理");
                 return worker;
             }
         }
@@ -778,6 +884,461 @@ namespace DigitalStorage.Components
         // ===================================================================
         // 面板操作（ITab 调用）
         // ===================================================================
+        // ★ 第 2 步：合成 Job（AE2 的 CraftingJob / CraftingCPUCluster）
+        //   一个请求 = 一棵依赖树；取消 = 整树一起销毁；分配台子 = 上游优先。
+        //   这里**不碰**执行层（plans / lines / 结算链），只加"归属 + 依赖 + 取消传播"。
+        // ===================================================================
+
+        /// <summary>给界面看的 Job 列表（只读视图，与 <see cref="PlansForReading"/> 同规矩）。</summary>
+        internal IList<CraftJob> JobsForReading
+        {
+            get
+            {
+                // 读档路径下 jobs 可能是 null（原版 Scribe_Collections.Look 在"存档里没有这个节点"时会置空）
+                if (jobs == null) jobs = new List<CraftJob>();
+                // ★ U1（用户定案）：合成存储 / 并行处理单元**不给选择、一律最高** ——
+                //   老存档里可能存着旧档位（1/4），读档时直接拉满，保证行为统一。
+                craftingStorageTier = 3;   // 64k
+                parallelUnits = 8;         // 每步最多 9 张台子
+                return jobs;
+            }
+        }
+
+        // ---- ★ U1 组：合成 CPU 的能力（AE2 的"合成存储 / 并行处理单元"）----
+
+        /// <summary>合成存储的档位名（1k / 4k / 16k / 64k），界面与提示里显示这个。</summary>
+        public string StorageTierLabel()
+        {
+            switch (craftingStorageTier)
+            {
+                case 0: return "1k";
+                case 2: return "16k";
+                case 3: return "64k";
+                default: return "4k";
+            }
+        }
+
+        /// <summary>合成存储的容量（单位 = 件；照 AE2 用 2 的幂）。</summary>
+        public int StorageBytes
+        {
+            get
+            {
+                switch (craftingStorageTier)
+                {
+                    case 0: return 1024;
+                    case 2: return 16384;
+                    case 3: return 65536;
+                    default: return 4096;
+                }
+            }
+        }
+
+        /// <summary>并行处理单元数量（界面显示用）。</summary>
+        public int ParallelUnits
+        {
+            get { return Mathf.Clamp(parallelUnits, 0, 8); }
+        }
+
+        /// <summary>同一个步骤最多同时占几张工作台（1 + 并行单元数）。</summary>
+        public int ParallelPerStep
+        {
+            get { return 1 + ParallelUnits; }
+        }
+
+        /// <summary>合成存储档位循环：1k → 4k → 16k → 64k → 1k。</summary>
+        public void CycleStorageTier()
+        {
+            craftingStorageTier = (craftingStorageTier + 1) % 4;
+        }
+
+        /// <summary>并行处理单元 +1（到 8 回 0）。</summary>
+        public void CycleParallelUnits()
+        {
+            parallelUnits = (ParallelUnits + 1) % 9;
+        }
+
+        /// <summary>一个已建好的 Job 的"计划规模"（件）= 各步骤需要量之和，用于容量条与占用统计。</summary>
+        internal static int PlanBytesOf(CraftJob job)
+        {
+            if (job == null || job.steps == null) return 0;
+            int n = 0;
+            for (int i = 0; i < job.steps.Count; i++)
+            {
+                CraftJobStep s = job.steps[i];
+                if (s != null) n += Mathf.Max(0, s.needCount);
+            }
+            return n;
+        }
+
+        /// <summary>所有在跑的 Job 占用的合成存储（件）。</summary>
+        public int StorageUsed
+        {
+            get
+            {
+                int n = 0;
+                IList<CraftJob> list = JobsForReading;
+                for (int i = 0; i < list.Count; i++)
+                {
+                    CraftJob job = list[i];
+                    if (job != null && job.Active) n += PlanBytesOf(job);
+                }
+                return n;
+            }
+        }
+
+        /// <summary>这个配方被哪个**还在跑**的 Job 需要（null = 没有）。</summary>
+        internal CraftJob JobForRecipe(RecipeDef recipe)
+        {
+            if (recipe == null) return null;
+            for (int i = 0; i < jobs.Count; i++)
+            {
+                CraftJob job = jobs[i];
+                if (job == null || !job.Active) continue;
+                if (job.IndexOfRecipe(recipe) >= 0) return job;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// <b>提交一个合成请求</b>（AE2 的 <c>ICraftingService.submitJob</c>）：
+        /// <c>CraftTree.Build</c> 算出依赖树（AE2 的 CraftingCalculation）⇒ 逐个节点确保有一条订单
+        /// ⇒ 记成 Job 的 steps。**先建上游、最后建根**：DS 的台子按列表顺序先到先得，
+        /// 根排前面会先把台子占光、然后卡在"等中间产物"（AF 组修过一次的同一个坑，这里是根治）。
+        /// </summary>
+        internal CraftJob SubmitJob(RecipeDef recipe, ThingDef product, int wanted, bool withIntermediates)
+        {
+            if (recipe == null) return null;
+
+            int want = Mathf.Max(1, wanted);
+            if (product == null) product = recipe.ProducedThingDef;
+
+            // ★ U1 组（AE2：合成 CPU 的合成存储装不下这个计划 ⇒ CPU_TOO_SMALL，**拒绝提交**）：
+            //   计划规模 = 树里所有件数之和（≈ AE2 的 bytes）。超了就说清"需要多大 / 现在多大"，
+            //   而不是默默收下然后永远做不完。
+            int planBytes = PlanBytesForSubmit(recipe, product, want, withIntermediates);
+            if (planBytes > StorageBytes)
+            {
+                Messages.Message("DS_JOB_St_TooSmall".Translate(
+                        recipe.LabelCap, planBytes.ToString("N0"), StorageTierLabel()),
+                    new TargetInfo(parent.PositionHeld, parent.MapHeld), MessageTypeDefOf.RejectInput, false);
+                return null;
+            }
+
+            CraftJob job = new CraftJob();
+            job.rootRecipe = recipe;
+            job.rootProduct = product;
+            job.wanted = want;
+            job.createdTick = Find.TickManager.TicksGame;
+            job.state = CraftJobState.Crafting;
+
+            CraftJobStep root = new CraftJobStep();
+            root.recipe = recipe;
+            root.product = product;
+            root.needCount = want;
+            root.crafts = Mathf.Max(1, Mathf.CeilToInt((float)want / Mathf.Max(1, CraftTree.YieldOf(recipe, product))));
+            root.depth = 0;
+            root.parent = -1;
+            job.steps.Add(root);
+
+            List<CraftJobStep> upstream = new List<CraftJobStep>();
+            if (withIntermediates && product != null)
+            {
+                CraftTreeNode tree = CraftTree.Build(this, recipe, product, want);
+                CollectJobSteps(job, 0, tree, upstream);
+                upstream.Sort(delegate (CraftJobStep a, CraftJobStep b) { return b.depth - a.depth; });
+            }
+
+            // ★ 上游也要**每次重算并覆盖**数量：用户再发一次请求时，上游需求必须跟着变（实机反馈）
+            for (int i = 0; i < upstream.Count; i++) EnsureStepPlan(upstream[i], false, true);
+            EnsureStepPlan(root, true, true);
+
+            JobsForReading.Add(job);
+            return job;
+        }
+
+        /// <summary>
+        /// ★ U1 组：这次提交的"计划规模"（件）= 根 + 所有中间产物的需要量之和。
+        /// 与 <see cref="PlanBytesOf"/> 同一口径（那边算的是已经建好的 Job）。
+        /// "不连中间产物"时就只有根的量。
+        /// </summary>
+        private int PlanBytesForSubmit(RecipeDef recipe, ThingDef product, int want, bool withIntermediates)
+        {
+            if (recipe == null) return 0;
+            int n = Mathf.Max(1, want);
+            if (!withIntermediates || product == null) return n;
+            try
+            {
+                CraftTreeNode tree = CraftTree.Build(this, recipe, product, Mathf.Max(1, want));
+                List<CraftTreePlanRow> rows = CraftTree.FlattenIntermediate(tree);
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    if (rows[i] != null) n += Mathf.Max(0, rows[i].Total);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[DigitalStorage] 估算合成规模失败（按根的量算）：" + e, 664422);
+            }
+            return n;
+        }
+
+        /// <summary>把合成树的中间产物收集成 steps（菱形依赖复用同一个 step，取最深的深度）。</summary>
+        private void CollectJobSteps(CraftJob job, int parentIndex, CraftTreeNode node, List<CraftJobStep> upstream)
+        {
+            if (job == null || node == null || node.Children == null) return;
+            for (int i = 0; i < node.Children.Count; i++)
+            {
+                CraftTreeNode child = node.Children[i];
+                if (child == null || child.Recipe == null || child.Product == null) continue;
+                if (child.CoveredByCore || child.NoRecipe) continue;   // 核心里够了 / 没有配方 ⇒ 不是"要代工的步骤"
+
+                int idx = job.IndexOfRecipe(child.Recipe);
+                int myIndex;
+                if (idx >= 0)
+                {
+                    CraftJobStep exist = job.steps[idx];
+                    if (child.Depth > exist.depth) exist.depth = child.Depth;
+                    myIndex = idx;
+                }
+                else
+                {
+                    CraftJobStep step = new CraftJobStep();
+                    step.recipe = child.Recipe;
+                    step.product = child.Product;
+                    step.needCount = Mathf.Max(1, child.RequiredTotal);
+                    step.crafts = Mathf.Max(1, child.Crafts);
+                    step.depth = child.Depth;
+                    step.parent = (parentIndex >= 0 && parentIndex < job.steps.Count) ? parentIndex : -1;
+                    job.steps.Add(step);
+                    myIndex = job.steps.Count - 1;
+                    if (step.parent >= 0) job.steps[step.parent].children.Add(myIndex);
+                    upstream.Add(step);
+                }
+                CollectJobSteps(job, myIndex, child, upstream);
+            }
+        }
+
+        /// <summary>确保这个步骤有一条订单；overwriteTarget = 要不要覆盖已有订单的目标（根要，中间产物只在新建时设）。</summary>
+        private CraftPlan EnsureStepPlan(CraftJobStep step, bool isRoot, bool overwrite)
+        {
+            if (step == null || step.recipe == null) return null;
+            CraftPlan plan = CraftTree.FindPlan(this, step.recipe);
+            bool fresh = (plan == null);
+            if (fresh)
+            {
+                AddPlan(step.recipe);
+                plan = CraftTree.FindPlan(this, step.recipe);
+                if (plan != null) plan.FromJob = true;   // 只有 Job 建出来的订单才参与"取消剪枝"
+            }
+            if (plan != null && (fresh || overwrite))
+            {
+                // ★ 用户定案的依赖树语义（这才是对的）：
+                //   · **根**（overwriteTarget=true）= 维持 N + 达标即暂停：保持库里有 N 件，被用掉自动补做；
+                //   · **上游各步** = 次数模式：按根的需求量**精确做这么多件就停**，绝不因为被下游吃掉而补做
+                //     （原来上游也用"维持" ⇒ 互相吃掉又补做，实机出现过 21/9/11 这种暴涨）。
+                int need = Mathf.Max(1, step.needCount);
+                // ★ 上游用**次数模式**（做满精确件数就停）：实测「维持+达标即暂停」在上游会立刻被判成
+                //   已达标（0/2 也显示已达标）⇒ 根本不开工。根订单仍保持「维持N+达标即暂停」。
+                if (isRoot)
+                {
+                    plan.SetTarget(need);
+                    plan.pauseWhenSatisfied = true;
+                }
+                else
+                {
+                    plan.mode = CraftPlan.ModeCount;
+                    plan.remaining = need;
+                    plan.pauseWhenSatisfied = false;
+                }
+                plan.paused = false;
+                plan.suspended = false;
+            }
+            return plan;
+        }
+
+        /// <summary>
+        /// <b>取消整个合成</b>（AE2 的 <c>CraftingCpuLogic.cancel()</c> ⇒ <c>finishJob(false)</c> ⇒ <c>job = null</c>）：
+        /// 拿掉 Job，再剪掉"**只被这个 Job 需要**、且是 Job 建出来的"那些订单 —— 别的 Job 还要用的中间产物不会误删。
+        /// 材料不退（AE2 也不退）：已经做出来的中间产物留在核心。
+        /// </summary>
+        internal void CancelJob(CraftJob job)
+        {
+            if (job == null) return;
+            job.state = CraftJobState.Cancelled;
+            job.finishedTick = Find.TickManager.TicksGame;
+            if (jobs != null) jobs.Remove(job);
+
+            int removed = PruneOrphanPlans();
+            Messages.Message("DS_JOB_Cancelled".Translate(
+                    (job.rootRecipe == null) ? "?" : job.rootRecipe.LabelCap.ToString(),
+                    job.steps.Count, removed),
+                new TargetInfo(parent.PositionHeld, parent.MapHeld), MessageTypeDefOf.NeutralEvent, false);
+        }
+
+        /// <summary>
+        /// ★ 实机修 bug：剪枝要问"**任何** Job（含已完成的）还需不需要这条订单"。
+        /// 原来只问 JobForRecipe（只看还在跑的 Job）⇒ 已完成的 Job 的订单会被当成孤儿删掉：
+        /// 实机表现就是"取消一个请求，顺手把你另一条已做完的订单也删了"（自测报 取消=FAIL 残留 -1 条）。
+        /// </summary>
+        private bool AnyJobHasRecipe(RecipeDef recipe)
+        {
+            if (recipe == null || jobs == null) return false;
+            for (int i = 0; i < jobs.Count; i++)
+            {
+                CraftJob job = jobs[i];
+                if (job == null) continue;
+                if (job.IndexOfRecipe(recipe) >= 0) return true;
+            }
+            return false;
+        }
+
+        /// <summary>剪掉"没有任何 Job 还需要"的、且是 Job 建出来的订单（= 取消整树的落地点）。</summary>
+        private int PruneOrphanPlans()
+        {
+            int removed = 0;
+            for (int i = plans.Count - 1; i >= 0; i--)
+            {
+                CraftPlan plan = plans[i];
+                if (plan == null || plan.recipe == null) continue;
+                if (!plan.FromJob) continue;                        // 玩家自己加的订单不动
+                if (AnyJobHasRecipe(plan.recipe)) continue;          // ★ 任何 Job（含已完成）还需要它就不能删
+                for (int k = plan.lines.Count - 1; k >= 0; k--) ReleaseLine(plan, k);
+                plans.RemoveAt(i);
+                removed++;
+            }
+            return removed;
+        }
+
+        /// <summary>★ 任何 Job（**含已完成的**）是否还需要这个配方 —— 删订单/剪枝都要问它，
+        /// 只问"在跑的 Job"会导致：请求做完后删根不带走上游、剪枝误删已完成订单（实机两处 bug）。</summary>
+        internal CraftJob AnyJobForRecipe(RecipeDef recipe)
+        {
+            if (recipe == null || jobs == null) return null;
+            for (int i = 0; i < jobs.Count; i++)
+            {
+                CraftJob job = jobs[i];
+                if (job == null) continue;
+                if (job.IndexOfRecipe(recipe) >= 0) return job;
+            }
+            return null;
+        }
+
+        /// <summary>★ 这条配方是不是某个请求的**上游附属步骤**（不是根）—— 附属步骤由最终产物统管，
+        /// 界面上不给单独的删除按钮，也不允许手动增删（用户要求：前面的订单都是最终产物的附属）。</summary>
+        internal bool IsSubordinateStep(RecipeDef recipe)
+        {
+            if (recipe == null || jobs == null) return false;
+            for (int i = 0; i < jobs.Count; i++)
+            {
+                CraftJob job = jobs[i];
+                if (job == null || job.steps.Count == 0) continue;
+                for (int k = 1; k < job.steps.Count; k++)   // 从 1 开始 = 跳过根
+                {
+                    CraftJobStep s = job.steps[k];
+                    if (s != null && s.recipe == recipe) return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>刷新 Job 状态：根步骤达标 ⇒ Finished + toast（AE2 的 FinishedJobToast）。完成判据只看根。</summary>
+        private void RefreshJobStates(Map map, int now)
+        {
+            if (jobs == null) jobs = new List<CraftJob>();
+            for (int i = jobs.Count - 1; i >= 0; i--)
+            {
+                CraftJob job = jobs[i];
+                if (job == null || job.rootRecipe == null) { jobs.RemoveAt(i); continue; }
+                if (!job.Active)
+                {
+                    // 完成的 Job 留一会儿给玩家看，但别无限堆积（≈2 游戏小时后退场）
+                    if (job.state == CraftJobState.Finished && job.finishedTick > 0
+                        && now - job.finishedTick > 5000) jobs.RemoveAt(i);
+                    continue;
+                }
+
+                CraftPlan rootPlan = CraftTree.FindPlan(this, job.rootRecipe);
+                if (rootPlan == null) { jobs.RemoveAt(i); continue; }
+
+                RefreshTargetStateIfStale(rootPlan, map);
+                if (!StepSatisfied(rootPlan)) continue;
+
+                // ★ 用户定案：最终产物达标 ⇒ 整棵树收工！过程里各步用维持（被拿走自动补做），
+                //   但根一达标就：① 发完成提示；② 结束这个请求；③ 剪掉它的全部步骤订单（不再维持）。
+                //   这正是 AE2：Job 完成 ⇒ CPU 释放 ⇒ 任务清空。
+                Messages.Message("DS_JOB_Done".Translate(job.rootRecipe.LabelCap, job.wanted, job.steps.Count),
+                    new TargetInfo(parent.PositionHeld, parent.MapHeld), MessageTypeDefOf.TaskCompletion, false);
+                job.state = CraftJobState.Finished;
+                job.finishedTick = now;
+                jobs.RemoveAt(i);
+                PruneOrphanPlans();
+                continue;
+            }
+        }
+
+        /// <summary>一个步骤算不算做完：**不自己记账**，读那条订单的现成状态。无限模式 = 没有"做完"这回事。</summary>
+        internal static bool StepSatisfied(CraftPlan plan)
+        {
+            if (plan == null) return true;
+            if (plan.mode == CraftPlan.ModeTarget) return !plan.wantsWork;
+            if (plan.mode == CraftPlan.ModeCount) return plan.Done;
+            return false;
+        }
+
+        /// <summary>是不是在"等料"（AE2 里 extractPatternInputs 返回 null 的那种状态）。只有这类阻塞才让出台子。</summary>
+        private static bool IsStarvedForMaterials(CraftLine line)
+        {
+            if (line == null) return false;
+            string k = line.BlockKey;
+            return k == "DS_BA_Block_Material" || k == "DS_BA_NoCoreMaterial";
+        }
+
+        /// <summary>分配台子的顺序：**上游优先**（同深度沿用玩家自己的排序）。</summary>
+        private List<CraftPlan> JobOrderedPlans()
+        {
+            List<CraftPlan> order = new List<CraftPlan>(plans);
+            if (jobs == null || jobs.Count == 0 || plans.Count < 2) return order;
+
+            Dictionary<RecipeDef, int> depth = new Dictionary<RecipeDef, int>();
+            for (int i = 0; i < jobs.Count; i++)
+            {
+                CraftJob job = jobs[i];
+                if (job == null) continue;
+                for (int k = 0; k < job.steps.Count; k++)
+                {
+                    CraftJobStep s = job.steps[k];
+                    if (s == null || s.recipe == null) continue;
+                    int cur;
+                    depth.TryGetValue(s.recipe, out cur);
+                    if (s.depth > cur) depth[s.recipe] = s.depth;
+                }
+            }
+            if (depth.Count == 0) return order;
+
+            Dictionary<CraftPlan, int> index = new Dictionary<CraftPlan, int>();
+            for (int i = 0; i < plans.Count; i++) index[plans[i]] = i;
+
+            order.Sort(delegate (CraftPlan a, CraftPlan b)
+            {
+                int da = DepthOfRecipe(depth, a);
+                int db = DepthOfRecipe(depth, b);
+                if (da != db) return db - da;          // 越上游（depth 越大）越先拿台子
+                int ia, ib;
+                index.TryGetValue(a, out ia);
+                index.TryGetValue(b, out ib);
+                return ia - ib;
+            });
+            return order;
+        }
+
+        private static int DepthOfRecipe(Dictionary<RecipeDef, int> depth, CraftPlan plan)
+        {
+            if (plan == null || plan.recipe == null) return 0;
+            int d;
+            return depth.TryGetValue(plan.recipe, out d) ? d : 0;
+        }
+
+        // ===================================================================
 
         internal bool HasPlan(RecipeDef recipe)
         {
@@ -801,6 +1362,24 @@ namespace DigitalStorage.Components
         internal void RemovePlan(CraftPlan plan)
         {
             if (plan == null) return;
+
+            // ★ 第 2 步（AE2 里没有"只删子树"这回事）：删掉的如果是某个合成 Job 的步骤，
+            //   就按"取消整个合成"处理 —— **整棵树一起删**（用户实机报的"删了最终产物、下游订单不取消"的正解）。
+            // ★ 用户要求：**上游附属步骤不能单独删**（由最终产物统管）——一律拒绝并提示。
+            if (plan.recipe != null && IsSubordinateStep(plan.recipe))
+            {
+                Messages.Message("DS_JOB_SubCannotDelete".Translate(plan.recipe.LabelCap),
+                    new TargetInfo(parent.PositionHeld, parent.MapHeld), MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+
+            CraftJob owner = (plan.recipe == null) ? null : AnyJobForRecipe(plan.recipe);   // ★ 含**已完成**的 Job：否则请求完成后删根不会带走上游
+            if (owner != null)
+            {
+                CancelJob(owner);
+                return;
+            }
+
             for (int i = plan.lines.Count - 1; i >= 0; i--) ReleaseLine(plan, i);
             plans.Remove(plan);
         }
@@ -973,6 +1552,38 @@ namespace DigitalStorage.Components
                 isActive = () => showRange,
                 toggleAction = () => { showRange = !showRange; }
             };
+
+            // 范围档位（新写）：点一下轮换，显示当前范围
+            yield return new Command_Action
+            {
+                icon = GizmoTex(ref texRange, "UI/Gizmos/制作代理-显示范围"),
+                defaultLabel = "范围 " + RangeLabel(),
+                defaultDesc = "点一下切换扫描范围（默认 → 更大 → 全图 → 回默认）。范围越大，能扫到的工作台与核心越多。",
+                action = () => { CycleRange(); }
+            };
+
+            // ★ 第 2 步验证件：自测按钮（点一下把内核自测结果写进 Player.log，测试订单自动撤销）
+            yield return new Command_Action
+            {
+                icon = GizmoTex(ref texRange, "UI/Gizmos/制作代理-显示范围"),
+                defaultLabel = "DS_SELFTEST".Translate(),
+                defaultDesc = "DS_SELFTEST_DESC".Translate(),
+                action = () =>
+                {
+                    Log.Warning(KernelSelfTest.Run(this));
+                    Messages.Message("DS_SELFTEST_DONE".Translate(),
+                        new TargetInfo(parent.PositionHeld, parent.MapHeld), MessageTypeDefOf.SilentInput, false);
+                }
+            };
+
+            // ★ AE2 界面样板（P1 骨架）：先把"脸"立起来，接数据放下一步
+            yield return new Command_Action
+            {
+                icon = GizmoTex(ref texRange, "UI/Gizmos/制作代理-显示范围"),
+                defaultLabel = "DS_AE2PREVIEW".Translate(),
+                defaultDesc = "DS_AE2PREVIEW_DESC".Translate(),
+                action = () => { Find.WindowStack.Add(new DigitalStorage.UI.Window_AE2CraftPanel(this)); }
+            };
         }
 
         /// <summary>
@@ -1034,17 +1645,64 @@ namespace DigitalStorage.Components
             slotsMap = null;
         }
 
-        public override void PostExposeData()
+                // ---- 扫描范围可调（新写）----
+        private const int RangeWholeMap = -1;   // 全图
+        private const int RangeDefault = 0;     // 用 Def 的 scanRadius
+        private int rangeOverride = RangeDefault;
+
+        /// <summary>本建筑实际生效的扫描半径（格子）。</summary>
+        internal int ScanRadius
         {
+            get
+            {
+                if (rangeOverride == RangeWholeMap)
+                {
+                    Map m = (parent != null) ? parent.Map : null;
+                    return (m != null) ? Math.Max(m.Size.x, m.Size.z) : 200;
+                }
+                return (rangeOverride > 0) ? rangeOverride : Math.Max(0, Props.scanRadius);
+            }
+        }
+
+        /// <summary>范围文字：全图 / N×N。</summary>
+        internal string RangeLabel()
+        {
+            if (rangeOverride == RangeWholeMap) return "全图";
+            int r = ScanRadius;
+            return (r * 2 + 1) + "x" + (r * 2 + 1);
+        }
+
+        /// <summary>档位轮换：默认 → +0/4/9/17 → 全图 → 默认。</summary>
+        internal void CycleRange()
+        {
+            int d = Math.Max(0, Props.scanRadius);
+            int[] seq = new int[] { RangeDefault, d, d + 4, d + 9, d + 17, RangeWholeMap };
+            int at = 0;
+            for (int i = 0; i < seq.Length; i++) { if (seq[i] == rangeOverride) { at = i; break; } }
+            rangeOverride = seq[(at + 1) % seq.Length];
+        }
+
+        internal void SetRange(int r) { rangeOverride = (r == RangeWholeMap) ? RangeWholeMap : Math.Max(0, Math.Min(60, r)); }
+public override void PostExposeData()
+        {
+            Scribe_Values.Look(ref rangeOverride, "dsRangeOverride", RangeDefault);
             base.PostExposeData();
             Scribe_Values.Look(ref enabled, "billAutoEnabled", true);
             Scribe_Values.Look(ref overclockTier, "billAutoOverclock", 0);
             Scribe_Values.Look(ref showRange, "billAutoShowRange", false);
+            // ★ U1 组：合成 CPU 的两项能力（老存档读不到 = 4k / 4 ⇒ 行为不变）
+            Scribe_Values.Look(ref craftingStorageTier, "billAutoStorageTier", 3);
+            Scribe_Values.Look(ref parallelUnits, "billAutoParallelUnits", 8);
             Scribe_Collections.Look(ref plans, "billAutoPlans", LookMode.Deep);
+            // ★ 第 2 步：合成 Job（= 请求 + 依赖树）。读不到就是空表 ⇒ 老存档那批订单是"无主订单"，照旧能跑能删。
+            Scribe_Collections.Look(ref jobs, "billAutoJobs", LookMode.Deep);
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
                 if (plans == null) plans = new List<CraftPlan>();
+                // ★ 这一行必须有：原版 Scribe_Collections.Look 在"存档里没有这个节点"时会把列表置成 null，
+                //   而老存档正是这种情况 ⇒ 漏了它就是"读老存档后制作代理每 tick 空引用"（实机炸过一次）。
+                if (jobs == null) jobs = new List<CraftJob>();
                 // 配方 def 被删（换 mod/换版本）时安静丢掉那条，别让面板里出现空行
                 for (int i = plans.Count - 1; i >= 0; i--)
                 {
