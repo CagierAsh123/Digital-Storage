@@ -93,40 +93,51 @@ namespace DigitalStorage.HarmonyPatches
     /// <c>TryFindBestBillIngredients</c> 与 <c>TryFindBestFixedIngredients</c> 共用的私有方法，
     /// 参数里没有 <c>Bill</c>/<c>Recipe</c> 可以区分，只能由外层入口打标记。
     ///
-    /// <para>同步、单线程、无重入（<c>TryFindBestBillIngredients</c> 不会被自己调用），
-    /// 所以一个静态 bool 就够，不需要 ThreadStatic。</para>
+    /// <para>把标记限定在当前调用线程；退出时恢复进入前的值，兼容嵌套搜索。
+    /// 异常路径也必须恢复，所以使用 Finalizer，而不是只在正常返回时运行的 Postfix。</para>
     /// </summary>
     [HarmonyPatch(typeof(WorkGiver_DoBill), "TryFindBestBillIngredients")]
     internal static class Patch_WorkGiver_DoBill_BillSearchScope
     {
+        [ThreadStatic]
         internal static bool InBillSearch;
 
-        private static void Prefix()
+        private static void Prefix(out bool? __state)
         {
+            __state = InBillSearch;
             InBillSearch = true;
         }
 
-        private static void Postfix()
+        private static Exception Finalizer(Exception __exception, bool? __state)
         {
-            InBillSearch = false;
+            // 其它 Prefix 提前跳过本 Prefix 时，__state 为 null，不接管外层状态。
+            if (__state.HasValue) InBillSearch = __state.Value;
+            return __exception;
         }
     }
 
     /// <summary>
     /// 同一条链上的**另一个**入口：<c>TryFindBestFixedIngredients</c>（只有 <c>CompBiosculpterPod</c> 用）。
-    /// 它同样会走 <c>TryFindBestIngredientsHelper</c>，必须显式把标记压回去。
+    /// 它同样会走 <c>TryFindBestIngredientsHelper</c>，执行期间必须关闭 bill 标记。
     ///
-    /// <para>为什么非加不可：标记由 <c>TryFindBestBillIngredients</c> 的 Postfix 复位，
-    /// 而 <b>原方法抛异常时 Harmony 的 Postfix 不会跑</b>（没声明 <c>__exception</c>）。
-    /// 一旦那样，标记会永远停在 true，之后生物塑型舱找料就会拿到跨图候选 ——
-    /// 而它那一条链没有背包那一跳，会让小人走向同名坐标。这里压一次，漏洞就关上了。</para>
+    /// <para>固定原料搜索不应拿到跨图候选：生物塑型舱的搬运链没有背包取料步骤。
+    /// 退出时恢复之前的标记，避免嵌套调用把外层 bill 搜索的状态永久清掉。
+    /// Finalizer 原样返回异常，不吞掉上游错误。</para>
     /// </summary>
     [HarmonyPatch(typeof(WorkGiver_DoBill), "TryFindBestFixedIngredients")]
     internal static class Patch_WorkGiver_DoBill_FixedSearchScope
     {
-        private static void Prefix()
+        private static void Prefix(out bool? __state)
         {
+            __state = Patch_WorkGiver_DoBill_BillSearchScope.InBillSearch;
             Patch_WorkGiver_DoBill_BillSearchScope.InBillSearch = false;
+        }
+
+        private static Exception Finalizer(Exception __exception, bool? __state)
+        {
+            if (__state.HasValue)
+                Patch_WorkGiver_DoBill_BillSearchScope.InBillSearch = __state.Value;
+            return __exception;
         }
     }
 
