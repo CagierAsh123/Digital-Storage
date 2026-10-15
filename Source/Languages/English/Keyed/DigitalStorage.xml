@@ -1,0 +1,333 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <!-- ========== Building_StorageCore ========== -->
+  <DS_NoPower>No power</DS_NoPower>
+  <DS_AutoIngest>Auto-Ingest</DS_AutoIngest>
+  <DS_AutoIngestDesc>When enabled, the core absorbs loose items across the whole map without requiring hauling (research tier decides 1/5/10 stacks per 15 ticks). Items inside prison cells and workbench ingredient areas are left alone. Stops when unpowered.</DS_AutoIngestDesc>
+
+  <!-- ========== ITab_DigitalStorage ========== -->
+  <DS_TabDigitalStorage>Virtual storage</DS_TabDigitalStorage>
+  <DS_CapacityBarLv>Lv{0}  {1} / {2} stacks · {3} kinds</DS_CapacityBarLv>
+  <DS_Kinds>kinds</DS_Kinds>
+  <DS_WithdrawBtn>Withdraw</DS_WithdrawBtn>
+  <DS_WithdrawTitle>Withdraw {0}</DS_WithdrawTitle>
+  <DS_WithdrawAvailable>Available: {0}</DS_WithdrawAvailable>
+  <DS_NoSpaceNearCore>No space near the core.</DS_NoSpaceNearCore>
+
+  <!-- ========== Jobs ========== -->
+
+  <!-- ========== Float menu ========== -->
+  <DS_WithdrawToSpot>Withdraw from digital storage…</DS_WithdrawToSpot>
+  <DS_WithdrawItemLabel>{0} ({1} available)</DS_WithdrawItemLabel>
+  <DS_WithdrawCarryLimit>Pawn can carry: {0}</DS_WithdrawCarryLimit>
+  <DS_ReportConsuming>Consuming {0} from digital storage.</DS_ReportConsuming>
+
+  <!-- ========== Groups ========== -->
+  <DS_Group_Raw>Raw</DS_Group_Raw>
+  <DS_Group_Food>Food</DS_Group_Food>
+  <DS_Group_Manufactured>Manufactured</DS_Group_Manufactured>
+  <DS_Group_MedicalAmmo>Medical &amp; ammo</DS_Group_MedicalAmmo>
+  <DS_Group_BodyParts>Bodyparts</DS_Group_BodyParts>
+  <DS_Group_Other>Other</DS_Group_Other>
+
+  <!-- ========== Building_InputInterface ========== -->
+
+  <!-- ========== Dialog_RenameNetwork ========== -->
+  <DS_Confirm>Confirm</DS_Confirm>
+  <DS_Cancel>Cancel</DS_Cancel>
+
+  <!-- ========== Settings ========== -->
+  <DS_SettingsCategory>Digital Storage 4.0</DS_SettingsCategory>
+  <DS_CostSettings>Multipliers</DS_CostSettings>
+  <DS_CostMultiplier>Cost multiplier: {0}</DS_CostMultiplier>
+  <DS_CostMultiplierDesc>Range 1/100 to 100x. Build material cost of every building, floor and item; applies as soon as you let go (blueprints already placed keep the price they were placed at).</DS_CostMultiplierDesc>
+  <DS_PowerMultiplier>Power multiplier: {0}</DS_PowerMultiplier>
+  <DS_PowerMultiplierDesc>Range 1/100 to 100x. Electricity consumption of every building; applies as soon as you let go. Generator output is unaffected.</DS_PowerMultiplierDesc>
+  <DS_ResearchMultiplier>Research cost multiplier: {0}</DS_ResearchMultiplier>
+  <DS_ResearchMultiplierDesc>Range 1/100 to 100x. Research points required for every project; applies as soon as you let go.</DS_ResearchMultiplierDesc>
+  <DS_DebugSettings>Debug settings</DS_DebugSettings>
+  <DS_EnableDebugLog>Enable detailed log</DS_EnableDebugLog>
+  <DS_EnableDebugLogDesc>Print detailed debug information to the log.</DS_EnableDebugLogDesc>
+
+  <!-- ========== Access / automation settings ========== -->
+  <DS_AccessSettings>Access &amp; automation</DS_AccessSettings>
+  <DS_AutoIngestToggle>Auto-ingest</DS_AutoIngestToggle>
+  <DS_AutoIngestToggleDesc>Allow cores to absorb loose items automatically instead of waiting for a hauler. Turn this off if items seem to teleport around the map.</DS_AutoIngestToggleDesc>
+  <DS_BackpackMechToggle>Backpack on mechanoids</DS_BackpackMechToggle>
+  <DS_BackpackMechToggleDesc>Also put the digital storage backpack on colony mechanoids (including drones and robots from other mods). On by default. If you suspect a mechanoid mod is conflicting with this one, turn it off so nothing of ours is attached to mechanoids at all (colonists are unaffected) - a one-click A/B test.</DS_BackpackMechToggleDesc>
+  <DS_PerfToggle>Vanilla performance fixes</DS_PerfToggle>
+  <DS_PerfToggleDesc>Fixes four vanilla hot spots that show up when you drag-select or designate a lot, or when a core holds several hundred stacks: selection brackets are culled outside the camera view, designation icons are updated incrementally instead of being fully rebuilt every frame, the "meta puff" fleck burst from mass designating is capped per tick, and a core's existing stock is no longer re-scanned stack by stack every tick by the vanilla haulable lister (the verdicts match vanilla - narrowing the filter still gets it hauled out). Pure performance, no gameplay change. Turn off to fall back to vanilla behavior item by item.</DS_PerfToggleDesc>
+  <DS_WorkerBudget>Proxy workers: max {0} completions per tick (0 = unlimited)</DS_WorkerBudget>
+  <DS_WorkerBudgetDesc>Each finished job pays a one-time vanilla cost (~0.4-0.5 ms): spawning the drops (which searches for a free nearby cell), spawning the finished building, returning deconstruct materials, spawning harvest yield - each also dirties regions and re-registers things. With 75 parallel workers at 7.5x speed that is 20-40 completions per tick, i.e. 10-20 ms of CPU per tick, while a 60 Hz frame only has 16.7 ms. Lower this to keep frames stable; raise it (or set 0) for raw sweeping speed.</DS_WorkerBudgetDesc>
+  <DS_FleckBudget>Max effect flecks per frame: {0} (0 = unlimited)</DS_FleckBudget>
+  <DS_FleckBudgetDesc>Designating a whole map makes every single designation puff 4-6 "meta puff" flecks - tens of thousands created in one instant, each living 1-2 seconds and drawn every frame, which shows up as "a flash, then a few seconds of stutter". Flecks are purely visual, so anything above the budget is simply not created. Default 500/frame (~30k/sec) is far above normal play.</DS_FleckBudgetDesc>
+
+  <!-- ========== Caravan ========== -->
+
+  <!-- ========== Upgrade ========== -->
+
+  <DS_StorageFilter>Storage Filter</DS_StorageFilter>
+  <DS_StorageFilterDesc>Set which item types are allowed into this core. All allowed by default.</DS_StorageFilterDesc>
+
+  <!-- 4.0: buffer-warehouse keys removed with the feature (DS_TabBufferWarehouse / DS_Buffer*).
+       DS_Priority is reused by the new container-contents panel, so it stays. -->
+  <DS_Priority>Haul Priority</DS_Priority>
+
+  <!-- ========== Crafting proxy (CompBillAutomation) ========== -->
+  <DS_TabBillAutomation>Craft automation</DS_TabBillAutomation>
+  <DS_BA_Toggle>Craft automation</DS_BA_Toggle>
+  <DS_BA_ToggleDesc>Turn this off and the crafting proxy stops working recipes for nearby benches (scan range and overclock tier are kept).</DS_BA_ToggleDesc>
+  <DS_BA_ToggleState>Craft automation: {0}</DS_BA_ToggleState>
+  <DS_BA_On>on</DS_BA_On>
+  <DS_BA_Off>off</DS_BA_Off>
+  <DS_BA_Overclock>Overclock: {0}</DS_BA_Overclock>
+  <DS_BA_OverclockDesc>Click to cycle the overclock tier. Current draw {0} W.\n3GHz: 30% of humanity thanks you (speed x3, power x9)\n6GHz: 60% of humanity thanks you (speed x6, power x27)\n9GHz: 90% of humanity thanks you (speed x9, power x81)</DS_BA_OverclockDesc>
+  <DS_BA_OverclockMsg>{0} overclock: {1} (draw {2} W)</DS_BA_OverclockMsg>
+  <DS_BA_ShowRange>Show range</DS_BA_ShowRange>
+  <DS_BA_ShowRangeDesc>Draw this crafting proxy's {0}x{0} working range on the map, so you can see which benches it covers. Stays visible while toggled on; costs nothing.</DS_BA_ShowRangeDesc>
+  <DS_BA_OC_Off>off</DS_BA_OC_Off>
+  <DS_BA_OC_3>3 GHz</DS_BA_OC_3>
+  <DS_BA_OC_6>6 GHz</DS_BA_OC_6>
+  <DS_BA_OC_9>9 GHz</DS_BA_OC_9>
+  <DS_BA_Watts>Draw: {0} W (self {1} + benches {2}, overclock x{3})</DS_BA_Watts>
+  <DS_BA_Stats>Produced {0}, dropped {1}, recipes {2}</DS_BA_Stats>
+  <DS_BA_NoBench>No workbench that can craft anything within 13x13.</DS_BA_NoBench>
+  <DS_BA_NoBill>No recipe to work on (missing material / skill too low / conditions unmet)</DS_BA_NoBill>
+  <DS_BA_NoCoreMaterial>Material is not inside a digital storage core (automation only consumes from cores)</DS_BA_NoCoreMaterial>
+  <DS_BA_BenchOff>Bench is unpowered, out of fuel or broken</DS_BA_BenchOff>
+  <DS_BA_BenchBusy>A colonist is using this bench</DS_BA_BenchBusy>
+  <DS_BA_Block_Material>Missing material (not enough inside the core)</DS_BA_Block_Material>
+  <DS_BA_Block_Skill>Skill too low (recipe needs more)</DS_BA_Block_Skill>
+  <DS_BA_Block_Restricted>This recipe is restricted to a specific pawn; the proxy will not take it</DS_BA_Block_Restricted>
+  <DS_BA_Block_Spot>The bench's interaction cell is blocked or forbidden</DS_BA_Block_Spot>
+  <DS_BA_AddTitle>Add a crafting recipe (from benches in range)</DS_BA_AddTitle>
+  <DS_BA_Forever>forever</DS_BA_Forever>
+  <DS_BA_Remain>{0} left</DS_BA_Remain>
+  <DS_BA_Lines>running {0}/{1}</DS_BA_Lines>
+  <DS_BA_Suspend>suspend</DS_BA_Suspend>
+  <DS_BA_Resume>resume</DS_BA_Resume>
+  <DS_BA_Suspended>suspended</DS_BA_Suspended>
+  <DS_BA_PlanFinished>finished</DS_BA_PlanFinished>
+  <DS_BA_PlanDone>Order finished: {0} ({1} produced)</DS_BA_PlanDone>
+  <DS_BA_Empty>No recipes yet. Click "Add recipe…" and pick one from what the benches in range can craft.</DS_BA_Empty>
+  <DS_BA_NoRecipeAvailable>Nothing to add - no bench in this 13x13 can craft anything (or those recipes are not researched yet).</DS_BA_NoRecipeAvailable>
+  <DS_BA_AlreadyAdded>already added</DS_BA_AlreadyAdded>
+  <DS_BA_ClickToAdd>click to add</DS_BA_ClickToAdd>
+  <DS_BA_SkillShort>skill too low</DS_BA_SkillShort>
+  <DS_BA_NeedSkill>Requires: {0}</DS_BA_NeedSkill>
+  <DS_BA_Block_Unsupported>This workbench type cannot be automated</DS_BA_Block_Unsupported>
+  <DS_BA_Block_Research>Research not unlocked</DS_BA_Block_Research>
+
+  <!-- ========== Craft automation · three-column window ========== -->
+  <DS_CA_NoProxy>No crafting proxy on this map - build one first</DS_CA_NoProxy>
+  <DS_CA_NoProxyHint>No crafting proxy on this map: build one and you can manage its recipes, materials and progress here.</DS_CA_NoProxyHint>
+  <DS_CA_Orders>Orders</DS_CA_Orders>
+  <DS_CA_NoOrder>No orders in this filter</DS_CA_NoOrder>
+  <DS_CA_PickOrder>Pick an order on the left to see details</DS_CA_PickOrder>
+  <DS_CA_AddRecipe>Add recipe…</DS_CA_AddRecipe>
+  <DS_CA_AddHint>Click a row to add just that order · Shift+click a row = add the whole tree incl. intermediates · grey = no skill or already added</DS_CA_AddHint>
+  <DS_CA_OpenPanel>Open craft panel</DS_CA_OpenPanel>
+  <DS_CA_NavAll>All</DS_CA_NavAll>
+  <DS_CA_NavOk>Running</DS_CA_NavOk>
+  <DS_CA_NavBad>Blocked</DS_CA_NavBad>
+  <DS_CA_NavWarn>Waiting</DS_CA_NavWarn>
+  <DS_CA_NavIdle>Suspended</DS_CA_NavIdle>
+  <DS_CA_NavDone>Finished</DS_CA_NavDone>
+  <DS_CA_Mode>Mode</DS_CA_Mode>
+  <DS_CA_Running>Running</DS_CA_Running>
+  <DS_CA_Status>Status</DS_CA_Status>
+  <DS_CA_Progress>Progress</DS_CA_Progress>
+  <DS_CA_Percent>{0}%</DS_CA_Percent>
+  <DS_CA_RemainTime>about {0} s left</DS_CA_RemainTime>
+  <DS_CA_Needs>Materials (taken from digital storage cores)</DS_CA_Needs>
+  <DS_CA_NoMaterials>This recipe needs no materials</DS_CA_NoMaterials>
+  <DS_CA_Have>need {0} · core {1}</DS_CA_Have>
+  <DS_CA_Sub>{0} · requires {1}</DS_CA_Sub>
+  <DS_CA_Working>working</DS_CA_Working>
+  <DS_CA_Waiting>waiting</DS_CA_Waiting>
+  <DS_CA_Up>Up</DS_CA_Up>
+  <DS_CA_Down>Down</DS_CA_Down>
+  <DS_CA_Delete>Delete</DS_CA_Delete>
+  <DS_CA_SetForever>Set to forever</DS_CA_SetForever>
+  <DS_CA_ModeBtn>Mode: {0}</DS_CA_ModeBtn>
+  <DS_CA_Target>Keep {0}/{1}</DS_CA_Target>
+  <DS_CA_TargetPaused>Satisfied ({0}/{1}); resumes when products are used up</DS_CA_TargetPaused>
+  <DS_CA_PauseWhenSatisfied>Pause when satisfied</DS_CA_PauseWhenSatisfied>
+  <DS_BA_Stats2>produced {0} · recipes {1}</DS_BA_Stats2>
+  <DS_Cat_All>All</DS_Cat_All>
+  <DS_Cat_Weapon>Weapons</DS_Cat_Weapon>
+  <DS_Cat_Apparel>Apparel &amp; gear</DS_Cat_Apparel>
+  <DS_Cat_Manufactured>Manufactured</DS_Cat_Manufactured>
+  <DS_Cat_Food>Food</DS_Cat_Food>
+  <DS_Cat_Medical>Medicine &amp; drugs</DS_Cat_Medical>
+  <DS_Cat_Building>Building &amp; furniture</DS_Cat_Building>
+  <DS_Cat_Other>Other</DS_Cat_Other>
+  <DS_BA_Done>Crafted: {0} (stored into digital storage)</DS_BA_Done>
+  <DS_BA_DoneDropped>Crafted: {0} (core full or disabled, dropped at the bench)</DS_BA_DoneDropped>
+
+  <!-- ========== Inspect strings and proxy worker job names ========== -->
+  <DS_CoreInspect>Storage Core Lv{0}: {1} stacks / {2} units (cap {3} stacks)</DS_CoreInspect>
+  <DS_CorePriority>Storage priority: {0}</DS_CorePriority>
+  <DS_DW_InspectOff>Proxy building: no power</DS_DW_InspectOff>
+  <DS_DW_InspectDisabled>Proxy building: turned off</DS_DW_InspectDisabled>
+  <DS_DW_InspectIdle>Proxy building: idle</DS_DW_InspectIdle>
+  <DS_DW_InspectIdleNoTarget>Proxy building: idle (no target found)</DS_DW_InspectIdleNoTarget>
+  <DS_DW_InspectWork>Proxy building: {0} · {1} (speed {2}x, skill {3}, parallel {4}/{5})</DS_DW_InspectWork>
+  <DS_BA_InspectOff>Crafting proxy: no power</DS_BA_InspectOff>
+  <DS_BA_InspectDisabled>Crafting proxy: turned off</DS_BA_InspectDisabled>
+  <DS_BA_InspectWork>Crafting proxy: {0} lines running · {1} recipes · {2}W (speed {3}x × overclock {4}x, skill {5})</DS_BA_InspectWork>
+  <DS_BA_InspectNoBench> · no workbench within 13×13</DS_BA_InspectNoBench>
+  <DS_Task_Mine>Mining</DS_Task_Mine>
+  <DS_Task_Build>Construction</DS_Task_Build>
+  <DS_Task_Deconstruct>Deconstruction</DS_Task_Deconstruct>
+  <DS_Task_Clean>Cleaning</DS_Task_Clean>
+  <DS_Task_CutHarvest>Harvest / chop</DS_Task_CutHarvest>
+  <DS_Task_Cut>Cut</DS_Task_Cut>
+  <DS_Task_Sow>Sowing</DS_Task_Sow>
+  <DS_Task_Reap>Harvesting</DS_Task_Reap>
+
+  <!-- ========== 4.0 update letter (GameComponent.FinalizeInit, once per save) ========== -->
+  <DigitalStorage_Letter40_Label>Digital Storage 4.0 - update notes &amp; quick start (2026.10.3)</DigitalStorage_Letter40_Label>
+  <DigitalStorage_Letter40_Text>Digital Storage 4.0 — released 2026.10.3\n\n4.0 is a heart transplant: items are no longer numbers in a ledger, they are real Things held inside the core. Apparel, weapons, quality and durability all survive, and vanilla hauling, trading and item scanners recognise them natively.\n\n✅ Existing 3.0 saves are migrated automatically:\n- Inventory stored in a 3.0 core (the old ledger) is turned back into real items inside the container; anything that does not fit is dropped at the core's feet instead of being lost.\n- Your storage filter is carried over (only the "blocked" side is kept, nothing is loosened).\n⚠️ Removed for good: storage interfaces, terminal chips, buffer warehouses and the core upgrade component (capacity now comes from research, see below).\n- Interfaces, buffer warehouses, chips and implants that already exist in an old save can no longer be resolved and will disappear when the save is loaded (a few one-off "could not find Def" lines in the log).\nRecommended: back up your save before updating.\n\nWhat changed in 4.0:\n- Core capacity starts at 500 stacks and can be researched up to 1000 / 1500 / 3000 (existing cores expand the moment the research finishes)\n- Remote access from anywhere at any distance, including cross-map (cores on other maps can supply materials); bill ingredients go straight into a pawn's backpack instead of walking to the core\n- Auto-ingest is now a three-tier research path (1/5/10 stacks per 15 ticks), no longer limited by home area or distance\n- Proxy buildings (digital workers): 12 dedicated buildings that do the work themselves - mining, construction and deconstruction, cleaning, and growing (sowing, harvesting, tree chopping), in three speed/skill tiers; the Transcendent proxy covers all five work types with up to 75 parallel jobs each\n- Crafting proxy: runs the recipes of nearby workbenches on its own, taking materials from the core and delivering products straight back into it, with 3/6/9 GHz overclocking and a vanilla-style "target count" mode\n- Caravans, orbital trade beacons and visiting traders can all sell straight from the core\n- Compatibility layer: Phinix and its Red Packet plugin are supported, including the "allow trading items that are not in storage" branch\n\n[Crafting proxy - how to get started]\n- Build a "Crafting proxy" next to your workbenches. Its range is 13x13; select it and hit the "show range" gizmo to see which benches it covers\n- Open the panel: select it and press "Open crafting panel" in the inspect pane, or use the "Craft automation" button on the bottom bar (the top-left of the window switches between crafting proxies on this map)\n- Click "Add recipe..." - the list is exactly what the workbenches in range can craft - then click a row to add it to the order list\n- Orders have three modes: forever / remaining count / target count (target = pause when satisfied, resume automatically when the products get used up). Type an amount straight into the box, or use -1 / +1 / -10 / +10\n- Ingredients come out of a digital storage core and products go straight back into it - the workbench does not need a bill, it only unlocks the recipe\n- If it is not working, the detail pane says why: missing material / skill too low / bench unpowered or out of fuel / occupied by a colonist / interaction cell blocked / this bench type cannot be automated\n- For more speed, turn on "overclock" in the building's gizmos: 3 / 6 / 9 GHz (speed x3 / x6 / x9 at 9 / 27 / 81 times the power - make sure your grid can take it)\n- No power, no work. Tier decides skill (I/II/III/IV = 5/10/15/20); if a recipe needs more, use a higher tier proxy\n\nThank you for your support! Bug reports: QQ group 693252771.</DigitalStorage_Letter40_Text>
+
+  <!-- ★ PR③ AE2 界面新增文案（含 PR② 的那一批：PR③ 叠在 PR② 之上） -->
+  <DS_BA_RangeLabel>Range {0}</DS_BA_RangeLabel>
+  <DS_BA_RangeDesc>Click to cycle the scan range (default -> larger -> whole map -> back to default). A bigger range covers more workbenches and cores.</DS_BA_RangeDesc>
+  <DS_BA_RangeWholeMap>whole map</DS_BA_RangeWholeMap>
+  <DS_JOB_St_TooSmall>Crafting storage too small: {0} needs {1} items, current tier is only {2}</DS_JOB_St_TooSmall>
+  <DS_JOB_Submitted>Submitted craft: {0} x{1} ({2} steps)</DS_JOB_Submitted>
+  <DS_JOB_Done>Craft finished: {0} x{1} ({2} steps)</DS_JOB_Done>
+  <DS_JOB_Cancelled>Cancelled the whole craft: {0} ({1} steps, {2} orders removed)</DS_JOB_Cancelled>
+  <DS_AE2_Title>Craft automation</DS_AE2_Title>
+  <DS_AE2_OpenCraft>Craft CPU</DS_AE2_OpenCraft>
+  <DS_AE2_OpenPanel>Open craft panel</DS_AE2_OpenPanel>
+  <DS_AE2_TooSmall>Window too small - please enlarge (at least 620x360)</DS_AE2_TooSmall>
+  <DS_AE2PREVIEW>UI</DS_AE2PREVIEW>
+  <DS_AE2PREVIEW_DESC>Open the crafting UI.</DS_AE2PREVIEW_DESC>
+  <DS_AE2_Blocked>Blocked</DS_AE2_Blocked>
+  <DS_AE2_CoreItems>Digital storage core</DS_AE2_CoreItems>
+  <DS_AE2_CoreEmpty>Core is empty (or no core in range)</DS_AE2_CoreEmpty>
+  <DS_AE2_CatAll>All categories</DS_AE2_CatAll>
+  <DS_AE2_Stuff>Material: {0}</DS_AE2_Stuff>
+  <DS_AE2_StuffAny>Any material</DS_AE2_StuffAny>
+  <DS_AE2_Style>Style: {0}</DS_AE2_Style>
+  <DS_AE2_StyleAny>Default style</DS_AE2_StyleAny>
+  <DS_AE2_ModeKeep>Keep {0}</DS_AE2_ModeKeep>
+  <DS_AE2_ModeCount>Count {0}</DS_AE2_ModeCount>
+  <DS_AE2_ModeForever>Forever</DS_AE2_ModeForever>
+  <DS_AE2_NeedWithCore>{0} x{1} · core {2}</DS_AE2_NeedWithCore>
+  <DS_AE2_Tree_Btn>Craft tree</DS_AE2_Tree_Btn>
+  <DS_AE2_Tree_Title>Craft tree · {0}</DS_AE2_Tree_Title>
+  <DS_AE2_Tree_Live>Craft tree (live) · {0} x{1}</DS_AE2_Tree_Live>
+  <DS_AE2_Tree_Count>Count {0}</DS_AE2_Tree_Count>
+  <DS_AE2_Tree_Submit>Submit request</DS_AE2_Tree_Submit>
+  <DS_AE2_Tree_CancelJob>Cancel whole craft</DS_AE2_Tree_CancelJob>
+  <DS_AE2_Tree_St_Done>done</DS_AE2_Tree_St_Done>
+  <DS_AE2_Tree_St_Susp>suspended</DS_AE2_Tree_St_Susp>
+  <DS_AE2_Tree_St_Doing>doing {0}%</DS_AE2_Tree_St_Doing>
+  <DS_AE2_Tree_St_Wait>waiting for bench</DS_AE2_Tree_St_Wait>
+  <DS_AE2_Tree_NoOrder>no order</DS_AE2_Tree_NoOrder>
+  <DS_AE2_Tree_DoneSteps>{0}/{1} steps done</DS_AE2_Tree_DoneSteps>
+  <DS_AE2_Tree_Req>request {0}</DS_AE2_Tree_Req>
+  <DS_AE2_Tree_Warn>No recipe {0} · cycle {1} · chance {2}</DS_AE2_Tree_Warn>
+  <DS_AE2_Tree_Need>need {0} ({1} crafts)</DS_AE2_Tree_Need>
+  <DS_AE2_Tree_Enough>enough in core ({0})</DS_AE2_Tree_Enough>
+  <DS_AE2_Tree_NoRecipe>no recipe (core {0})</DS_AE2_Tree_NoRecipe>
+  <DS_AE2_Tree_Cycle>cycle, cut</DS_AE2_Tree_Cycle>
+  <DS_AE2_Tree_Craftable>craftable (core {0}, short {1})</DS_AE2_Tree_Craftable>
+  <DS_AE2_Tree_Empty>empty tree</DS_AE2_Tree_Empty>
+  <DS_AE2_NeedAny>Any of: {0} (core {1})</DS_AE2_NeedAny>
+  <DS_EmptyCoreText>Core is empty (put something in)</DS_EmptyCoreText>
+  <DS_KindsEmpty>No matching entries (try another search)</DS_KindsEmpty>
+  <DS_JOB_St_Crafting>Crafting</DS_JOB_St_Crafting>
+  <DS_JOB_St_Finished>Craft finished</DS_JOB_St_Finished>
+  <DS_JOB_St_Cancelled>Cancelled</DS_JOB_St_Cancelled>
+  <DS_JOB_St_NoProxy>No crafting proxy</DS_JOB_St_NoProxy>
+  <DS_JOB_St_Disabled>Crafting proxy disabled</DS_JOB_St_Disabled>
+  <DS_JOB_St_NoPower>Crafting proxy has no power</DS_JOB_St_NoPower>
+  <DS_JOB_St_Incomplete>Incomplete plan: the order for {0} is gone</DS_JOB_St_Incomplete>
+  <DS_JOB_St_Done>Done</DS_JOB_St_Done>
+  <DS_JOB_St_Missing>Missing: {0}</DS_JOB_St_Missing>
+  <DS_JOB_St_Busy>Workbench is busy</DS_JOB_St_Busy>
+  <DS_JOB_St_NoBench>No usable workbench in range</DS_JOB_St_NoBench>
+  <DS_JOB_St_Queue>Queued for a workbench</DS_JOB_St_Queue>
+  <DS_AE2_AddTitle>Crafting terminal - add recipe</DS_AE2_AddTitle>
+  <DS_AE2_NoRecipeInCat>No craftable recipes in this category</DS_AE2_NoRecipeInCat>
+  <DS_AE2_NoRecipeMatch>No recipe matching "{0}"</DS_AE2_NoRecipeMatch>
+  <DS_AE2_PickRecipeFirst>Pick a recipe above first</DS_AE2_PickRecipeFirst>
+  <DS_AE2_Submit>Submit request</DS_AE2_Submit>
+  <DS_AE2_AlreadyInJob>Already in this request</DS_AE2_AlreadyInJob>
+  <DS_AE2_StuffNone>Any material (whatever the core holds)</DS_AE2_StuffNone>
+  <DS_AE2_NoStuff>(this recipe takes no material)</DS_AE2_NoStuff>
+  <DS_AE2_TakeHint>Left-click to open the withdraw dialog</DS_AE2_TakeHint>
+  <DS_AE2_CoreSummary>{0} kinds · {1} items</DS_AE2_CoreSummary>
+  <DS_AE2_NoProxyInMap>No crafting proxy on this map</DS_AE2_NoProxyInMap>
+  <DS_AE2_FilterAllHint>All orders</DS_AE2_FilterAllHint>
+  <DS_AE2_FilterRunningHint>Orders a workbench is already working on</DS_AE2_FilterRunningHint>
+  <DS_AE2_FilterWaitingHint>Queued, but no free workbench yet (or waiting for the previous item)</DS_AE2_FilterWaitingHint>
+  <DS_AE2_FilterBlockedHint>Blocked: not enough material, or no usable workbench in range</DS_AE2_FilterBlockedHint>
+  <DS_AE2_FilterSuspendedHint>Orders you suspended by hand</DS_AE2_FilterSuspendedHint>
+  <DS_AE2_FilterDoneHint>Finished or satisfied (target mode resumes when the products get used up)</DS_AE2_FilterDoneHint>
+  <DS_AE2_Tree_StInCore>in core {0}</DS_AE2_Tree_StInCore>
+  <DS_AE2_Tree_StNoRecipe>no recipe {0}</DS_AE2_Tree_StNoRecipe>
+  <DS_AE2_Tree_StCycle>cycle</DS_AE2_Tree_StCycle>
+  <DS_AE2_Tree_StMissing>missing {0}</DS_AE2_Tree_StMissing>
+  <DS_AE2_Tree_StNoOrder>no order</DS_AE2_Tree_StNoOrder>
+  <DS_AE2_Tree_StDone>done</DS_AE2_Tree_StDone>
+  <DS_AE2_Tree_StSusp>suspended</DS_AE2_Tree_StSusp>
+  <DS_AE2_Tree_StWait>waiting for bench</DS_AE2_Tree_StWait>
+  <DS_AE2_Tree_Zoom>Zoom {0}%</DS_AE2_Tree_Zoom>
+  <!-- 合成树（Dialog_DS_CraftTree）文案：从 _archive\steps-reference\resource-changes.ps1 恢复 -->
+  <DS_CT_Added>Added {0} stock-keeping order(s) ({1} existing left untouched)</DS_CT_Added>
+  <DS_CT_AddSingle>Add just this one</DS_CT_AddSingle>
+  <DS_CT_AddTree>Add with intermediates ({0})</DS_CT_AddTree>
+  <DS_CT_AddTreeNone>no intermediates</DS_CT_AddTreeNone>
+  <DS_CT_Cancel>Cancel</DS_CT_Cancel>
+  <DS_CT_CompactOff>Compact: off</DS_CT_CompactOff>
+  <DS_CT_CompactOn>Compact: on</DS_CT_CompactOn>
+  <DS_CT_Current>current</DS_CT_Current>
+  <DS_CT_HoverCovered>{0}: {1} in core, no need to craft</DS_CT_HoverCovered>
+  <DS_CT_HoverCycle>{0}: cyclic dependency, truncated</DS_CT_HoverCycle>
+  <DS_CT_HoverHint>Hover a box for details; click a box that has alternatives to switch recipe</DS_CT_HoverHint>
+  <DS_CT_HoverNode>{0}: need {1} · recipe {2} · craft {3}x · {4} per craft</DS_CT_HoverNode>
+  <DS_CT_HoverNoRecipe>{0}: needs {1} but has no available recipe (prepare manually)</DS_CT_HoverNoRecipe>
+  <DS_CT_Raw>Raw materials</DS_CT_Raw>
+  <DS_CT_RawLine>{0} x{1} (core {2} / short {3})</DS_CT_RawLine>
+  <DS_CT_RawMore>...and {0} more</DS_CT_RawMore>
+  <DS_CT_RawNone>(no raw materials needed)</DS_CT_RawNone>
+  <DS_CT_Root>Final product: {0}</DS_CT_Root>
+  <DS_CT_Skipped>Skipped {0} existing order(s) (your settings were not overwritten)</DS_CT_Skipped>
+  <DS_CT_Sub>need {0} · craft {1}x · {2} per craft</DS_CT_Sub>
+  <DS_CT_SubCovered>{0} in core, covered</DS_CT_SubCovered>
+  <DS_CT_SubNoRecipe>no recipe available</DS_CT_SubNoRecipe>
+  <DS_CT_TagChance>chance</DS_CT_TagChance>
+  <DS_CT_TagCycle>cycle</DS_CT_TagCycle>
+  <DS_CT_Title>Crafting tree</DS_CT_Title>
+  <DS_CT_Wanted>Keep stocked</DS_CT_Wanted>
+  <DS_CT_WantedHint>Intermediates are scaled from this number by per-item usage</DS_CT_WantedHint>
+  <DS_CT_WarnAmbiguous>{0} with alternatives</DS_CT_WarnAmbiguous>
+  <DS_CT_WarnChance>{0} chance-based</DS_CT_WarnChance>
+  <DS_CT_WarnCycle>{0} cyclic</DS_CT_WarnCycle>
+  <DS_CT_WarnNoRecipe>{0} without recipe</DS_CT_WarnNoRecipe>
+    <!-- Mode segmented buttons (AE2 uses side-by-side squares, not a cycle button) -->
+    <DS_CA_ModeKeepShort>Keep</DS_CA_ModeKeepShort>
+    <DS_CA_ModeCountShort>Count</DS_CA_ModeCountShort>
+    <DS_CA_ModeForeverShort>Infinite</DS_CA_ModeForeverShort>    <DS_CA_SwitchProxy>Switch craft proxy</DS_CA_SwitchProxy>
+    <DS_CA_Detail>Details</DS_CA_Detail>
+    <DS_CA_Skill>Skill</DS_CA_Skill>
+    <DS_CA_Material>Material</DS_CA_Material>
+    <DS_CA_Bench>Bench</DS_CA_Bench>
+    <DS_CA_CoreHave>core {0}</DS_CA_CoreHave>
+    <DS_CA_CoreStore>Storage</DS_CA_CoreStore>
+    <DS_CA_SuspendAll>Pause all</DS_CA_SuspendAll>
+    <DS_CA_ResumeAll>Resume all</DS_CA_ResumeAll>
+    <DS_CA_SuspendAllMsg>{1}: {0} order(s)</DS_CA_SuspendAllMsg>
+    <DS_CA_DeleteTree>Delete tree</DS_CA_DeleteTree>
+    <DS_CA_DeleteTreeNoSel>Select an order first</DS_CA_DeleteTreeNoSel>
+    <DS_CA_SkillNone>none</DS_CA_SkillNone>
+    <DS_CA_DeletedOne>Deleted order "{0}"</DS_CA_DeletedOne>
+    <DS_CA_DeletedTree>Deleted the whole craft tree ({0} order(s))</DS_CA_DeletedTree>
+    <DS_PUAH_LetterLabel>Pick Up And Haul conflict (Digital Storage)</DS_PUAH_LetterLabel>
+    <DS_PUAH_LetterText>The Digital Storage core ingests by【teleport】: loose items fly into the core and ingredients go\nstraight to workbenches. There is no hauling job to hand over at any point.\n\nPick Up And Haul works the other way round: it batches items first and then stuffs them into\ncontainers one by one, holding on to Thing references and tracking "is this still in the pawn's\ninventory?" with its own list. When we teleport the very item a pawn is about to pick up, we do\n【not】destroy it, so their references never invalidate and the two sides drift apart.\n\nObserved symptoms: pawns standing idle / picking things up over and over / a red log line every tick.\n\n-- How to run both --\nOptions -> Mod settings -> Digital Storage -> turn OFF【auto-ingest】.\n\nWith auto-ingest off the teleporting stops and hauling goes back to colonists and Pick Up And Haul,\nso both mods can be used together (the core still works manually and still feeds your workbenches).\n\nIf you do not need Pick Up And Haul: with a storage core it has little to do anyway -- what it\nsaves is hauling trips, and the core does not haul at all.\n\nThis notice appears once every time you load a save (a new save or a changed mod list can walk into\nthis again). It stops appearing once auto-ingest is off.</DS_PUAH_LetterText>
+</LanguageData>

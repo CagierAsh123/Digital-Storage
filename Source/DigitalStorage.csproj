@@ -109,6 +109,8 @@
     <Compile Include="AI\BillStackSwap.cs" />
     <Compile Include="AI\BillProbe.cs" />
     <Compile Include="AI\BillCraftFunnel.cs" />
+    <Compile Include="AI\CraftJob.cs" />
+    <Compile Include="AI\CraftTree.cs" />
 
     <Compile Include="Effects\Mote_DS_IngestBeam.cs" />
     <Compile Include="Effects\Mote_DS_WorkHand.cs" />
@@ -124,6 +126,7 @@
     <Compile Include="UI\MainButtonWorker_CraftAutomation.cs" />
     <Compile Include="UI\Dialog_WithdrawAmount.cs" />
     <Compile Include="UI\Dialog_StorageFilter.cs" />
+    <Compile Include="UI\AE2Draw.cs" />
     <Compile Include="UI\FloatMenuOptionProvider_DS_Withdraw.cs" />
 
     <Compile Include="HarmonyPatches\HarmonyInit.cs" />

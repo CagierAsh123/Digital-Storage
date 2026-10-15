@@ -49,6 +49,29 @@ namespace DigitalStorage.AI
         public Thing[] Ingredients;
         public int[] Counts;
 
+        /// <summary>
+        /// 取活那一刻定下的<b>主材质</b>（= 原版 <c>Toils_Recipe.CalculateDominantIngredient</c> 挑中的那一件的 def）。
+        ///
+        /// <para><b>为什么必须存下来</b>：未完成品（UFT）配方的工作量取自
+        /// <c>RecipeDef.WorkAmountForStuff(uft.Stuff)</c>，而 <c>uft.Stuff</c> 就是这里的主材质
+        /// ⇒ "算工时用的材质"和"做产物用的材质"必须是同一个，否则会按 A 材质的工时做出 B 材质的产物。</para>
+        ///
+        /// <para>普通配方恒为 null（它们的工作量不看 Stuff），行为与改之前完全一致。</para>
+        /// </summary>
+        public ThingDef StuffDef;
+
+        /// <summary>
+        /// 这条产线限定的<b>材料</b>（null = 不限定，核心里有啥用啥）。取自 <see cref="CraftPlan.allowedStuff"/>，
+        /// 取活时快照一份：改材料只影响之后的产线，在跑的这条按取活时的约定做完。
+        /// </summary>
+        public ThingDef AllowedStuff;
+
+        /// <summary>
+        /// ★ 第 2 步：这条线从什么时候开始"在等料"（0 = 没在等料）。
+        /// AE2 里材料不齐的步骤根本推不下去、也就不占加工位；DS 靠这个时间戳判断"该让位了"。
+        /// </summary>
+        public int BlockedSinceTick;
+
         /// <summary>原版速度公式在"取活那一刻"的值：<c>workSpeedStat</c> × 台子 <c>workTableSpeedStat</c>。</summary>
         public float BaseRate = 1f;
 
@@ -85,6 +108,9 @@ namespace DigitalStorage.AI
             Probe = null;
             Ingredients = null;
             Counts = null;
+            StuffDef = null;
+            AllowedStuff = null;
+            BlockedSinceTick = 0;
             BaseRate = 1f;
             WorkAmount = 0f;
             WorkLeft = 0f;

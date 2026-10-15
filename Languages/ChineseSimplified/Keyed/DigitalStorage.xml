@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
 
   <!-- ========== Building_StorageCore ========== -->
@@ -54,14 +54,10 @@
   <DS_AccessSettings>访问与自动化</DS_AccessSettings>
   <DS_AutoIngestToggle>自动收纳</DS_AutoIngestToggle>
   <DS_AutoIngestToggleDesc>允许核心自动吸收附近散落物品，无需搬运工。若发现物品在地图上"瞬移"，关闭此项。</DS_AutoIngestToggleDesc>
-  <DS_AutoIngestYieldToggle>自动收纳避让作业</DS_AutoIngestYieldToggle>
-  <DS_AutoIngestYieldToggleDesc>开启后，自动收纳会让位给"正在用这件东西的人"：某个小人的作业正指着它，或者它躺在还有 bill 在等料的工作台旁边（让 300 tick）。这是给"取出材料准备制造 → 材料立刻被吸走 → 反复取物卡住"那类死循环准备的一键对照。关闭（默认）= 算中即入：一进原版待搬表，15 tick 内就瞬移进核心。</DS_AutoIngestYieldToggleDesc>
   <DS_BackpackMechToggle>机械族也挂背包</DS_BackpackMechToggle>
   <DS_BackpackMechToggleDesc>数字存储背包也会挂给殖民地机械族（含其它 mod 的无人机 / 机器人），默认开。若怀疑某个机械族 mod 的报错与本 mod 有关，关掉它即可让机械族身上不再有任何本 mod 的东西（殖民者不受影响），用于一键对照。</DS_BackpackMechToggleDesc>
   <DS_PerfToggle>原版性能修复</DS_PerfToggle>
   <DS_PerfToggleDesc>修四个原版热点（在你框选/标记很多目标，或核心里囤了几百堆货时会明显卡顿）：视野外的选中括号不再绘制；标记图标改为增量更新，而不是原版那样每帧把整张图的标记重算一遍；批量标记时喷的"元气泡"改为每 tick 限量；核心里已有的库存不再被原版搬运列表每 tick 逐件重算一遍（判定结果与原版一致，改过滤器后照旧由搬运工取空）。纯性能，不改玩法。关掉可逐条退回原版行为。</DS_PerfToggleDesc>
-  <DS_NoWorkFailureToggle>工作不会失败</DS_NoWorkFailureToggle>
-  <DS_NoWorkFailureToggleDesc>把原版三处"干完才发现白干"的掷骰变成必成：收割（收获失败 = 整株作物白收，只掉一个红字）、建造（建造失败 = 框里的材料白费，得重新取料）、修故障（修复失败 = 零件白费）。原理是把这三条判定读的数值（植物 / 建造技能曲线、手 / 眼能力的影响）夹到 100%，所以低技能的小人也不会失败，而高技能原本的多产奖励（最高 +13%）照旧不变。对所有人生效（含原版与其它 mod 的小人）。关掉即完全恢复原版。</DS_NoWorkFailureToggleDesc>
   <DS_WorkerBudget>代理建筑：每 tick 最多完成 {0} 件（0 = 无限制）</DS_WorkerBudget>
   <DS_WorkerBudgetDesc>每完成一件活要付一次原版代价（约 0.4~0.5ms）：挖完生成掉落物（要搜附近空位）、建完生成建筑、拆完还材料、收获生成作物，各自还会让 region 变脏并重新注册到 listerThings。并行 75 × 7.5 倍速就是每 tick 完成 20~40 件 = 每 tick 10~20ms CPU，而 60Hz 每帧只有 16.7ms。调小可稳住帧率，调大（或设 0）换取纯扫图速度。</DS_WorkerBudgetDesc>
   <DS_FleckBudget>每帧最多特效气泡：{0} 个（0 = 无限制）</DS_FleckBudget>
@@ -103,7 +99,7 @@
   <DS_BA_BenchBusy>殖民者正在使用这台工作台</DS_BA_BenchBusy>
   <DS_BA_Block_Material>缺料（核心里的材料不足）</DS_BA_Block_Material>
   <DS_BA_Block_Skill>资质不够（配方要求更高技能）</DS_BA_Block_Skill>
-  <DS_BA_Block_Restricted>这条配方不允许这个工人开工（限定小人 / 仅机械师）</DS_BA_Block_Restricted>
+  <DS_BA_Block_Restricted>这条 bill 限定给特定小人，代理不抢</DS_BA_Block_Restricted>
   <DS_BA_Block_Spot>工作台的站位格被堵住或被禁止</DS_BA_Block_Spot>
   <DS_BA_AddTitle>添加制作配方（范围内工作台能做的）</DS_BA_AddTitle>
   <DS_BA_Forever>无限</DS_BA_Forever>
@@ -130,7 +126,7 @@
   <DS_CA_NoOrder>这一类里没有订单</DS_CA_NoOrder>
   <DS_CA_PickOrder>左边选一条订单看详情</DS_CA_PickOrder>
   <DS_CA_AddRecipe>添加配方…</DS_CA_AddRecipe>
-  <DS_CA_AddHint>点一行加入订单列表 · 灰行 = 资质不够或已添加</DS_CA_AddHint>
+  <DS_CA_AddHint>点一行加入订单列表（只加这一条） · Shift+点行 = 连中间产物一起加 · 灰行 = 资质不够或已添加</DS_CA_AddHint>
   <DS_CA_OpenPanel>打开制作面板</DS_CA_OpenPanel>
   <DS_CA_NavAll>全部</DS_CA_NavAll>
   <DS_CA_NavOk>生产中</DS_CA_NavOk>
@@ -195,8 +191,138 @@
   <DigitalStorage_Letter40_Label>数字存储 4.0 更新说明与上手指南 2026.10.3</DigitalStorage_Letter40_Label>
   <DigitalStorage_Letter40_Text>数字存储 4.0 更新说明 2026.10.3\n\n4.0 是「换心脏」：物品不再是账本里的数字，而是真实存放在核心内部的 Thing。衣物、武器、品质与耐久差异全部能存，原版搬运、交易与各类物品扫描器也原生认它。\n\n✅ 3.0 老存档会**自动迁移**：\n· 核心里的库存（旧账本）会逐项还原成真实物品放进容器；容器装不下的会落在核心脚下，不会丢。\n· 你原来的存储筛选会被沿用（只保留「禁用」的那一侧，不会放宽）。\n⚠️ 已移除且不会复活的机制：存储接口、终端芯片、缓冲仓库、核心升级组件（容量现在挂在研究「核心 Lv2 / Lv3 / Lv4」上）。\n· 旧存档里已建好的接口 / 缓冲仓库、芯片与植入体不会再解析出来（读档时日志里会有几条一次性的「找不到 Def」）。\n建议：更新前先备份存档。\n\n4.0 变了什么：\n· 核心容量 500 堆起步，用研究「核心 Lv2 / Lv3 / Lv4」扩到 1000 / 1500 / 3000 堆（研究一完成，已有的核心立刻扩容）\n· 任何位置、任何距离隔空存取（含跨图：别的图上的核心也能供货）；做 bill 时材料直接进随身背包，小人不必先走到核心\n· 自动收纳改为三级研究（每 15 tick 吸 1/5/10 堆），且不再受活动区与距离限制\n· 代理建筑（数字工人）：12 台专用建筑自己干挖掘 / 建造拆除 / 清洁 / 种植（播种 · 收割 · 伐木），三级速度与资质；超凡代理一台接管全部五类工作，每类并行 75 件\n· 制作代理：建筑自己把附近工作台的配方做掉 —— 材料从核心扣、产物直塞核心；支持超频 3/6/9GHz 与「维持数量」\n· 商队、轨道交易信标、访客交易都能直接卖掉核心里的东西\n· 兼容层：Phinix 与红包插件已适配，含「允许交易不在储存区中的物品」那条分支\n\n【制作代理 · 怎么上手】\n· 造一台「制作代理」，放在工作台旁边 —— 作用范围 13×13，选中建筑点 gizmo「显示范围」就能看见它盖住了哪些台子\n· 打开面板：选中它 → 检查面板里的「打开制作面板」；或者点底部菜单栏的「制作自动化」（窗口左上角能切换本图的其它制作代理）\n· 点右上角「添加配方…」→ 列出来的就是范围内工作台能做的配方 → 点一行加进订单\n· 订单有三档：无限 / 剩余次数 / 维持数量（维持 = 达标就暂停，产物被用掉自动恢复）。数量可以直接在输入框里打字，也能用 −1 / +1 / −10 / +10\n· 材料从数字存储核心扣，产物直接回核心 —— 「台子上不需要建 bill」，台子只负责「解锁配方」\n· 没在做的话，详情里会写清楚原因：缺料 / 资质不够 / 台子断电或缺燃料 / 被殖民者占用 / 站位格被堵 / 这种台子不支持代工\n· 想更快：建筑 gizmo 里开「超频」3 / 6 / 9 GHz（速度 ×3 / ×6 / ×9，耗电 ×9 / ×27 / ×81，电网要撑得住）\n· 断电即停工。等级决定资质（I/II/III/IV = 5/10/15/20 级），配方要求更高就换更高级的代理\n\n感谢支持！Bug 反馈 Q 群 693252771。</DigitalStorage_Letter40_Text>
 
-  <!-- ========== 与 Pick Up And Haul 的冲突声明（启动报三行 + 每次进档弹一封红信）========== -->
-  <DS_PUAH_LetterLabel>数字存储 与 Pick Up And Haul 不兼容</DS_PUAH_LetterLabel>
-  <DS_PUAH_LetterText>数字存储与 Pick Up And Haul 不兼容，请二选一 —— 这里的入库是瞬移（散落物自动进核心、材料直送台子），没有搬运作业可以交接；而 PUAH 是拿着物品引用做批量拾取，两边会在「东西已被搬走」与「作业还指着它」之间打转，表现为小人原地发呆、反复取物、日志刷红字。\n要保留数字存储：停用 Pick Up And Haul —— 有核心时它没有额外收益（省的是搬运趟数，而这里根本不搬运）。\n要同时用两者：在「选项 → 数字存储」里关掉「自动收纳」，瞬移入库随之停止，搬运交还给殖民者与 PUAH。</DS_PUAH_LetterText>
-
+  <!-- ★ PR③ AE2 界面新增文案（含 PR② 的那一批：PR③ 叠在 PR② 之上） -->
+  <DS_BA_RangeLabel>范围 {0}</DS_BA_RangeLabel>
+  <DS_BA_RangeDesc>点一下切换扫描范围（默认 → 更大 → 全图 → 回默认）。范围越大，能扫到的工作台与核心越多。</DS_BA_RangeDesc>
+  <DS_BA_RangeWholeMap>全图</DS_BA_RangeWholeMap>
+  <DS_JOB_St_TooSmall>合成存储装不下这个请求：{0} 需要 {1} 件，当前档位只有 {2}（换大档位或缩小数量）</DS_JOB_St_TooSmall>
+  <DS_JOB_SubCannotDelete>「{0}」是最终产物的附属步骤，请删除最终产物那条订单（会整树一起撤）</DS_JOB_SubCannotDelete>
+  <DS_JOB_Submitted>已提交合成：{0} ×{1}（连带 {2} 个步骤一起）</DS_JOB_Submitted>
+  <DS_JOB_Done>合成完成：{0} ×{1}（{2} 步）</DS_JOB_Done>
+  <DS_JOB_Cancelled>已取消整条合成：{0}（共 {1} 步，连带删除 {2} 条订单）</DS_JOB_Cancelled>
+  <DS_AE2_Title>制作自动化</DS_AE2_Title>
+  <DS_AE2_OpenCraft>制作代理</DS_AE2_OpenCraft>
+  <DS_AE2_ToCore>存储核心</DS_AE2_ToCore>
+  <DS_AE2_OpenPanel>打开制作面板</DS_AE2_OpenPanel>
+  <DS_AE2_TooSmall>窗口太小：请把窗口拉大（至少 620×360）</DS_AE2_TooSmall>
+  <DS_AE2PREVIEW>界面</DS_AE2PREVIEW>
+  <DS_AE2PREVIEW_DESC>打开制作界面：订单列表、材料与合成树。</DS_AE2PREVIEW_DESC>
+  <DS_AE2_Blocked>阻塞</DS_AE2_Blocked>
+  <DS_AE2_CoreItems>数字存储核心</DS_AE2_CoreItems>
+  <DS_AE2_CoreEmpty>核心是空的（或范围内没有核心）</DS_AE2_CoreEmpty>
+  <DS_AE2_CatAll>全部分类</DS_AE2_CatAll>
+  <DS_AE2_Stuff>材料：{0}</DS_AE2_Stuff>
+  <DS_AE2_StuffAny>不限材料</DS_AE2_StuffAny>
+  <DS_AE2_Style>风格：{0}</DS_AE2_Style>
+  <DS_AE2_StyleAny>默认风格</DS_AE2_StyleAny>
+  <DS_AE2_ModeKeep>维持 {0}</DS_AE2_ModeKeep>
+  <DS_AE2_ModeCount>数量 {0}</DS_AE2_ModeCount>
+  <DS_AE2_ModeForever>无限</DS_AE2_ModeForever>
+  <DS_AE2_NeedWithCore>{0} ×{1} · 核心 {2}</DS_AE2_NeedWithCore>
+  <DS_AE2_Tree_Btn>合成树</DS_AE2_Tree_Btn>
+  <DS_AE2_Tree_Title>合成树 · {0}</DS_AE2_Tree_Title>
+  <DS_AE2_Tree_Live>合成树（实时）· {0} ×{1}</DS_AE2_Tree_Live>
+  <DS_AE2_Tree_Count>数量 {0}（点 −1 / +1 改）</DS_AE2_Tree_Count>
+  <DS_AE2_Tree_Submit>提交合成请求</DS_AE2_Tree_Submit>
+  <DS_AE2_Tree_CancelJob>取消整个合成</DS_AE2_Tree_CancelJob>
+  <DS_AE2_Tree_St_Done>已完成</DS_AE2_Tree_St_Done>
+  <DS_AE2_Tree_St_Susp>已挂起</DS_AE2_Tree_St_Susp>
+  <DS_AE2_Tree_St_Doing>在做 {0}%</DS_AE2_Tree_St_Doing>
+  <DS_AE2_Tree_St_Wait>等台子</DS_AE2_Tree_St_Wait>
+  <DS_AE2_Tree_NoOrder>没有订单</DS_AE2_Tree_NoOrder>
+  <DS_AE2_Tree_DoneSteps>已完成 {0}/{1} 步</DS_AE2_Tree_DoneSteps>
+  <DS_AE2_Tree_Req>请求 {0}</DS_AE2_Tree_Req>
+  <DS_AE2_Tree_Warn>无配方 {0} · 循环 {1} · 概率 {2}</DS_AE2_Tree_Warn>
+  <DS_AE2_Tree_Need>需 {0}（做 {1} 次）</DS_AE2_Tree_Need>
+  <DS_AE2_Tree_Enough>核心已够（{0}）</DS_AE2_Tree_Enough>
+  <DS_AE2_Tree_NoRecipe>没有配方（核心 {0}）</DS_AE2_Tree_NoRecipe>
+  <DS_AE2_Tree_Cycle>循环依赖，已截断</DS_AE2_Tree_Cycle>
+  <DS_AE2_Tree_Craftable>可代工（核心 {0}，还差 {1}）</DS_AE2_Tree_Craftable>
+  <DS_AE2_Tree_Empty>这棵树是空的（换一条订单试试）</DS_AE2_Tree_Empty>
+  <DS_AE2_NeedAny>可选：{0}（核心 {1}）</DS_AE2_NeedAny>
+  <DS_EmptyCoreText>核心是空的（把东西放进去就有了）</DS_EmptyCoreText>
+  <DS_KindsEmpty>没有匹配的条目（换个搜索词）</DS_KindsEmpty>
+  <DS_JOB_St_Crafting>正在合成</DS_JOB_St_Crafting>
+  <DS_JOB_St_Finished>合成完成</DS_JOB_St_Finished>
+  <DS_JOB_St_Cancelled>已取消</DS_JOB_St_Cancelled>
+  <DS_JOB_St_NoProxy>没有制作代理</DS_JOB_St_NoProxy>
+  <DS_JOB_St_Disabled>制作代理已关闭</DS_JOB_St_Disabled>
+  <DS_JOB_St_NoPower>制作代理断电</DS_JOB_St_NoPower>
+  <DS_JOB_St_Incomplete>计划不完整：「{0}」的订单没了</DS_JOB_St_Incomplete>
+  <DS_JOB_St_Done>已完成</DS_JOB_St_Done>
+  <DS_JOB_St_Missing>缺料：{0}</DS_JOB_St_Missing>
+  <DS_JOB_St_Busy>工作台被占用</DS_JOB_St_Busy>
+  <DS_JOB_St_NoBench>范围内没有可用工作台</DS_JOB_St_NoBench>
+  <DS_JOB_St_Queue>排队等待工作台</DS_JOB_St_Queue>
+  <DS_AE2_AddTitle>合成终端 · 添加配方</DS_AE2_AddTitle>
+  <DS_AE2_NoRecipeInCat>这个分类下没有可做的配方</DS_AE2_NoRecipeInCat>
+  <DS_AE2_NoRecipeMatch>没有匹配「{0}」的配方</DS_AE2_NoRecipeMatch>
+  <DS_AE2_PickRecipeFirst>在上面选一条配方</DS_AE2_PickRecipeFirst>
+  <DS_AE2_Submit>提交合成请求</DS_AE2_Submit>
+  <DS_AE2_AlreadyInJob>已在这个请求里</DS_AE2_AlreadyInJob>
+  <DS_AE2_StuffNone>不限材料（核心里有啥用啥）</DS_AE2_StuffNone>
+  <DS_AE2_NoStuff>（这个配方不吃材料）</DS_AE2_NoStuff>
+  <DS_AE2_TakeHint>左键点一下 ⇒ 弹窗填数量取出</DS_AE2_TakeHint>
+  <DS_AE2_CoreSummary>{0} 种 · {1} 件</DS_AE2_CoreSummary>
+  <DS_AE2_NoProxyInMap>本图没有制作代理</DS_AE2_NoProxyInMap>
+  <DS_AE2_FilterAllHint>全部订单</DS_AE2_FilterAllHint>
+  <DS_AE2_FilterRunningHint>已经有工作台在做的订单</DS_AE2_FilterRunningHint>
+  <DS_AE2_FilterWaitingHint>排上了但还没有空闲工作台（或在等上一件做完）</DS_AE2_FilterWaitingHint>
+  <DS_AE2_FilterBlockedHint>被挡住：材料不够 / 范围内没有能做工的工作台</DS_AE2_FilterBlockedHint>
+  <DS_AE2_FilterSuspendedHint>你手动挂起的订单</DS_AE2_FilterSuspendedHint>
+  <DS_AE2_FilterDoneHint>已完成或已达标（维持模式下产物被用掉会自动恢复）</DS_AE2_FilterDoneHint>
+  <DS_AE2_Tree_StInCore>核心 {0}</DS_AE2_Tree_StInCore>
+  <DS_AE2_Tree_StNoRecipe>无配方 {0}</DS_AE2_Tree_StNoRecipe>
+  <DS_AE2_Tree_StCycle>循环</DS_AE2_Tree_StCycle>
+  <DS_AE2_Tree_StMissing>缺 {0}</DS_AE2_Tree_StMissing>
+  <DS_AE2_Tree_StNoOrder>无订单</DS_AE2_Tree_StNoOrder>
+  <DS_AE2_Tree_StDone>完成</DS_AE2_Tree_StDone>
+  <DS_AE2_Tree_StSusp>挂起</DS_AE2_Tree_StSusp>
+  <DS_AE2_Tree_StWait>等台子</DS_AE2_Tree_StWait>
+  <DS_AE2_Tree_Zoom>缩放 {0}%</DS_AE2_Tree_Zoom>
+  <!-- 合成树（Dialog_DS_CraftTree）文案：从 _archive\steps-reference\resource-changes.ps1 恢复 -->
+  <DS_CT_Added>已加入 {0} 条维持订单（已有 {1} 条保持原样）</DS_CT_Added>
+  <DS_CT_AddSingle>只加这一条</DS_CT_AddSingle>
+  <DS_CT_AddTree>连中间产物一起加（{0} 条）</DS_CT_AddTree>
+  <DS_CT_AddTreeNone>无中间产物</DS_CT_AddTreeNone>
+  <DS_CT_Cancel>取消</DS_CT_Cancel>
+  <DS_CT_CompactOff>紧凑：关</DS_CT_CompactOff>
+  <DS_CT_CompactOn>紧凑：开</DS_CT_CompactOn>
+  <DS_CT_Current>当前</DS_CT_Current>
+  <DS_CT_HoverCovered>{0}：核心已有 {1} 个，不用合成</DS_CT_HoverCovered>
+  <DS_CT_HoverCycle>{0}：循环依赖，已截断</DS_CT_HoverCycle>
+  <DS_CT_HoverHint>鼠标停到方块上看详情；有多条配方的方块点一下可换配方</DS_CT_HoverHint>
+  <DS_CT_HoverNode>{0}：需要 {1} 个 · 配方「{2}」· 做 {3} 次 · 一次出 {4}</DS_CT_HoverNode>
+  <DS_CT_HoverNoRecipe>{0}：需要 {1} 个，但没有可用配方（要手动准备）</DS_CT_HoverNoRecipe>
+  <DS_CT_Raw>原生材料合计</DS_CT_Raw>
+  <DS_CT_RawLine>{0} ×{1}（核心 {2} / 缺 {3}）</DS_CT_RawLine>
+  <DS_CT_RawMore>…还有 {0} 项</DS_CT_RawMore>
+  <DS_CT_RawNone>（这棵树不需要原生材料）</DS_CT_RawNone>
+  <DS_CT_Root>最终产物：{0}</DS_CT_Root>
+  <DS_CT_Skipped>跳过 {0} 条已有订单（没有覆盖你原来的设置）</DS_CT_Skipped>
+  <DS_CT_Sub>需要 {0} · 做 {1} 次 · 一次出 {2}</DS_CT_Sub>
+  <DS_CT_SubCovered>核心已有 {0}，够用</DS_CT_SubCovered>
+  <DS_CT_SubNoRecipe>没有可用配方</DS_CT_SubNoRecipe>
+  <DS_CT_TagChance>概率</DS_CT_TagChance>
+  <DS_CT_TagCycle>循环</DS_CT_TagCycle>
+  <DS_CT_Title>合成树</DS_CT_Title>
+  <DS_CT_Wanted>维持数量</DS_CT_Wanted>
+  <DS_CT_WantedHint>中间产物按"每件用量"跟着这个数换算（最终维持 10 ⇒ 中间维持 每件用量×10）</DS_CT_WantedHint>
+  <DS_CT_WarnAmbiguous>{0} 处有多条配方</DS_CT_WarnAmbiguous>
+  <DS_CT_WarnChance>{0} 处概率产出</DS_CT_WarnChance>
+  <DS_CT_WarnCycle>{0} 处循环依赖</DS_CT_WarnCycle>
+  <DS_CT_WarnNoRecipe>{0} 项没有可用配方</DS_CT_WarnNoRecipe>
+    <!-- ★ 模式三段式方按钮（原版 AE2 是并列可选，不是循环切换）-->
+    <DS_CA_ModeKeepShort>维持</DS_CA_ModeKeepShort>
+    <DS_CA_ModeCountShort>次数</DS_CA_ModeCountShort>
+    <DS_CA_ModeForeverShort>无限</DS_CA_ModeForeverShort>    <DS_CA_SwitchProxy>切换制作代理</DS_CA_SwitchProxy>
+    <DS_CA_Detail>详情</DS_CA_Detail>
+    <DS_CA_Skill>技能要求</DS_CA_Skill>
+    <DS_CA_Material>材料</DS_CA_Material>
+    <DS_CA_Bench>工作台</DS_CA_Bench>
+    <DS_CA_CoreHave>核心 {0}</DS_CA_CoreHave>
+    <DS_CA_CoreStore>合成存储</DS_CA_CoreStore>
+    <DS_CA_SuspendAll>全部暂停</DS_CA_SuspendAll>
+    <DS_CA_ResumeAll>全部开始</DS_CA_ResumeAll>
+    <DS_CA_SuspendAllMsg>已{1} {0} 条订单</DS_CA_SuspendAllMsg>
 </LanguageData>

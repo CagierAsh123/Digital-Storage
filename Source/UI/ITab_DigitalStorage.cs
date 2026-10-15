@@ -250,7 +250,8 @@ namespace DigitalStorage.UI
             if (map == null) return;
 
             int got = HaulSourceContents.ExtractMatchingTo(core, amount, core.Position, map,
-                t => t.def == row.def && t.Stuff == row.stuff && QualityOrdinalOf(t) == row.qualityOrdinal);
+                t => t.def == row.def && t.Stuff == row.stuff && QualityOrdinalOf(t) == row.qualityOrdinal,
+                forbid: false);   // ★ 补上游漏掉的第 6 个实参（缺它编不过）
 
             if (got <= 0)
                 Messages.Message("DS_NoSpaceNearCore".Translate(), core, MessageTypeDefOf.RejectInput);
