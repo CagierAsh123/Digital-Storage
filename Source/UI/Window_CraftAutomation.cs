@@ -30,19 +30,7 @@ namespace DigitalStorage.UI
         // ===================================================================
         // 配色（取自界面稿 V4 的 CSS 变量）
         // ===================================================================
-        private static readonly Color ColPanelDark = new Color(0.106f, 0.125f, 0.145f);
-        private static readonly Color ColPanel = new Color(0.133f, 0.153f, 0.176f);
-        private static readonly Color ColLite = new Color(0.173f, 0.200f, 0.227f);
-        private static readonly Color ColLine = new Color(0.212f, 0.239f, 0.271f);
-        private static readonly Color ColText = new Color(0.839f, 0.855f, 0.871f);
-        private static readonly Color ColDim = new Color(0.529f, 0.561f, 0.596f);
-        private static readonly Color ColAccent = new Color(0.788f, 0.663f, 0.380f);
-        private static readonly Color ColOk = new Color(0.498f, 0.690f, 0.412f);
-        private static readonly Color ColWarn = new Color(0.851f, 0.643f, 0.255f);
-        private static readonly Color ColBad = new Color(0.769f, 0.333f, 0.247f);
-        private static readonly Color ColInfo = new Color(0.435f, 0.620f, 0.769f);
-
-        private const float NavWidth = 116f;
+private const float NavWidth = 116f;
         private const float ListWidth = 236f;
         private const float TopHeight = 58f;
 
@@ -101,7 +89,11 @@ namespace DigitalStorage.UI
                 if (target != null) existing.SetComp(target);
                 return;
             }
-            Find.WindowStack.Add(new Window_CraftAutomation(target));
+            // ★ AE2 风格（T1-④）：所有入口（制作自动化主按钮 / ITab / gizmo）统一打开新的 AE2 界面。
+            //   ⚠️ 事实更正（PR4 B14）：**没有任何地方再构造 Window_CraftAutomation** —— 新 AE2 面板
+            //      自带加配方 / 选材料 / 合成树，并不存在"从新界面进旧面板"的按钮（旧注释写反了）。
+            //      本类暂时原样保留（它是自包含的，编译/运行都无影响），等作者决定是删掉还是以后当备用面板。
+            Find.WindowStack.Add(new DigitalStorage.UI.Window_AE2CraftPanel(target));
         }
 
         private void SetComp(CompBillAutomation c)
@@ -189,7 +181,7 @@ namespace DigitalStorage.UI
         public override void DoWindowContents(Rect inRect)
         {
             // 整窗底色 + 外框
-            Widgets.DrawBoxSolid(inRect, ColPanelDark);
+            Widgets.DrawBoxSolid(inRect, AE2Draw.Panel);
             Widgets.DrawBox(inRect, 1);
 
             Rect top = new Rect(inRect.x + 1f, inRect.y + 1f, inRect.width - 2f, TopHeight);
@@ -228,7 +220,7 @@ namespace DigitalStorage.UI
 
         private void DrawTop(Rect rect)
         {
-            Widgets.DrawBoxSolid(rect, ColPanel);
+            Widgets.DrawBoxSolid(rect, AE2Draw.Panel);
 
             float y = rect.y + 4f;
             float x = rect.x + 6f;
@@ -237,7 +229,7 @@ namespace DigitalStorage.UI
             string proxyLabel = (comp == null || comp.parent == null)
                 ? "DS_CA_NoProxy".Translate().ToString()
                 : comp.parent.LabelShort + "  " + comp.parent.Position.ToString();
-            if (Widgets.ButtonText(new Rect(x, y, 250f, 24f), proxyLabel))
+            if (AE2Draw.AE2TextButton(new Rect(x, y, 250f, 24f), proxyLabel))
             {
                 OpenProxyMenu();
             }
@@ -247,14 +239,14 @@ namespace DigitalStorage.UI
             {
                 // 总开关
                 string state = comp.Enabled ? "DS_BA_On".Translate() : "DS_BA_Off".Translate();
-                if (Widgets.ButtonText(new Rect(x, y, 132f, 24f), "DS_BA_ToggleState".Translate(state)))
+                if (AE2Draw.AE2TextButton(new Rect(x, y, 132f, 24f), "DS_BA_ToggleState".Translate(state)))
                 {
                     comp.Enabled = !comp.Enabled;
                 }
                 x += 138f;
 
                 // 超频（点一次换一档）
-                if (Widgets.ButtonText(new Rect(x, y, 168f, 24f),
+                if (AE2Draw.AE2TextButton(new Rect(x, y, 168f, 24f),
                         "DS_BA_Overclock".Translate(comp.OverclockLabel())))
                 {
                     comp.OverclockTier = (comp.OverclockTier + 1) % 4;
@@ -263,7 +255,7 @@ namespace DigitalStorage.UI
             }
 
             float addW = Math.Min(150f, rect.xMax - x - 8f);
-            if (addW > 40f && Widgets.ButtonText(new Rect(rect.xMax - addW - 6f, y, addW, 24f), "DS_CA_AddRecipe".Translate()))
+            if (addW > 40f && AE2Draw.AE2TextButton(new Rect(rect.xMax - addW - 6f, y, addW, 24f), "DS_CA_AddRecipe".Translate()))
             {
                 if (comp != null) Find.WindowStack.Add(new Dialog_DS_AddCraft(comp));
             }
@@ -274,7 +266,7 @@ namespace DigitalStorage.UI
             Text.Font = GameFont.Tiny;
             if (comp != null)
             {
-                GUI.color = ColDim;
+                GUI.color = AE2Draw.TextDimCol;
                 Widgets.Label(new Rect(rect.x + 6f, y, rect.width - 12f, 24f),
                     "DS_BA_Watts".Translate(
                         comp.CurrentWatts.ToString("#####0"),
@@ -286,7 +278,7 @@ namespace DigitalStorage.UI
             }
             else
             {
-                GUI.color = ColDim;
+                GUI.color = AE2Draw.TextDimCol;
                 Widgets.Label(new Rect(rect.x + 6f, y, rect.width - 12f, 24f), "DS_CA_NoProxyHint".Translate());
                 GUI.color = Color.white;
             }
@@ -294,7 +286,7 @@ namespace DigitalStorage.UI
             GUI.color = Color.white;
 
             // 顶栏与主体之间的分隔线
-            Widgets.DrawBoxSolid(new Rect(rect.x, rect.yMax - 1f, rect.width, 1f), ColLine);
+            Widgets.DrawBoxSolid(new Rect(rect.x, rect.yMax - 1f, rect.width, 1f), AE2Draw.LineSoft);
         }
 
         private void OpenProxyMenu()
@@ -317,23 +309,23 @@ namespace DigitalStorage.UI
 
         private void DrawNav(Rect rect)
         {
-            Widgets.DrawBoxSolid(rect, ColPanelDark);
-            Widgets.DrawBoxSolid(new Rect(rect.xMax - 1f, rect.y, 1f, rect.height), ColLine);
+            Widgets.DrawBoxSolid(rect, AE2Draw.Panel);
+            Widgets.DrawBoxSolid(new Rect(rect.xMax - 1f, rect.y, 1f, rect.height), AE2Draw.LineSoft);
 
             float y = rect.y + 4f;
-            Widgets.Label(new Rect(rect.x + 8f, y, rect.width - 12f, 20f), "DS_CA_Orders".Translate());
+            Widgets.Label(new Rect(rect.x + 4f, y, rect.width - 12f, 20f), "DS_CA_Orders".Translate());
             y += 22f;
 
             for (int i = 0; i < NavCount; i++)
             {
                 SKind kind = (SKind)i;
                 int count = CountOf(kind);
-                Rect row = new Rect(rect.x + 3f, y, rect.width - 6f, 24f);
+                Rect row = new Rect(rect.x + 4f, y, rect.width - 6f, 24f);
 
-                if (navIndex == i) Widgets.DrawBoxSolid(row, ColLite);
-                else if (Mouse.IsOver(row)) Widgets.DrawBoxSolid(row, ColPanel);
+                if (navIndex == i) Widgets.DrawBoxSolid(row, AE2Draw.Slot);
+                else if (Mouse.IsOver(row)) Widgets.DrawBoxSolid(row, AE2Draw.Panel);
 
-                GUI.color = (navIndex == i) ? Color.white : ColText;
+                GUI.color = (navIndex == i) ? Color.white : AE2Draw.TextCol;
                 Widgets.Label(new Rect(row.x + 6f, row.y + 2f, row.width - 40f, 20f), NavLabel(kind).Translate());
                 Text.Anchor = TextAnchor.MiddleRight;
                 GUI.color = CountColor(kind);
@@ -381,25 +373,25 @@ namespace DigitalStorage.UI
         {
             switch (k)
             {
-                case SKind.Ok: return ColOk;
-                case SKind.Bad: return ColBad;
-                case SKind.Warn: return ColWarn;
-                case SKind.Done: return ColInfo;
-                default: return ColDim;
+                case SKind.Ok: return AE2Draw.Ok;
+                case SKind.Bad: return AE2Draw.Bad;
+                case SKind.Warn: return AE2Draw.Warn;
+                case SKind.Done: return AE2Draw.Accent;
+                default: return AE2Draw.TextDimCol;
             }
         }
 
         private static Color CountColor(SKind k)
         {
-            return (k == SKind.Idle) ? ColDim : ColorOf(k);
+            return (k == SKind.Idle) ? AE2Draw.TextDimCol : ColorOf(k);
         }
 
         // ---------------------------------------------------------------- 中：订单列表
 
         private void DrawList(Rect rect)
         {
-            Widgets.DrawBoxSolid(rect, ColPanelDark);
-            Widgets.DrawBoxSolid(new Rect(rect.xMax - 1f, rect.y, 1f, rect.height), ColLine);
+            Widgets.DrawBoxSolid(rect, AE2Draw.Panel);
+            Widgets.DrawBoxSolid(new Rect(rect.xMax - 1f, rect.y, 1f, rect.height), AE2Draw.LineSoft);
 
             BuildShown();
 
@@ -410,7 +402,7 @@ namespace DigitalStorage.UI
             float y = 0f;
             if (shown.Count == 0)
             {
-                GUI.color = ColDim;
+                GUI.color = AE2Draw.TextDimCol;
                 Widgets.Label(new Rect(4f, y, inner.width - 8f, 40f), "DS_CA_NoOrder".Translate());
                 GUI.color = Color.white;
             }
@@ -420,8 +412,8 @@ namespace DigitalStorage.UI
                 Rect row = new Rect(2f, y, inner.width - 4f, 26f);
                 bool selected = (plan == sel);
 
-                if (selected) Widgets.DrawBoxSolid(row, ColLite);
-                else if (Mouse.IsOver(row)) Widgets.DrawBoxSolid(row, ColPanel);
+                if (selected) Widgets.DrawBoxSolid(row, AE2Draw.Slot);
+                else if (Mouse.IsOver(row)) Widgets.DrawBoxSolid(row, AE2Draw.Panel);
 
                 SKind kind = KindOf(plan);
                 Widgets.DrawBoxSolid(new Rect(row.x + 5f, row.y + 10f, 6f, 6f), ColorOf(kind));
@@ -433,12 +425,12 @@ namespace DigitalStorage.UI
                 }
 
                 string name = (plan.recipe == null) ? "?" : plan.recipe.LabelCap.ToString();
-                GUI.color = (plan.suspended || plan.Done) ? ColDim : ColText;
+                GUI.color = (plan.suspended || plan.Done) ? AE2Draw.TextDimCol : AE2Draw.TextCol;
                 Widgets.Label(new Rect(row.x + 40f, row.y + 4f, row.width - 96f, 20f), name);
                 GUI.color = Color.white;
 
                 Text.Anchor = TextAnchor.MiddleRight;
-                GUI.color = ColDim;
+                GUI.color = AE2Draw.TextDimCol;
                 string badge;
                 float badgeW = 30f;
                 if (plan.mode == CraftPlan.ModeCount) badge = plan.remaining.ToString();
@@ -456,8 +448,8 @@ namespace DigitalStorage.UI
                 CraftLine first = (plan.lines.Count > 0) ? plan.lines[0] : null;
                 if (first != null && first.HasWork)
                 {
-                    Widgets.DrawBoxSolid(new Rect(row.x + 40f, row.yMax - 5f, row.width - 90f, 2f), ColLine);
-                    Widgets.DrawBoxSolid(new Rect(row.x + 40f, row.yMax - 5f, (row.width - 90f) * Mathf.Clamp01(first.Progress01), 2f), ColAccent);
+                    Widgets.DrawBoxSolid(new Rect(row.x + 40f, row.yMax - 5f, row.width - 90f, 2f), AE2Draw.LineSoft);
+                    Widgets.DrawBoxSolid(new Rect(row.x + 40f, row.yMax - 5f, (row.width - 90f) * Mathf.Clamp01(first.Progress01), 2f), AE2Draw.Accent);
                 }
 
                 if (Widgets.ButtonInvisible(row)) SelectPlan(plan);
@@ -483,12 +475,12 @@ namespace DigitalStorage.UI
 
         private void DrawDetail(Rect rect)
         {
-            Widgets.DrawBoxSolid(rect, ColPanel);
+            Widgets.DrawBoxSolid(rect, AE2Draw.Panel);
 
             if (sel == null || !comp.PlansForReading.Contains(sel))
             {
                 sel = null;
-                GUI.color = ColDim;
+                GUI.color = AE2Draw.TextDimCol;
                 Text.Anchor = TextAnchor.MiddleCenter;
                 Widgets.Label(rect, "DS_CA_PickOrder".Translate());
                 Text.Anchor = TextAnchor.UpperLeft;
@@ -512,7 +504,7 @@ namespace DigitalStorage.UI
             Widgets.Label(new Rect(x + 50f, y, inner.width - 60f, 26f),
                 (plan.recipe == null) ? "?" : plan.recipe.LabelCap.ToString());
             Text.Font = GameFont.Small;
-            GUI.color = ColDim;
+            GUI.color = AE2Draw.TextDimCol;
             Widgets.Label(new Rect(x + 50f, y + 24f, inner.width - 60f, 20f),
                 "DS_CA_Sub".Translate(
                     CraftCategories.LabelKey(CraftCategories.Of(plan.recipe)).Translate(),
@@ -522,9 +514,9 @@ namespace DigitalStorage.UI
 
             // 三行信息
             SKind kind = KindOf(plan);
-            y = InfoRow(inner, x, y, "DS_CA_Mode".Translate(), ModeText(plan), ColText);
+            y = InfoRow(inner, x, y, "DS_CA_Mode".Translate(), ModeText(plan), AE2Draw.TextCol);
             y = InfoRow(inner, x, y, "DS_CA_Running".Translate(),
-                "DS_BA_Lines".Translate(plan.lines.Count, comp.UsableBenchCountFor(plan.recipe)).ToString(), ColText);
+                "DS_BA_Lines".Translate(plan.lines.Count, comp.UsableBenchCountFor(plan.recipe)).ToString(), AE2Draw.TextCol);
             y = InfoRow(inner, x, y, "DS_CA_Status".Translate(), StatusText(plan), ColorOf(kind));
             y += 6f;
 
@@ -534,11 +526,11 @@ namespace DigitalStorage.UI
             Widgets.Label(new Rect(x, y, inner.width - 8f, 20f), "DS_CA_Progress".Translate());
             y += 20f;
             Rect bar = new Rect(x, y, inner.width - 10f, 18f);
-            Widgets.DrawBoxSolid(bar, ColLite);
-            Widgets.DrawBoxSolid(new Rect(bar.x, bar.y, bar.width * pct, bar.height), ColAccent);
+            Widgets.DrawBoxSolid(bar, AE2Draw.Slot);
+            Widgets.DrawBoxSolid(new Rect(bar.x, bar.y, bar.width * pct, bar.height), AE2Draw.Accent);
             Widgets.DrawBox(bar, 1);
             y += 22f;
-            GUI.color = ColDim;
+            GUI.color = AE2Draw.TextDimCol;
             string progLine = "DS_CA_Percent".Translate((pct * 100f).ToString("0")).ToString();
             if (first != null && first.HasWork)
             {
@@ -654,7 +646,7 @@ namespace DigitalStorage.UI
 
         private void FlowButton(string label, float w, Action onClick)
         {
-            if (Widgets.ButtonText(FlowRect(w), label) && onClick != null) onClick();
+            if (AE2Draw.AE2TextButton(FlowRect(w), label) && onClick != null) onClick();
         }
 
         private float FlowEnd()
@@ -711,7 +703,7 @@ namespace DigitalStorage.UI
 
         private float InfoRow(Rect inner, float x, float y, string label, string value, Color valueColor)
         {
-            GUI.color = ColDim;
+            GUI.color = AE2Draw.TextDimCol;
             Widgets.Label(new Rect(x, y, 70f, 20f), label);
             GUI.color = valueColor;
             Widgets.Label(new Rect(x + 74f, y, inner.width - 84f, 20f), value);
@@ -752,7 +744,7 @@ namespace DigitalStorage.UI
 
             if (!any)
             {
-                GUI.color = ColDim;
+                GUI.color = AE2Draw.TextDimCol;
                 Widgets.Label(new Rect(x, y, inner.width - 8f, 20f), "DS_CA_NoMaterials".Translate());
                 GUI.color = Color.white;
                 y += 20f;
@@ -773,7 +765,7 @@ namespace DigitalStorage.UI
             {
                 int have = StockOf(def);
                 bool lack = have < need;
-                GUI.color = lack ? ColBad : ColDim;
+                GUI.color = lack ? AE2Draw.Bad : AE2Draw.TextDimCol;
                 Widgets.Label(new Rect(row.xMax - 120f, row.y + 2f, 116f, 20f),
                     "DS_CA_Have".Translate(need, have));
                 GUI.color = Color.white;

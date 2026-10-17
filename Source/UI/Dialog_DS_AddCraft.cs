@@ -20,15 +20,7 @@ namespace DigitalStorage.UI
     /// </summary>
     public class Dialog_DS_AddCraft : Window
     {
-        private static readonly Color ColPanelDark = new Color(0.106f, 0.125f, 0.145f);
-        private static readonly Color ColPanel = new Color(0.133f, 0.153f, 0.176f);
-        private static readonly Color ColLite = new Color(0.173f, 0.200f, 0.227f);
-        private static readonly Color ColLine = new Color(0.212f, 0.239f, 0.271f);
-        private static readonly Color ColDim = new Color(0.529f, 0.561f, 0.596f);
-        private static readonly Color ColBad = new Color(0.769f, 0.333f, 0.247f);
-        private static readonly Color ColAccent = new Color(0.788f, 0.663f, 0.380f);
-
-        private readonly CompBillAutomation comp;
+private readonly CompBillAutomation comp;
         private readonly List<RecipeDef> shown = new List<RecipeDef>();
         private string search = "";
         private int catIndex;
@@ -50,7 +42,7 @@ namespace DigitalStorage.UI
 
         public override void DoWindowContents(Rect inRect)
         {
-            Widgets.DrawBoxSolid(inRect, ColPanelDark);
+            Widgets.DrawBoxSolid(inRect, AE2Draw.Panel);
             Widgets.DrawBox(inRect, 1);
 
             Rect r = new Rect(inRect.x + 8f, inRect.y + 6f, inRect.width - 16f, inRect.height - 12f);
@@ -73,9 +65,9 @@ namespace DigitalStorage.UI
                     tabY += 24f;
                 }
                 Rect tab = new Rect(tabX, tabY, w, 22f);
-                if (catIndex == i) Widgets.DrawBoxSolid(tab, ColLite);
-                else if (Mouse.IsOver(tab)) Widgets.DrawBoxSolid(tab, ColPanel);
-                GUI.color = (catIndex == i) ? ColAccent : Color.white;
+                if (catIndex == i) Widgets.DrawBoxSolid(tab, AE2Draw.Slot);
+                else if (Mouse.IsOver(tab)) Widgets.DrawBoxSolid(tab, AE2Draw.Panel);
+                GUI.color = (catIndex == i) ? AE2Draw.Accent : Color.white;
                 Text.Anchor = TextAnchor.MiddleCenter;
                 Widgets.Label(tab, label);
                 Text.Anchor = TextAnchor.UpperLeft;
@@ -85,7 +77,7 @@ namespace DigitalStorage.UI
             }
             y = tabY + 26f;
 
-            Widgets.DrawBoxSolid(new Rect(r.x, y - 2f, r.width, 1f), ColLine);
+            Widgets.DrawBoxSolid(new Rect(r.x, y - 2f, r.width, 1f), AE2Draw.LineSoft);
 
             // ---- 搜索 ----
             search = Widgets.TextField(new Rect(r.x, y + 2f, r.width, 24f), search);
@@ -96,7 +88,7 @@ namespace DigitalStorage.UI
             Rect listRect = new Rect(r.x, y, r.width, r.yMax - y - 26f);
             if (shown.Count == 0)
             {
-                GUI.color = ColDim;
+                GUI.color = AE2Draw.TextDimCol;
                 Widgets.Label(listRect, "DS_BA_NoRecipeAvailable".Translate());
                 GUI.color = Color.white;
             }
@@ -114,10 +106,10 @@ namespace DigitalStorage.UI
                     bool added = comp.HasPlan(recipe);
                     bool skillOk = SkillOk(recipe);
 
-                    if (Mouse.IsOver(row)) Widgets.DrawBoxSolid(row, ColLite);
-                    else if (i % 2 == 0) Widgets.DrawBoxSolid(row, ColPanel);
+                    if (Mouse.IsOver(row)) Widgets.DrawBoxSolid(row, AE2Draw.Slot);
+                    else if (i % 2 == 0) Widgets.DrawBoxSolid(row, AE2Draw.Panel);
 
-                    GUI.color = (added || !skillOk) ? ColDim : Color.white;
+                    GUI.color = (added || !skillOk) ? AE2Draw.TextDimCol : Color.white;
                     ThingDef prod = CraftCategories.MainProduct(recipe);
                     if (prod != null) Widgets.DefIcon(new Rect(row.x + 3f, row.y + 3f, 26f, 26f), prod);
                     Widgets.Label(new Rect(row.x + 34f, row.y + 2f, row.width - 120f, 18f), recipe.LabelCap);
@@ -127,25 +119,57 @@ namespace DigitalStorage.UI
                     GUI.color = Color.white;
 
                     Text.Anchor = TextAnchor.MiddleRight;
-                    if (added) GUI.color = ColAccent;
-                    else if (!skillOk) GUI.color = ColBad;
-                    else GUI.color = ColDim;
+                    if (added) GUI.color = AE2Draw.Accent;
+                    else if (!skillOk) GUI.color = AE2Draw.Bad;
+                    else GUI.color = AE2Draw.TextDimCol;
                     Widgets.Label(new Rect(row.xMax - 250f, row.y + 9f, 246f, 18f),
                         added ? "DS_BA_AlreadyAdded".Translate().ToString()
                               : (skillOk ? "DS_BA_ClickToAdd".Translate().ToString() : NeedSkillText(recipe)));
                     GUI.color = Color.white;
                     Text.Anchor = TextAnchor.UpperLeft;
 
-                    if (!added && Widgets.ButtonInvisible(row)) comp.AddPlan(recipe);
+                    // ★ 第 2 步（AE2 内核）+ 用户定案的两档操作：
+                    //   · **Shift+点行** = 提交一个合成请求，整条中间产物链一起纳进依赖树
+                    //     （走 CompBillAutomation.SubmitJob：CraftTree.Build 算整棵树 ⇒ 先建上游、最后建根）；
+                    //   · **点行** = 只加这一条独立订单（`comp.AddPlan`，不进 Job、不占合成容量）——
+                    //     这是上游的老习惯，保留给"我就想单独排一条"的场合。
+                    if (!added && Widgets.ButtonInvisible(row))
+                    {
+                        if (Event.current != null && Event.current.shift) AddWholeTree(recipe);
+                        else comp.AddPlan(recipe);
+                    }
                     ly += rowH;
                 }
 
                 Widgets.EndScrollView();
             }
 
-            GUI.color = ColDim;
+            GUI.color = AE2Draw.TextDimCol;
             Widgets.Label(new Rect(r.x, r.yMax - 22f, r.width, 20f), "DS_CA_AddHint".Translate());
             GUI.color = Color.white;
+        }
+
+        /// <summary>
+        /// <b>连中间产物一起加</b>（Shift+点行）：交给内核的 <see cref="CompBillAutomation.SubmitJob"/>，
+        /// 由它建整棵依赖树、逐个节点建订单（先上游、最后建根）。
+        /// 界面只负责"报告结果"，不算树。
+        ///
+        /// <para>数量暂时固定 1（= 做 1 件最终产物）。要指定「维持 N 件 / 材料 / 风格」
+        /// 请用 AE2 面板的「添加配方」（<c>Dialog_AE2AddRecipe</c>）。</para>
+        /// </summary>
+        private void AddWholeTree(RecipeDef recipe)
+        {
+            if (recipe == null) return;
+            CraftJob job = comp.SubmitJob(recipe, null, 1, true);
+            if (job == null) return;   // 被容量闸门（合成存储装不下）拒绝时，SubmitJob 已经给过提示
+
+            if (job.steps.Count <= 1)
+            {
+                Messages.Message("DS_CT_AddTreeNone".Translate(), MessageTypeDefOf.NeutralEvent, historical: false);
+                return;
+            }
+            Messages.Message("DS_JOB_Submitted".Translate(recipe.LabelCap, job.wanted, job.steps.Count),
+                MessageTypeDefOf.NeutralEvent, historical: false);
         }
 
         private void BuildList()
