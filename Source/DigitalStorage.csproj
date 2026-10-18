@@ -85,6 +85,7 @@
     <Compile Include="Components\CompAutoIngest.cs" />
     <Compile Include="Components\AutoIngestDevTool.cs" />
     <Compile Include="Components\DigitalWorkerDevTool.cs" />
+    <Compile Include="Components\CraftAutomationDevTool.cs" />
     <Compile Include="Components\CompProperties_DigitalWorker.cs" />
     <Compile Include="Components\CompDigitalWorker.cs" />
     <Compile Include="Components\CompProperties_BillAutomation.cs" />
@@ -97,6 +98,8 @@
     <Compile Include="Core\ContainerAutoLoader.cs" />
     <Compile Include="Core\DigitalDropRedirect.cs" />
     <Compile Include="Core\CoreSupply.cs" />
+    <!-- 2026-10-18 社区反馈第 1 条：有害垃圾（有毒垃圾/废料）判定 -->
+    <Compile Include="Core\WasteUtil.cs" />
 
     <Compile Include="AI\DigitalStorage_JobDefOf.cs" />
     <Compile Include="AI\JobDriver_DS_Withdraw.cs" />
@@ -118,6 +121,7 @@
     <Compile Include="AI\CraftCategories.cs" />
     <Compile Include="AI\BillStackSwap.cs" />
     <Compile Include="AI\BillProbe.cs" />
+    <Compile Include="AI\BenchWhitelistScope.cs" />
     <Compile Include="AI\BillCraftFunnel.cs" />
 
     <Compile Include="Effects\Mote_DS_IngestBeam.cs" />
@@ -154,6 +158,11 @@
     <Compile Include="HarmonyPatches\Patch_TradeDeal_TryExecute_Preflight.cs" />
     <Compile Include="HarmonyPatches\Patch_WorldTrade_FromCore.cs" />
     <Compile Include="HarmonyPatches\Patch_HaulAIUtility.cs" />
+    <!-- 2026-10-18 社区反馈第 1 条：原版「清空废料容器」只支持格子目的地，容器目的地必坏 -->
+    <Compile Include="HarmonyPatches\Patch_EmptyWasteContainerFallback.cs" />
+    <Compile Include="HarmonyPatches\Patch_BenchWhitelist_Relax.cs" />
+    <Compile Include="HarmonyPatches\Patch_HaulToContainer_ConcurrentCore.cs" />
+    <Compile Include="HarmonyPatches\Patch_CarryFromCore_MarkWithdrawn.cs" />
     <Compile Include="HarmonyPatches\Patch_JobDriver_Equip.cs" />
     <!-- B1 医疗与生存覆盖（2026-10-17）：血原质 / 输血 / 备药备货 -->
     <Compile Include="HarmonyPatches\Patch_HemogenAdministerFromCore.cs" />

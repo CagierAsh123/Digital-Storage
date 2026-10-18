@@ -106,6 +106,24 @@ namespace DigitalStorage.AI
         }
 
         /// <summary>
+        /// 有没有任何一个 DoBill giver 的 <c>fixedBillGiverDefs</c> 认领这张台子。
+        ///
+        /// <para>false = 原版口径下这张台子<b>谁都不能做 bill</b>（典型：mod 工作台）。
+        /// 这种情况才需要放宽白名单（见 <see cref="BenchWhitelistScope"/>）——
+        /// 原版台子必须走原路，否则"烹饪台只做烹饪"这类语义就没了。</para>
+        /// </summary>
+        private static bool AnyGiverClaimsBench(List<WorkGiverDef> defs, ThingDef benchDef)
+        {
+            if (defs == null || benchDef == null) return false;
+            for (int i = 0; i < defs.Count; i++)
+            {
+                WorkGiverDef d = defs[i];
+                if (d != null && d.fixedBillGiverDefs != null && d.fixedBillGiverDefs.Contains(benchDef)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
         /// 给一条在产线取一件活。返回 true 表示 <c>Ingredients/WorkLeft</c> 已就绪。
         ///
         /// <para>外面这一层只做一件事：**记录进门前原版负缓存还剩多少 tick**，再在调试日志里带出来。
@@ -172,10 +190,21 @@ namespace DigitalStorage.AI
                 }
                 swapped = true;
 
+                // 白名单：原版 WorkGiver_DoBill.ThingIsUsableBillGiver 只认 fixedBillGiverDefs 里的
+                // defName（19 个 giver 里 16 个带精确列表）⇒ mod 工作台一个 giver 都不认。
+                // 这里分两种情形：
+                //   ① 有 giver 认领这张台子（原版台子，或某 mod 自己加了 workGiver）⇒ 只问它，行为与原版一致；
+                //   ② 没有任何 giver 认领（mod 工作台）⇒ 打开 BenchWhitelistScope，让补丁把
+                //      ThingIsUsableBillGiver 对这道门放宽（设置 craftAnyBench，默认开）。
+                //      放宽后原版仍会用 bill.recipe.requiredGiverWorkType 挡掉不匹配的 giver。
+                bool anyClaims = AnyGiverClaimsBench(defs, bench.def);
+                bool relax = !anyClaims && DigitalStorage.Settings.DigitalStorageSettings.craftAnyBench;
+
+                BenchWhitelistScope.Relaxed = relax;
                 for (int i = 0; i < defs.Count; i++)
                 {
                     WorkGiverDef d = defs[i];
-                    if (d.fixedBillGiverDefs != null && !d.fixedBillGiverDefs.Contains(bench.def)) continue;
+                    if (!relax && d.fixedBillGiverDefs != null && !d.fixedBillGiverDefs.Contains(bench.def)) continue;
 
                     WorkGiver_DoBill doBill;
                     try { doBill = d.Worker as WorkGiver_DoBill; }
@@ -202,6 +231,8 @@ namespace DigitalStorage.AI
                     got = candidate;
                     break;
                 }
+                // 白名单作用域只包这一圈取活（补丁 Prefix 靠这个 bool 决定放不放宽）
+                BenchWhitelistScope.Relaxed = false;
 
                 if (got == null)
                 {
@@ -268,6 +299,7 @@ namespace DigitalStorage.AI
             finally
             {
                 if (swapped) BillStackSwap.Restore(bench, original);
+                BenchWhitelistScope.Relaxed = false;   // 兜底：异常路径也不能把作用域留在打开状态
                 DigitalWorkerScope.Exit(w);
             }
             return true;

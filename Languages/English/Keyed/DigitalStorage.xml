@@ -55,9 +55,11 @@
   <DS_AutoIngestToggle>Auto-ingest</DS_AutoIngestToggle>
   <DS_AutoIngestToggleDesc>Allow cores to absorb loose items automatically instead of waiting for a hauler. Turn this off if items seem to teleport around the map.</DS_AutoIngestToggleDesc>
   <DS_AutoIngestYieldToggle>Auto-ingest yields to jobs</DS_AutoIngestYieldToggle>
-  <DS_AutoIngestYieldToggleDesc>When on, auto-ingest skips items that a pawn's current job points at, and items lying next to a workbench that still has bills (300 ticks). A one-click workaround for a "withdraw material - it gets sucked back - withdraw again" loop. Off (default) means instant: once an item enters the vanilla haulables list, it is stored within 15 ticks.</DS_AutoIngestYieldToggleDesc>
+  <DS_AutoIngestYieldToggleDesc>On (default): auto-ingest yields to pawns that are using the item - it skips items a pawn's current job points at, and items lying next to a workbench that still has bills (300 ticks). A one-click workaround for a "withdraw material - it gets sucked back - withdraw again" loop. Off means instant: once an item enters the vanilla haulables list, it is stored within 15 ticks. Existing saves keep their stored value; you can flip it here at any time.</DS_AutoIngestYieldToggleDesc>
   <DS_BackpackMechToggle>Backpack on mechanoids</DS_BackpackMechToggle>
   <DS_BackpackMechToggleDesc>Also put the digital storage backpack on colony mechanoids (including drones and robots from other mods). On by default. If you suspect a mechanoid mod is conflicting with this one, turn it off so nothing of ours is attached to mechanoids at all (colonists are unaffected) - a one-click A/B test.</DS_BackpackMechToggleDesc>
+  <DS_ConcurrentDeliveryToggle>Let several pawns deliver to a core at once</DS_ConcurrentDeliveryToggle>
+  <DS_ConcurrentDeliveryToggleDesc>Vanilla reserves a container with a single slot: only one hauler may put things into the same container at any moment. A core is a 3x3 warehouse, but it paid the same price - far-away items ended up with a single hauler while everyone else waited. On (default) skips that container reservation for our cores only (the goods themselves are still reserved and the deposit stays atomic); other containers and vanilla loading bays behave exactly as before. Off = vanilla serial delivery.</DS_ConcurrentDeliveryToggleDesc>
   <DS_PerfToggle>Vanilla performance fixes</DS_PerfToggle>
   <DS_PerfToggleDesc>Fixes four vanilla hot spots that show up when you drag-select or designate a lot, or when a core holds several hundred stacks: selection brackets are culled outside the camera view, designation icons are updated incrementally instead of being fully rebuilt every frame, the "meta puff" fleck burst from mass designating is capped per tick, and a core's existing stock is no longer re-scanned stack by stack every tick by the vanilla haulable lister (the verdicts match vanilla - narrowing the filter still gets it hauled out). Pure performance, no gameplay change. Turn off to fall back to vanilla behavior item by item.</DS_PerfToggleDesc>
   <DS_NoWorkFailureToggle>Work never fails</DS_NoWorkFailureToggle>
@@ -96,7 +98,7 @@
   <DS_BA_OC_9>9 GHz</DS_BA_OC_9>
   <DS_BA_Watts>Draw: {0} W (self {1} + benches {2}, overclock x{3})</DS_BA_Watts>
   <DS_BA_Stats>Produced {0}, dropped {1}, recipes {2}</DS_BA_Stats>
-  <DS_BA_NoBench>No workbench that can craft anything within 13x13.</DS_BA_NoBench>
+  <DS_BA_NoBench>No workbench that can craft anything is in scan range.</DS_BA_NoBench>
   <DS_BA_NoBill>No recipe to work on (missing material / skill too low / conditions unmet)</DS_BA_NoBill>
   <DS_BA_NoCoreMaterial>Material is not inside a digital storage core (automation only consumes from cores)</DS_BA_NoCoreMaterial>
   <DS_BA_Block_Claimed>That material is claimed by another production line (wait for it, or stock a second stack)</DS_BA_Block_Claimed>
@@ -116,13 +118,19 @@
   <DS_BA_PlanFinished>finished</DS_BA_PlanFinished>
   <DS_BA_PlanDone>Order finished: {0} ({1} produced)</DS_BA_PlanDone>
   <DS_BA_Empty>No recipes yet. Click "Add recipe…" and pick one from what the benches in range can craft.</DS_BA_Empty>
-  <DS_BA_NoRecipeAvailable>Nothing to add - no bench in this 13x13 can craft anything (or those recipes are not researched yet).</DS_BA_NoRecipeAvailable>
+  <DS_BA_NoRecipeAvailable>Nothing to add - no bench in scan range can craft anything (or those recipes are not researched yet).</DS_BA_NoRecipeAvailable>
   <DS_BA_AlreadyAdded>already added</DS_BA_AlreadyAdded>
   <DS_BA_ClickToAdd>click to add</DS_BA_ClickToAdd>
   <DS_BA_SkillShort>skill too low</DS_BA_SkillShort>
   <DS_BA_NeedSkill>Requires: {0}</DS_BA_NeedSkill>
   <DS_BA_Block_Unsupported>This workbench type cannot be automated</DS_BA_Block_Unsupported>
   <DS_BA_Block_Research>Research not unlocked</DS_BA_Block_Research>
+  <DS_BA_RangeSummary>Benches in range: {0} | Recipes available: {1} | Scan area {2}x{2}</DS_BA_RangeSummary>
+
+  <!-- ========== Craft proxy recognition (community report 2026-10-18 #2) ========== -->
+  <DS_CraftAnyBenchToggle>Recognize modded workbenches</DS_CraftAnyBenchToggle>
+  <DS_CraftAnyBenchToggleDesc>Vanilla only lets a bill giver use benches named in its fixedBillGiverDefs (electric stove, stonecutter, tailor bench...), so modded benches can be picked in the menu while the proxy never gets a job. On (default) relaxes that whitelist only for benches no vanilla giver claims; vanilla benches and real colonists behave exactly as before. Off = vanilla rules (modded benches cannot be automated).</DS_CraftAnyBenchToggleDesc>
+  <DS_CraftScanRadius>Craft proxy scan radius: {0} tiles ({1}x{1}); applies on the next scan.</DS_CraftScanRadius>
 
   <!-- ========== Craft automation · three-column window ========== -->
   <DS_CA_NoProxy>No crafting proxy on this map - build one first</DS_CA_NoProxy>

@@ -218,6 +218,9 @@ namespace DigitalStorage.Components
                 // 用父过滤器而不是 SetAllowAll(null)，让"自己的可选范围"与"UI 显示的全集"
                 // 完全一致 —— 否则过滤器窗口里会出现 UI 看不见/勾不到的条目。
                 storeSettings.filter.SetAllowAll(GetParentFilterPublic());
+                // 有害垃圾（有毒垃圾/废料）默认不收：容器目的地会让原版「清空废料容器」作业
+                // 建不起来（详见 Core.WasteUtil 的类注释）。玩家可在筛选窗口里手动勾回来。
+                ApplyHazardousWasteExclusion(storeSettings.filter);
                 storeSettings.Priority = storagePriorityField;
             }
             return storeSettings;
@@ -497,6 +500,13 @@ namespace DigitalStorage.Components
         /// </summary>
         private bool corpseFilterMigrated;
 
+        /// <summary>
+        /// 一次性：把「有害垃圾」从**已有存档**的筛选器里关掉（见
+        /// <see cref="MigrateHazardousWasteFilterIfNeeded"/>）。与尸体迁移同理 —— 筛选是逐 def
+        /// 白名单，老档里垃圾本来就是允许的，不迁移就只剩新档有效。玩家之后自己勾回来不会被覆盖。
+        /// </summary>
+        private bool hazardousWasteFilterMigrated;
+
         public override void ExposeData()
         {
             base.ExposeData();
@@ -512,6 +522,7 @@ namespace DigitalStorage.Components
             Scribe_Deep.Look(ref legacyStorageFilter, "storageFilter");
             Scribe_Values.Look(ref legacy30Migrated, "dsLegacy30Migrated", false);
             Scribe_Values.Look(ref corpseFilterMigrated, "dsCorpseFilterMigrated", false);
+            Scribe_Values.Look(ref hazardousWasteFilterMigrated, "dsWasteFilterMigrated", false);
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
@@ -521,6 +532,7 @@ namespace DigitalStorage.Components
                 GetStoreSettings();
                 // 老存档的筛选是"逐 def 白名单"，后加进全集的 def 不在里面 ⇒ 补一次（见方法注释）
                 MigrateCorpseFilterIfNeeded();
+                MigrateHazardousWasteFilterIfNeeded();
             }
         }
 
@@ -563,6 +575,61 @@ namespace DigitalStorage.Components
             catch (Exception e)
             {
                 Log.ErrorOnce("[DigitalStorage] 尸体筛选一次性迁移失败（其余功能不受影响）：" + e, 0x44534401);
+            }
+        }
+
+        /// <summary>
+        /// 新核心的默认筛选：把有害垃圾（有毒垃圾/废料）关掉。原因见 <see cref="Core.WasteUtil"/>：
+        /// 容器当目的地会让原版「清空废料容器」作业永远建不起来（<c>foundCell = Invalid</c>）。
+        /// </summary>
+        private static void ApplyHazardousWasteExclusion(ThingFilter filter)
+        {
+            if (filter == null) return;
+            try
+            {
+                foreach (ThingDef def in DefDatabase<ThingDef>.AllDefs)
+                {
+                    if (Core.WasteUtil.IsHazardousWaste(def))
+                        filter.SetAllow(def, false);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[DigitalStorage] 有害垃圾默认筛选设置失败（其余功能不受影响）：" + e, 0x44534402);
+            }
+        }
+
+        /// <summary>
+        /// <b>一次性</b>：把有害垃圾从**已有存档**的筛选器里关掉（2026-10-18 社区反馈第 1 条）。
+        ///
+        /// <para>老存档的 <c>StorageSettings.filter</c> 是读档恢复的逐 def 白名单，里面垃圾是允许的
+        /// ⇒ 不迁移就"只对新档生效"，老玩家照样踩同一条 bug。</para>
+        ///
+        /// <para>只动**当前允许**的垃圾 def；迁移标记 Scribe 下去 ⇒ 玩家之后自己勾回来不会被覆盖。</para>
+        /// </summary>
+        private void MigrateHazardousWasteFilterIfNeeded()
+        {
+            if (hazardousWasteFilterMigrated) return;
+            hazardousWasteFilterMigrated = true;
+
+            try
+            {
+                StorageSettings st = GetStoreSettings();
+                if (st == null || st.filter == null) return;
+
+                bool changed = false;
+                foreach (ThingDef def in DefDatabase<ThingDef>.AllDefs)
+                {
+                    if (!Core.WasteUtil.IsHazardousWaste(def)) continue;
+                    if (!st.filter.Allows(def)) continue;   // 已经关着（或被老档外的规则关掉）⇒ 不动
+                    st.filter.SetAllow(def, false);
+                    changed = true;
+                }
+                if (changed) Notify_SettingsChanged();
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[DigitalStorage] 有害垃圾筛选一次性迁移失败（其余功能不受影响）：" + e, 0x44534403);
             }
         }
 

@@ -102,6 +102,12 @@ namespace DigitalStorage.Components
             get { return unlocked; }
         }
 
+        /// <summary>本次扫描到的台子（只读；Dev 诊断与"为什么这台没被认"用）。</summary>
+        internal IList<Thing> BenchesForReading
+        {
+            get { return benches; }
+        }
+
         /// <summary>是否把扫描范围画在地图上（gizmo 切换；<see cref="MapComponent_CraftRange"/> 每帧读它）。</summary>
         public bool ShowRange
         {
@@ -109,14 +115,26 @@ namespace DigitalStorage.Components
         }
 
         /// <summary>
-        /// 扫描范围的格子（13×13 方形，与 <see cref="CompProperties_BillAutomation.scanRadius"/> 同源）。
+        /// 本次扫描用的<b>方形半径</b>（格）：来自模组设置 <c>craftScanRadius</c>（默认 6 ⇒ 13×13）。
+        ///
+        /// <para>2026-10-18 社区反馈第 2 条之后，半径从 XML 的
+        /// <see cref="CompProperties_BillAutomation.scanRadius"/> 挪到了设置页（玩家能直接改，
+        /// 下一次扫描生效）。XML 里那个字段保留只为兼容老存档 / 老贴图配置，**不再参与计算**。</para>
+        /// </summary>
+        public int EffectiveScanRadius
+        {
+            get { return Mathf.Clamp(DigitalStorage.Settings.DigitalStorageSettings.craftScanRadius, 2, 20); }
+        }
+
+        /// <summary>
+        /// 扫描范围的格子（方形，半径见 <see cref="EffectiveScanRadius"/>）。
         ///
         /// <para><b>缓存</b>：地图绘制阶段每帧都会问一次，但建筑不会动、半径也不变
-        /// ⇒ 只在"位置/半径变了"时重建那 169 个格子。</para>
+        /// ⇒ 只在"位置/半径变了"时重建那几十~几百个格子。</para>
         /// </summary>
         public List<IntVec3> RangeCellsForDrawing()
         {
-            int radius = Math.Max(0, Props.scanRadius);
+            int radius = EffectiveScanRadius;
             IntVec3 center = parent.PositionHeld;
 
             if (rangeCells == null || rangeCachedCenter != center || rangeCachedRadius != radius)
@@ -266,8 +284,14 @@ namespace DigitalStorage.Components
         }
 
         /// <summary>
-        /// 扫"以建筑为中心的 13×13 方形"（<see cref="CompProperties_BillAutomation.scanRadius"/>）里
+        /// 扫"以建筑为中心的方形"（半径 = <see cref="EffectiveScanRadius"/>，默认 13×13）里
         /// 能承载 bill 的建筑。
+        ///
+        /// <para><b>范围判据（2026-10-18 修正）</b>：老实现只看 <c>t.PositionHeld</c> 一个格子 ——
+        /// <c>Thing.Position</c> 是**左下角**格，3×1 的台子摆得偏一格就"看不见"，而玩家在图上
+        /// 看它明明压在范围里（社区反馈第 2 条：整间工作间只认出三张台子）。
+        /// 现在按**建筑占位矩形与扫描矩形相交**判，另外把"交互格"（小人要站的那格）也算进来：
+        /// 台子本体在范围外、但工作面伸手可及，同样应该能用。</para>
         ///
         /// <para>候选来源用 <c>listerThings.ThingsInGroup(PotentialBillGiver)</c> —— 原版
         /// <c>WorkGiver_DoBill.ShouldSkip:128</c> 用的就是这条（有 lister 分支，不是全图遍历）。
@@ -282,7 +306,7 @@ namespace DigitalStorage.Components
             benches.Clear();
             benchDefs.Clear();
 
-            int radius = Math.Max(0, Props.scanRadius);
+            int radius = EffectiveScanRadius;
             CellRect rect = CellRect.CenteredOn(parent.PositionHeld, radius);
             List<Thing> all = map.listerThings.ThingsInGroup(ThingRequestGroup.PotentialBillGiver);
 
@@ -292,7 +316,7 @@ namespace DigitalStorage.Components
                 if (t == null || t.Destroyed || !t.Spawned || t == parent) continue;
                 if (!(t is Building)) continue;
                 if (!(t is IBillGiver)) continue;
-                if (!rect.Contains(t.PositionHeld)) continue;
+                if (!InScanRange(t, rect)) continue;
                 // 能做东西才收（AllRecipes 见 CanCraft 的注释：不能只看 def.recipes）
                 List<RecipeDef> rs = t.def.AllRecipes;
                 if (rs == null || rs.Count == 0) continue;
@@ -302,6 +326,18 @@ namespace DigitalStorage.Components
             }
 
             CraftUnlocks.MenuRecipes(benchDefs, unlocked);
+        }
+
+        /// <summary>
+        /// 这台建筑在扫描范围内吗：<b>占位矩形与扫描矩形相交</b>，或者<b>交互格</b>落在范围内。
+        /// （只看 <c>PositionHeld</c> 会把"压在边界上的多格台子"整台漏掉，见 <see cref="RescanBenches"/>。）
+        /// </summary>
+        internal static bool InScanRange(Thing t, CellRect rect)
+        {
+            if (t == null) return false;
+            if (rect.Overlaps(t.OccupiedRect())) return true;
+            if (t.def != null && t.def.hasInteractionCell) return rect.Contains(t.InteractionCell);
+            return false;
         }
 
         // ===================================================================
@@ -992,12 +1028,12 @@ namespace DigitalStorage.Components
                 }
             };
 
-            // 显示扫描范围（用户要求）：开着就一直在地图上画 13×13 边框，方便摆工作台。
+            // 显示扫描范围（用户要求）：开着就一直在地图上画方形边框，方便摆工作台。
             yield return new Command_Toggle
             {
                 icon = GizmoTex(ref texRange, "UI/Gizmos/制作代理-显示范围"),
                 defaultLabel = "DS_BA_ShowRange".Translate(),
-                defaultDesc = "DS_BA_ShowRangeDesc".Translate(Props.scanRadius * 2 + 1),
+                defaultDesc = "DS_BA_ShowRangeDesc".Translate(EffectiveScanRadius * 2 + 1),
                 isActive = () => showRange,
                 toggleAction = () => { showRange = !showRange; }
             };

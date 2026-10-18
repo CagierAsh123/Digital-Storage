@@ -36,16 +36,61 @@ namespace DigitalStorage.Settings
         /// <summary>
         /// <b>自动收纳是否"避让正在用这件东西的人"</b>（作业目标 / 还有 bill 在等料的工作台旁边那一圈）。
         ///
-        /// <para><b>默认关 = 算中即入</b>（2026-10-12 用户拍板）：候选一进原版待搬表，
-        /// 15 tick 内就瞬移进核心，不管有没有小人的作业正指着它 —— 这是本 mod「搬运取消」的取向，
-        /// 也正因如此"有核心就不需要搬运 mod"。</para>
+        /// <para><b>2026-10-18 起默认开</b>（社区反馈第 3 条：「小人会无限从核心搬运食物原材料、
+        /// 核心无限存食物，循环导致非常卡」）：这两条闸门当初（commit <c>e66978d</c>）就是为
+        /// 「小人取出材料准备制造 → 材料立刻被吸走 → 反复取物卡住」那个死循环加的；
+        /// 因为老玩家存档里 Scribe 已经写了 <c>false</c>，默认值改成 true **只影响新档**
+        /// （老档保持原值，玩家可在设置里一键切换）。</para>
         ///
-        /// <para>打开 = 让位：那两族物品会被跳过（作业目标一直让到作业结束；工作台旁边让 300 tick）。
-        /// 这两条闸门是 commit <c>e66978d</c> 为「小人取出材料准备制造 → 材料立刻被吸走 → 反复取物卡住」
-        /// 那个死循环加的，默认关掉后它们不再介入；留着是为了**万一**那类循环再出现时玩家能一键对照，
-        /// 而不用等发版。</para>
+        /// <para>打开 = 让位：作业目标一直让到作业结束；有 bill 在等料的工作台旁边让 300 tick。
+        /// 关闭 = 算中即入：候选一进原版待搬表，15 tick 内就瞬移进核心（本 mod 最初的取向）。</para>
+        ///
+        /// <para>配合 <c>Patch_CarryFromCore_MarkWithdrawn</c>：原版取料路径拿走的物品也会被盖上
+        /// "刚被取出"戳（300 tick），落地后不会被立刻吸回。</para>
         /// </summary>
-        public static bool autoIngestYieldToJobs = false;
+        public static bool autoIngestYieldToJobs = true;
+
+        /// <summary>
+        /// <b>制作代理是否识别"mod 工作台"</b>（社区反馈 2026-10-18 第 2 条）。
+        ///
+        /// <para>面板能选的配方来自"范围内工作台能做什么"（<c>ThingDef.AllRecipes</c>），
+        /// 但轮到代理去取活时，调的是原版 <c>WorkGiver_DoBill.JobOnThing</c> —— 它第一道门
+        /// <c>ThingIsUsableBillGiver</c> 只认 <c>WorkGiverDef.fixedBillGiverDefs</c> 里列出的台子
+        /// （原版 19 个 DoBill giver 里有 16 个带精确 defName 白名单：DoBillsCook 只认电炉/燃料炉…）。
+        /// 于是 mod 工作台**菜单里能选、选了永远不干活**，面板只显示"没有可做的配方"。</para>
+        ///
+        /// <para>打开（默认）= 取活时对"没有任何 giver 认领的台子"放宽这道白名单
+        /// （补丁 <c>Patch_BenchWhitelist_Relax</c>，只在代理取活的作用域内生效，
+        /// 真小人的行为一点不变）。关掉 = 完全退回原版口径（只有原版台子能自动化）。
+        /// 上游 <c>Digital-Storage-Extension-Patch</c> 同一修复叫 <c>craftAnyBench</c>。</para>
+        /// </summary>
+        public static bool craftAnyBench = true;
+
+        /// <summary>
+        /// <b>制作代理的扫描半径</b>（格；方形，边长 = 2r+1）。默认 6 ⇒ 13×13。
+        ///
+        /// <para>老实现把这个值写死在 <c>CompProperties_BillAutomation.scanRadius</c>（XML）里，
+        /// 玩家只能靠"把代理建在正中"来迁就；工作间一大就"只认得出眼前三张台子"。
+        /// 收进设置后可以在游戏里直接改（下一次扫描生效，60 tick 内）。</para>
+        ///
+        /// <para>上限 20（41×41）：再大就不是"就近生产"而是全图调度了，扫描代价也线性涨。</para>
+        /// </summary>
+        public static int craftScanRadius = 6;
+
+        /// <summary>
+        /// <b>多个小人能不能同时往同一个核心送货</b>（社区反馈 2026-10-18 第 4 条）。
+        ///
+        /// <para>原版 <c>JobDriver_HaulToContainer.TryMakePreToilReservations</c> 对容器
+        /// （<c>targetB</c>）发的是**单名额预约**：同一时刻只允许一个搬运工往同一个容器里放东西。
+        /// 核心是个 3×3 的大仓库，却因此和"往工作台塞一份料"共用同一条规则 ——
+        /// 远一点的物品就只有一个小人在搬，其他人站在"目标已被预订"外面排队。</para>
+        ///
+        /// <para>打开（默认）= 只对**本 mod 的核心**跳过容器的预约（补丁
+        /// <c>Patch_HaulToContainer_ConcurrentCore</c>；货物本身与目标队列照旧预约，入库靠
+        /// <c>TryTransferToContainer</c> 的原子性）。别家容器与原版装载舱完全按原版走。
+        /// 关掉 = 退回原版串行入库。</para>
+        /// </summary>
+        public static bool concurrentCoreDelivery = true;
 
         /// <summary>
         /// 是否把「数字存储背包」也挂给**殖民地机械族**（含别的 mod 的无人机 / 机器人）。
@@ -116,7 +161,10 @@ namespace DigitalStorage.Settings
             Scribe_Values.Look(ref researchMultiplier, "researchMultiplier", 1.0f);
             Scribe_Values.Look(ref enableDebugLog, "enableDebugLog", false);
             Scribe_Values.Look(ref autoIngestEnabled, "autoIngestEnabled", true);
-            Scribe_Values.Look(ref autoIngestYieldToJobs, "autoIngestYieldToJobs", false);
+            Scribe_Values.Look(ref autoIngestYieldToJobs, "autoIngestYieldToJobs", true);
+            Scribe_Values.Look(ref craftAnyBench, "craftAnyBench", true);
+            Scribe_Values.Look(ref craftScanRadius, "craftScanRadius", 6);
+            Scribe_Values.Look(ref concurrentCoreDelivery, "concurrentCoreDelivery", true);
             Scribe_Values.Look(ref backpackForMechanoids, "backpackForMechanoids", true);
             Scribe_Values.Look(ref perfOptimizationsEnabled, "perfOptimizationsEnabled", true);
             Scribe_Values.Look(ref noWorkFailure, "noWorkFailure", true);
@@ -172,6 +220,20 @@ namespace DigitalStorage.Settings
             listing.Gap(6f);
             listing.CheckboxLabeled("DS_BackpackMechToggle".Translate(), ref backpackForMechanoids,
                 "DS_BackpackMechToggleDesc".Translate());
+            listing.Gap(6f);
+            // 社区反馈第 4 条：核心是 3×3 大仓库，不该像"往工作台塞一份料"那样单名额串行
+            listing.CheckboxLabeled("DS_ConcurrentDeliveryToggle".Translate(), ref concurrentCoreDelivery,
+                "DS_ConcurrentDeliveryToggleDesc".Translate());
+            listing.Gap(6f);
+
+            // 制作代理（社区反馈 2026-10-18 第 2 条）：识别 mod 工作台 + 扫描半径
+            listing.CheckboxLabeled("DS_CraftAnyBenchToggle".Translate(), ref craftAnyBench,
+                "DS_CraftAnyBenchToggleDesc".Translate());
+            listing.Gap(6f);
+            listing.Label("DS_CraftScanRadius".Translate(craftScanRadius, craftScanRadius * 2 + 1));
+            float scan = craftScanRadius;
+            scan = listing.Slider(scan, 2f, 20f);
+            craftScanRadius = Mathf.Clamp(Mathf.RoundToInt(scan), 2, 20);
             listing.Gap(6f);
             listing.CheckboxLabeled("DS_PerfToggle".Translate(), ref perfOptimizationsEnabled,
                 "DS_PerfToggleDesc".Translate());

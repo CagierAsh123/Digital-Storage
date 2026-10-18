@@ -55,9 +55,11 @@
   <DS_AutoIngestToggle>自动收纳</DS_AutoIngestToggle>
   <DS_AutoIngestToggleDesc>允许核心自动吸收附近散落物品，无需搬运工。若发现物品在地图上"瞬移"，关闭此项。</DS_AutoIngestToggleDesc>
   <DS_AutoIngestYieldToggle>自动收纳避让作业</DS_AutoIngestYieldToggle>
-  <DS_AutoIngestYieldToggleDesc>开启后，自动收纳会让位给"正在用这件东西的人"：某个小人的作业正指着它，或者它躺在还有 bill 在等料的工作台旁边（让 300 tick）。这是给"取出材料准备制造 → 材料立刻被吸走 → 反复取物卡住"那类死循环准备的一键对照。关闭（默认）= 算中即入：一进原版待搬表，15 tick 内就瞬移进核心。</DS_AutoIngestYieldToggleDesc>
+  <DS_AutoIngestYieldToggleDesc>开启（默认）：自动收纳会让位给"正在用这件东西的人"——某个小人的作业正指着它，或者它躺在还有 bill 在等料的工作台旁边（让 300 tick）。这是给"取出材料准备制造 → 材料立刻被吸走 → 反复取物卡住"那类死循环准备的一键对照。关闭 = 算中即入：一进原版待搬表，15 tick 内就瞬移进核心。老存档沿用存档内的旧值，可随时在这里切换。</DS_AutoIngestYieldToggleDesc>
   <DS_BackpackMechToggle>机械族也挂背包</DS_BackpackMechToggle>
   <DS_BackpackMechToggleDesc>数字存储背包也会挂给殖民地机械族（含其它 mod 的无人机 / 机器人），默认开。若怀疑某个机械族 mod 的报错与本 mod 有关，关掉它即可让机械族身上不再有任何本 mod 的东西（殖民者不受影响），用于一键对照。</DS_BackpackMechToggleDesc>
+  <DS_ConcurrentDeliveryToggle>允许多人同时往核心送货</DS_ConcurrentDeliveryToggle>
+  <DS_ConcurrentDeliveryToggleDesc>原版往容器送货时对容器发的是"单名额预约"：同一时刻只允许一个搬运工往同一个容器里放东西。核心是 3×3 的大仓库，物品一远就只剩一个小人在搬、其他人干等。打开（默认）后只对本 mod 的核心跳过这条预约（货物本身照旧预约，入库动作仍然是原子的）；别家容器与原版装载舱完全按原版走。关掉即退回原版串行入库。</DS_ConcurrentDeliveryToggleDesc>
   <DS_PerfToggle>原版性能修复</DS_PerfToggle>
   <DS_PerfToggleDesc>修四个原版热点（在你框选/标记很多目标，或核心里囤了几百堆货时会明显卡顿）：视野外的选中括号不再绘制；标记图标改为增量更新，而不是原版那样每帧把整张图的标记重算一遍；批量标记时喷的"元气泡"改为每 tick 限量；核心里已有的库存不再被原版搬运列表每 tick 逐件重算一遍（判定结果与原版一致，改过滤器后照旧由搬运工取空）。纯性能，不改玩法。关掉可逐条退回原版行为。</DS_PerfToggleDesc>
   <DS_NoWorkFailureToggle>工作不会失败</DS_NoWorkFailureToggle>
@@ -96,7 +98,7 @@
   <DS_BA_OC_9>9 GHz</DS_BA_OC_9>
   <DS_BA_Watts>耗电：{0} W（自身 {1} + 范围内工作台 {2}，超频 ×{3}）</DS_BA_Watts>
   <DS_BA_Stats>已产出 {0} 件，落地 {1} 件，配方 {2} 条</DS_BA_Stats>
-  <DS_BA_NoBench>13×13 范围内没有能做工的工作台。</DS_BA_NoBench>
+  <DS_BA_NoBench>扫描范围内没有能做工的工作台。</DS_BA_NoBench>
   <DS_BA_NoBill>没有可做的配方（缺料 / 资质不够 / 条件不满足）</DS_BA_NoBill>
   <DS_BA_NoCoreMaterial>材料不在数字存储核心里（自动化只吃核心里的料）</DS_BA_NoCoreMaterial>
   <DS_BA_Block_Claimed>这批材料正被另一条产线占用（等它先做完，或给它多备一堆）</DS_BA_Block_Claimed>
@@ -116,13 +118,19 @@
   <DS_BA_PlanFinished>已完成</DS_BA_PlanFinished>
   <DS_BA_PlanDone>「{0}」订单完成（共 {1} 件）</DS_BA_PlanDone>
   <DS_BA_Empty>还没有配方。点右上角「添加配方…」，从范围内工作台能做的配方里挑一个。</DS_BA_Empty>
-  <DS_BA_NoRecipeAvailable>没有可添加的配方 —— 这个 13×13 范围内没有能做东西的工作台（或那些配方都还没研究出来）。</DS_BA_NoRecipeAvailable>
+  <DS_BA_NoRecipeAvailable>没有可添加的配方 —— 扫描范围内没有能做东西的工作台（或那些配方都还没研究出来）。</DS_BA_NoRecipeAvailable>
   <DS_BA_AlreadyAdded>已添加</DS_BA_AlreadyAdded>
   <DS_BA_ClickToAdd>点击添加</DS_BA_ClickToAdd>
   <DS_BA_SkillShort>资质不足</DS_BA_SkillShort>
   <DS_BA_NeedSkill>需要：{0}</DS_BA_NeedSkill>
   <DS_BA_Block_Unsupported>这种工作台不支持代工（换不了账单）</DS_BA_Block_Unsupported>
   <DS_BA_Block_Research>研究未解锁</DS_BA_Block_Research>
+  <DS_BA_RangeSummary>范围内工作台 {0} 台 · 可做配方 {1} 个 · 扫描范围 {2}×{2}</DS_BA_RangeSummary>
+
+  <!-- ========== 制作代理识别（社区反馈 2026-10-18 第 2 条）========== -->
+  <DS_CraftAnyBenchToggle>识别 mod 工作台</DS_CraftAnyBenchToggle>
+  <DS_CraftAnyBenchToggleDesc>原版「能做 bill」的白名单只认它自己列出的台子（电炉、切石台、缝纫台…），mod 工作台一个都不在名单里 —— 于是面板能选配方、代理却永远取不到活。打开（默认）后，只对「没有任何原版 giver 认领的台子」放宽这道白名单；原版台子与真人小人的行为完全不变。关掉即退回原版口径（mod 工作台无法自动化）。</DS_CraftAnyBenchToggleDesc>
+  <DS_CraftScanRadius>制作代理扫描半径：{0} 格（{1}×{1} 方形，下一次扫描生效）</DS_CraftScanRadius>
 
   <!-- ========== 制作自动化 · 三栏面板（Window_CraftAutomation）========== -->
   <DS_CA_NoProxy>本图没有制作代理 —— 先造一台「制作代理」</DS_CA_NoProxy>

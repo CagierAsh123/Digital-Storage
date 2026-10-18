@@ -93,7 +93,8 @@ namespace DigitalStorage.UI
 
             // ---- 列表 ----
             BuildList();
-            Rect listRect = new Rect(r.x, y, r.width, r.yMax - y - 26f);
+            // 底部留两行：范围摘要（社区反馈第 2 条：让玩家一眼看出"代理到底看见了几张台子"）+ 操作提示
+            Rect listRect = new Rect(r.x, y, r.width, r.yMax - y - 44f);
             if (shown.Count == 0)
             {
                 GUI.color = ColDim;
@@ -144,6 +145,10 @@ namespace DigitalStorage.UI
             }
 
             GUI.color = ColDim;
+            // 这一行是"排查用"的：工作台 0 台 ⇒ 范围/位置问题；台子有、配方少 ⇒ 研究或筛选问题。
+            Widgets.Label(new Rect(r.x, r.yMax - 40f, r.width, 18f),
+                "DS_BA_RangeSummary".Translate(comp.BenchesForReading.Count, comp.UnlockedRecipes.Count,
+                    comp.EffectiveScanRadius * 2 + 1));
             Widgets.Label(new Rect(r.x, r.yMax - 22f, r.width, 20f), "DS_CA_AddHint".Translate());
             GUI.color = Color.white;
         }
