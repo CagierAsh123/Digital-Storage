@@ -99,6 +99,7 @@
   <DS_BA_NoBench>No workbench that can craft anything within 13x13.</DS_BA_NoBench>
   <DS_BA_NoBill>No recipe to work on (missing material / skill too low / conditions unmet)</DS_BA_NoBill>
   <DS_BA_NoCoreMaterial>Material is not inside a digital storage core (automation only consumes from cores)</DS_BA_NoCoreMaterial>
+  <DS_BA_Block_Claimed>That material is claimed by another production line (wait for it, or stock a second stack)</DS_BA_Block_Claimed>
   <DS_BA_BenchOff>Bench is unpowered, out of fuel or broken</DS_BA_BenchOff>
   <DS_BA_BenchBusy>A colonist is using this bench</DS_BA_BenchBusy>
   <DS_BA_Block_Material>Missing material (not enough inside the core)</DS_BA_Block_Material>
@@ -200,5 +201,8 @@
   <!-- ========== Pick Up And Haul conflict notice (3 log lines at startup + a red letter on every save load) ========== -->
   <DS_PUAH_LetterLabel>Digital Storage is incompatible with Pick Up And Haul</DS_PUAH_LetterLabel>
   <DS_PUAH_LetterText>Digital Storage and Pick Up And Haul cannot work together - pick one. Our deposits are teleports (loose items fly into the core, ingredients go straight to the bench), so there is no hauling job to hand over; PUAH batch-picks items and keeps its own Thing references, and the two will bounce between "the item is already stored" and "my job still points at it" - pawns stand idle, re-fetch in loops and the log fills with red errors.\nKeep Digital Storage: disable Pick Up And Haul - it adds nothing once you have a core (it saves hauling trips, and we never haul).\nUse both: turn off "Auto-ingest" under Options - Digital Storage; the teleport stops and hauling goes back to your colonists and PUAH.</DS_PUAH_LetterText>
+
+  <!-- ========== Pre-confirm sell clamp (audit 2026-10-17, A3) ========== -->
+  <DS_TradePreflight_Clamped>Trade re-check: some of these goods became unavailable while the window was open, so the deal was reduced to what is actually in stock - {0} (format: item have/wanted).</DS_TradePreflight_Clamped>
 
 </LanguageData>

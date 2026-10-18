@@ -53,8 +53,16 @@ namespace DigitalStorage.UI
         }
 
         private readonly List<Row> rows = new List<Row>();
-        private int cachedTick = -1;
-        private int cachedCount = -1;
+        private int cachedSignature = 0;
+        private bool hasCache;
+
+        // 重建用的三个容器：复用（旧实现每次重建都新分配，配合"每帧重建"= 每帧几百 KB 垃圾）。
+        private readonly List<(ThingDef def, ThingDef stuff, int q)> rowOrder
+            = new List<(ThingDef def, ThingDef stuff, int q)>();
+        private readonly Dictionary<(ThingDef, ThingDef, int), int> rowCounts
+            = new Dictionary<(ThingDef, ThingDef, int), int>();
+        private readonly Dictionary<(ThingDef, ThingDef, int), string> rowLabels
+            = new Dictionary<(ThingDef, ThingDef, int), string>();
 
         private static int QualityOrdinalOf(Thing t)
         {
@@ -63,20 +71,39 @@ namespace DigitalStorage.UI
         }
 
         /// <summary>
-        /// 重建行快照。容器内容物只在取出/放入时变，所以按 (tick, 堆数) 做一次廉价的
-        /// 变更检测即可 —— 避免每帧 6 遍全表扫描（旧实现有同样的 P8 缓存思路）。
+        /// 内容签名：只在容器内容真的变了（进/出/堆叠数变/耐久变）时才换值。
+        /// 旧实现用 <c>(TicksGame, 堆数)</c> 做缓存键 —— tick 每帧都在涨 ⇒ 面板开着且游戏没暂停时**每帧全量重建**
+        /// （3 个容器 + 每个 def 的 label + 一次排序）。签名只做整数混算，不分配。
+        /// </summary>
+        private static int SignatureOf(Building_StorageCore core)
+        {
+            ThingOwner held = core.innerContainer;
+            int n = held.Count;
+            int sig = n * 397;
+            for (int i = 0; i < n; i++)
+            {
+                Thing t = held[i];
+                if (t == null) continue;
+                sig = sig * 31 + t.thingIDNumber;
+                sig = sig * 31 + t.stackCount;
+                if (t.def != null && t.def.useHitPoints) sig = sig * 31 + t.HitPoints;
+            }
+            return sig;
+        }
+
+        /// <summary>
+        /// 重建行快照。变更检测用内容签名（见 <see cref="SignatureOf"/>），容器复用，只在真变时重建。
         /// </summary>
         private void RebuildRowsIfNeeded(Building_StorageCore core, bool force = false)
         {
-            int tick = Find.TickManager.TicksGame;
-            int count = core.innerContainer.Count;
-            if (!force && tick == cachedTick && count == cachedCount) return;
-            cachedTick = tick;
-            cachedCount = count;
+            int signature = SignatureOf(core);
+            if (!force && hasCache && signature == cachedSignature) return;
+            cachedSignature = signature;
+            hasCache = true;
 
-            var order = new List<(ThingDef def, ThingDef stuff, int q)>();
-            var counts = new Dictionary<(ThingDef, ThingDef, int), int>();
-            var labels = new Dictionary<(ThingDef, ThingDef, int), string>();
+            rowOrder.Clear();
+            rowCounts.Clear();
+            rowLabels.Clear();
 
             for (int i = 0; i < core.innerContainer.Count; i++)
             {
@@ -85,29 +112,29 @@ namespace DigitalStorage.UI
 
                 var key = (t.def, t.Stuff, QualityOrdinalOf(t));
                 int cur;
-                if (counts.TryGetValue(key, out cur))
+                if (rowCounts.TryGetValue(key, out cur))
                 {
-                    counts[key] = cur + t.stackCount;
+                    rowCounts[key] = cur + t.stackCount;
                 }
                 else
                 {
-                    counts[key] = t.stackCount;
-                    labels[key] = BuildLabel(t);
-                    order.Add(key);
+                    rowCounts[key] = t.stackCount;
+                    rowLabels[key] = BuildLabel(t);
+                    rowOrder.Add(key);
                 }
             }
 
             rows.Clear();
-            for (int i = 0; i < order.Count; i++)
+            for (int i = 0; i < rowOrder.Count; i++)
             {
-                var key = order[i];
+                var key = rowOrder[i];
                 rows.Add(new Row
                 {
                     def = key.def,
                     stuff = key.stuff,
                     qualityOrdinal = key.q,
-                    label = labels[key],
-                    count = counts[key],
+                    label = rowLabels[key],
+                    count = rowCounts[key],
                     group = ItemGrouping.GroupOf(key.def),
                 });
             }

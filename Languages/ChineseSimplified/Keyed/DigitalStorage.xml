@@ -99,6 +99,7 @@
   <DS_BA_NoBench>13×13 范围内没有能做工的工作台。</DS_BA_NoBench>
   <DS_BA_NoBill>没有可做的配方（缺料 / 资质不够 / 条件不满足）</DS_BA_NoBill>
   <DS_BA_NoCoreMaterial>材料不在数字存储核心里（自动化只吃核心里的料）</DS_BA_NoCoreMaterial>
+  <DS_BA_Block_Claimed>这批材料正被另一条产线占用（等它先做完，或给它多备一堆）</DS_BA_Block_Claimed>
   <DS_BA_BenchOff>工作台断电、缺燃料或已损坏</DS_BA_BenchOff>
   <DS_BA_BenchBusy>殖民者正在使用这台工作台</DS_BA_BenchBusy>
   <DS_BA_Block_Material>缺料（核心里的材料不足）</DS_BA_Block_Material>
@@ -198,5 +199,8 @@
   <!-- ========== 与 Pick Up And Haul 的冲突声明（启动报三行 + 每次进档弹一封红信）========== -->
   <DS_PUAH_LetterLabel>数字存储 与 Pick Up And Haul 不兼容</DS_PUAH_LetterLabel>
   <DS_PUAH_LetterText>数字存储与 Pick Up And Haul 不兼容，请二选一 —— 这里的入库是瞬移（散落物自动进核心、材料直送台子），没有搬运作业可以交接；而 PUAH 是拿着物品引用做批量拾取，两边会在「东西已被搬走」与「作业还指着它」之间打转，表现为小人原地发呆、反复取物、日志刷红字。\n要保留数字存储：停用 Pick Up And Haul —— 有核心时它没有额外收益（省的是搬运趟数，而这里根本不搬运）。\n要同时用两者：在「选项 → 数字存储」里关掉「自动收纳」，瞬移入库随之停止，搬运交还给殖民者与 PUAH。</DS_PUAH_LetterText>
+
+  <!-- ========== 交易结算前夹卖单（审计 2026-10-17 A3）========== -->
+  <DS_TradePreflight_Clamped>交易前复核：这些货开窗后已经变少了，成交额已按实际库存下调 —— {0}（格式：品名 现有/原想卖）。</DS_TradePreflight_Clamped>
 
 </LanguageData>

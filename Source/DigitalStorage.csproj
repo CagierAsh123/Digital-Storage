@@ -17,7 +17,11 @@
          自己拼的路径一旦算错，装了开发包 / rarpack 的机器会静默回退（0 error、看起来一切正常），
          而真正需要它的那台机器依然找不到 —— 属于最难发现的一类失效。 -->
     <RimWorldManagedDir Condition=" '$(RimWorldManagedDir)' == '' ">$(MSBuildProjectDirectory)\..\..\..\..\..\..\..\SteamLibrary\steamapps\common\RimWorld\RimWorldWin64_Data\Managed</RimWorldManagedDir>
-    <HarmonyPath Condition=" '$(HarmonyPath)' == '' ">$(MSBuildProjectDirectory)\..\Assemblies\0Harmony.dll</HarmonyPath>
+    <!-- B22 / 审计 2026-10-17：编译期的 0Harmony.dll 放 Source\refs\，**不放在 Assemblies\**。
+         Assemblies\ 是发进游戏 / 上传工坊的目录，`ModAssemblyHandler` 会加载其中所有 dll；
+         把 Harmony 放那儿 = 与 HarmonyMod 本体二次加载。旧路径 = 保留给老机器。
+         （本次构建若报找不到 0Harmony，把 HarmonyMod 的 0Harmony.dll 拷到 Source\refs\ 即可。） -->
+    <HarmonyPath Condition=" '$(HarmonyPath)' == '' ">$(MSBuildProjectDirectory)\refs\0Harmony.dll</HarmonyPath>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -43,6 +47,11 @@
   <ItemGroup>
     <Reference Include="0Harmony">
       <HintPath>$(HarmonyPath)</HintPath>
+      <!-- B22 / 审计 2026-10-17：Harmony 由 HarmonyMod 本体分发。
+           带上 Private=False，编译引用的 0Harmony.dll 才不会被复制进 Assemblies\；
+           否则 ModAssemblyHandler 会加载 Assemblies\ 下所有 dll，等于二次加载 Harmony
+           （版本错配/双份 Harmony 会直接崩，且仅在某些玩家的加载顺序下才复现）。 -->
+      <Private>False</Private>
     </Reference>
     <Reference Include="Assembly-CSharp">
       <HintPath>$(RimWorldManagedDir)\Assembly-CSharp.dll</HintPath>
@@ -102,6 +111,7 @@
     <Compile Include="AI\DigitalWorkerFactory.cs" />
     <Compile Include="AI\BillAutomationScope.cs" />
     <Compile Include="AI\BillBenchClaims.cs" />
+    <Compile Include="AI\CraftIngredientClaims.cs" />
     <Compile Include="AI\CraftPlan.cs" />
     <Compile Include="AI\CraftLine.cs" />
     <Compile Include="AI\CraftUnlocks.cs" />
@@ -141,9 +151,22 @@
     <Compile Include="HarmonyPatches\Patch_FeedFromStorage.cs" />
     <Compile Include="HarmonyPatches\Patch_OrbitalTradeBeacon.cs" />
     <Compile Include="HarmonyPatches\Patch_TradeDeal_InSellablePosition.cs" />
+    <Compile Include="HarmonyPatches\Patch_TradeDeal_TryExecute_Preflight.cs" />
     <Compile Include="HarmonyPatches\Patch_WorldTrade_FromCore.cs" />
     <Compile Include="HarmonyPatches\Patch_HaulAIUtility.cs" />
     <Compile Include="HarmonyPatches\Patch_JobDriver_Equip.cs" />
+    <!-- B1 医疗与生存覆盖（2026-10-17）：血原质 / 输血 / 备药备货 -->
+    <Compile Include="HarmonyPatches\Patch_HemogenAdministerFromCore.cs" />
+    <Compile Include="HarmonyPatches\Patch_WardenDeliverHemogenFromCore.cs" />
+    <Compile Include="HarmonyPatches\Patch_GetHemogenPackFromCore.cs" />
+    <Compile Include="HarmonyPatches\Patch_BloodTransfusionFromCore.cs" />
+    <Compile Include="HarmonyPatches\Patch_TakeToInventoryFromCore.cs" />
+    <!-- B1 收尾（2026-10-17）：涂装 / 染色 / 麦芽汁 / 异种胚芽 / 塑形舱 -->
+    <Compile Include="HarmonyPatches\Patch_PaintFromCore.cs" />
+    <Compile Include="HarmonyPatches\Patch_DyeFromCore.cs" />
+    <Compile Include="HarmonyPatches\Patch_WortFromCore.cs" />
+    <Compile Include="HarmonyPatches\Patch_GeneAssemblerFromCore.cs" />
+    <Compile Include="HarmonyPatches\Patch_BiosculpterFromCore.cs" />
     <!-- ⚠️ 这个项目是**显式文件清单**，新增 .cs 必须在这里加一行，否则构建照样成功、
          但那个文件根本不参与编译（DLL 里连类型名都没有）。2026-10-02 就因此白跑了一轮：
          跨图的 bill 发现层补丁没进 DLL，症状是"吃饭/建造/加油跨界正常，bill/手术报缺料"。 -->

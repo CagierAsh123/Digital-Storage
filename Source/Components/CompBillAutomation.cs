@@ -83,6 +83,7 @@ namespace DigitalStorage.Components
 
         // 复用的临时表
         private readonly HashSet<Thing> usedBenches = new HashSet<Thing>();
+        private readonly List<CraftPlan> demandPlans = new List<CraftPlan>();
 
         public CompProperties_BillAutomation Props
         {
@@ -344,7 +345,12 @@ namespace DigitalStorage.Components
             }
 
             int free = Math.Max(1, Props.maxSlots) - TotalLines();
-            for (int p = 0; p < plans.Count && free > 0; p++)
+            if (free <= 0) return;
+
+            // 先刷一遍"这一轮该不该开工"，顺便收集有需求的计划
+            //（RefreshTargetStateIfStale 会跑原版计数器，每个计划一次就够 —— 别在发台循环里重复求值）
+            demandPlans.Clear();
+            for (int p = 0; p < plans.Count; p++)
             {
                 CraftPlan plan = plans[p];
                 if (!plan.Maintained) continue;
@@ -354,22 +360,52 @@ namespace DigitalStorage.Components
                 RefreshTargetStateIfStale(plan, map);
                 if (!plan.CanStartNewWork) continue;
 
-                int want = FreeBenchCountFor(plan.recipe);
-                for (int i = plan.lines.Count; i < want && free > 0; i++)
+                demandPlans.Add(plan);
+            }
+            if (demandPlans.Count == 0) return;
+
+            // B1 / 对应第三方补丁 FIX-12（审计 2026-10-17）：**轮转发台**。
+            //
+            // 老实现是"按 plans 顺序先到先得，一个计划把空闲的同类台全部占线"
+            // —— `want = FreeBenchCountFor(plan.recipe)` 只数有几张空台，**不看还差几件要做**
+            // ⇒ 做 1 件也把 3 台占满，后面的计划永远等不到台子（台子越多越明显）。
+            // 现在每一轮给每个还想开线的计划各发一张台，直到台子发完或没人还想要；
+            // 单个计划的目标线数再受 DemandLines（还剩几件要做）约束：做 1 件就只占 1 台。
+            bool progress = true;
+            while (free > 0 && progress)
+            {
+                progress = false;
+                for (int i = 0; i < demandPlans.Count && free > 0; i++)
                 {
+                    CraftPlan plan = demandPlans[i];
+                    if (plan.lines.Count >= DemandLines(plan)) continue;
+
                     Thing bench = PickBench(plan.recipe);
-                    if (bench == null) break;
+                    if (bench == null) continue;   // 这个配方在自己范围里没台子了
 
                     if (!BillBenchClaims.TryClaim(map, bench, this))
                     {
-                        usedBenches.Add(bench);   // 别人占了 ⇒ 本轮别再挑它
+                        usedBenches.Add(bench);   // 别的制作代理占了 ⇒ 本轮别再挑它
                         continue;
                     }
                     usedBenches.Add(bench);
                     plan.lines.Add(MakeLine(plan, bench));
                     free--;
+                    progress = true;
                 }
             }
+        }
+
+        /// <summary>
+        /// 这个计划这一轮最多该占几条线（B1/FIX-12：做 1 件不该占 3 台）。
+        /// 无限订单没有上限；次数模式按 <c>remaining</c>；维持数量按"离目标还差几件"。
+        /// 最小 1 —— 在产的那几件必须能继续做（与原版 paused 不打断已开工的语义一致）。
+        /// </summary>
+        private static int DemandLines(CraftPlan plan)
+        {
+            if (plan.mode == CraftPlan.ModeForever) return int.MaxValue;
+            if (plan.mode == CraftPlan.ModeCount) return Math.Max(1, plan.remaining);
+            return Math.Max(1, plan.targetCount - plan.countedCount);
         }
 
         private CraftLine MakeLine(CraftPlan plan, Thing bench)
@@ -412,6 +448,7 @@ namespace DigitalStorage.Components
             slotsMap = null;
             benches.Clear();
             usedBenches.Clear();
+            demandPlans.Clear();
             pendingStored.Clear();
             pendingDropped.Clear();
         }
@@ -473,20 +510,11 @@ namespace DigitalStorage.Components
             return n;
         }
 
-        /// <summary>还能再给这个配方配几条线（可用 + 未被占用 + 认领得动）。</summary>
-        private int FreeBenchCountFor(RecipeDef recipe)
-        {
-            int n = 0;
-            for (int i = 0; i < benches.Count; i++)
-            {
-                Thing b = benches[i];
-                if (!CanCraft(b, recipe) || !BenchUsable(b)) continue;
-                if (usedBenches.Contains(b)) continue;
-                n++;
-            }
-            return n;
-        }
-
+        /// <summary>
+        /// 挑一张能做这个配方、可用且本轮还没被占的台子。
+        /// （B1 之后"还能配几条线"由 <see cref="DemandLines"/> 决定，
+        /// 不再用"数一数有几张空台"——那个判据正是贪心占台的原因。）
+        /// </summary>
         private Thing PickBench(RecipeDef recipe)
         {
             for (int i = 0; i < benches.Count; i++)

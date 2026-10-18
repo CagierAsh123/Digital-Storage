@@ -429,6 +429,22 @@ namespace DigitalStorage.Components
         }
 
         /// <summary>
+        /// A1（审计 2026-10-17）：除了拆/炸，还有别的销毁方式 ——
+        /// 开发者「销毁」、<c>Destroy(DestroyMode.Vanish)</c>、<c>WillReplace</c>（替换建筑/换材质）、
+        /// 以及任何第三方 mod 直接 <c>thing.Destroy()</c>。
+        /// 这些都不走 <see cref="DropAllContents"/>，内容物会**静默消失**（玩家丢货且无日志）。
+        /// 在 <c>base.Destroy</c> 之前落货：那时 <c>Map</c>/<c>Position</c> 还在。
+        /// （<c>Verse.Thing.Destroy</c> 是 virtual，见 Thing.cs:1043。）
+        /// </summary>
+        public override void Destroy(DestroyMode mode = DestroyMode.Vanish)
+        {
+            if (Spawned && mode != DestroyMode.Deconstruct && mode != DestroyMode.KillFinalize)
+                DropAllContents();
+
+            base.Destroy(mode);
+        }
+
+        /// <summary>
         /// 把内容物全部丢在脚下。**不用 CoreDestroyDropQueue**（那是账本时代按 ItemKey 排队的东西）。
         /// 放不下的会留在容器里 —— 这里记一条 error，不再静默吞掉。
         /// </summary>
@@ -441,8 +457,18 @@ namespace DigitalStorage.Components
             innerContainer.TryDropAll(Position, map, ThingPlaceMode.Near);
             if (innerContainer.Count > 0)
             {
+                // 全图都放不下（几乎只有"核心贴着地图边界且外围被墙封死"才会发生）。
+                // 逐件点名，避免事后只有一句"有东西没了"却不知道没了什么。
+                var sb = new System.Text.StringBuilder();
+                for (int i = 0; i < innerContainer.Count; i++)
+                {
+                    Thing t = innerContainer[i];
+                    if (t == null) continue;
+                    if (sb.Length > 0) sb.Append(", ");
+                    sb.Append(t.def?.defName).Append(" x").Append(t.stackCount);
+                }
                 Log.Error("[DigitalStorage] " + innerContainer.Count
-                    + " 个物品无法落在存储核心脚下（空间不足），将随建筑一起销毁：" + this);
+                    + " 个物品无法落在存储核心脚下（空间不足），将随建筑一起销毁：" + sb);
             }
         }
 

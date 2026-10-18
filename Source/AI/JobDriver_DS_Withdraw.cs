@@ -53,6 +53,15 @@ namespace DigitalStorage.AI
         /// </summary>
         public override bool TryMakePreToilReservations(bool errorOnFailed)
         {
+            // 【B6 / 审计 2026-10-17】现场规划必须在这里做，不能等 Notify_Starting。
+            //
+            // Pawn_JobTracker.StartJob 的顺序是 `:336 TryMakePreToilReservations` → `:368 Notify_Starting`，
+            // 也就是说：规划如果留在 Notify_Starting，那么这一趟**预订时** job.targetB/C 还是空的、
+            // job.count 还是 0 ⇒ 源料堆一件都没订上（`reserveCount` 落到 -1、`src == null` 直接跳过），
+            // 同一堆料可以被两个小人在同一帧各订一份，第二个到现场才发现被掏空。
+            // 规划提前后，下面按真实数量订源堆，多个小人仍然各订同一大堆的一部分（累加语义）。
+            EnsurePlanned();
+
             // 按**本次要取的数量**订，而不是整堆：ReservationManager 会把同目标上别人已订的
             // stackCount 累加后比较 ⇒ 多个 pawn 能各订同一大堆的一部分，工地吞吐不会退化成串行。
             int reserveCount = job.count > 0 ? job.count : -1;
@@ -73,24 +82,30 @@ namespace DigitalStorage.AI
         {
             base.Notify_Starting();
 
+            // 正常情况下 TryMakePreToilReservations 里已经规划好了；这里只兜底 + 判死。
+            EnsurePlanned();
+
+            if (job.count <= 0 || SourceThing == null) EndJobWith(JobCondition.Incompletable);
+        }
+
+        /// <summary>
+        /// 把"蓝图 / Frame → 核心里的哪种材料、取多少"填进 job（幂等）。
+        ///
+        /// 只填不判死：失败时保持未规划，交给 <c>FailOn(SourceThing == null)</c> 或
+        /// <see cref="Notify_Starting"/> 干净退出 —— 这是 <see cref="TryMakePreToilReservations"/>
+        /// 不能返回 false 的代价（见上面那段说明）。
+        /// </summary>
+        private void EnsurePlanned()
+        {
             // 右键路径：调用方已经把 Thing + count 放进 job 了
             if (job.count > 0 && SourceThing != null) return;
 
-            // 构造场景：现场规划材料（蓝图 / Frame → 容器里凑得出的那种）
             Thing target = job.GetTarget(TargetIndex.A).Thing;
             IConstructible constructible = target as IConstructible;
-            if (constructible == null)
-            {
-                EndJobWith(JobCondition.Incompletable);
-                return;
-            }
+            if (constructible == null) return;
 
             var plan = ConstructMaterialPlanner.TryPlan(constructible, pawn, job.playerForced, pawn.Map);
-            if (plan == null)
-            {
-                EndJobWith(JobCondition.Incompletable);
-                return;
-            }
+            if (plan == null) return;
 
             Thing src = plan.Value.thing;
             job.SetTarget(TargetIndex.B, src);

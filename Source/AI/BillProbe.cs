@@ -24,16 +24,66 @@ namespace DigitalStorage.AI
     /// </summary>
     internal static class BillProbe
     {
-        /// <summary>取活失败（没料/条件不满足）后的重试间隔。</summary>
+        /// <summary>取活失败（站位/资质/条件不满足）后的重试间隔。</summary>
         private const int RetryTicks = 30;
 
         /// <summary>
-        /// "核心里凑不齐、但地面上有" / "这台子换不了 BillStack" 的退避（2 秒）。
+        /// 材料面失败的退避（2 秒）：<c>DS_BA_Block_Material</c>（核心里真没料）、
+        /// <c>DS_BA_NoCoreMaterial</c>（原版只能选到地上的料）、<c>DS_BA_Block_Claimed</c>（被别的线占着）。
         ///
-        /// <para>⚠️ 刻意**不写** <c>bill.nextTickToSearchForIngredients</c>：那是原版给真人用的负缓存，
-        /// 而且我们的 bill 是临时的，写它也没意义。</para>
+        /// <para>⚠️ 这个值**同时是我们的性能保险**：核心里凑不齐时，原版
+        /// <c>WorkGiver_DoBill.TryFindBestIngredientsHelper</c> 会在 <c>:525-527</c> 的核心候选失败后，
+        /// 继续做 <b>全图区域遍历</b>（<c>:529-551</c>，<c>recipe.ingredientSearchRadius</c> 默认 999 ⇒ 整张图）。
+        /// 原版自己用 <c>bill.nextTickToSearchForIngredients</c>（500~600 tick 负缓存）压这个成本；
+        /// 我们每轮都把这个负缓存清掉（见下方 <c>ResetVanillaNegativeCache</c>），所以必须自己限频。</para>
         /// </summary>
         private const int CraftBackoffTicks = 120;
+
+        /// <summary>
+        /// 清掉原版写在我们这条 bill 上的<b>选料负缓存</b>。
+        ///
+        /// <para><b>为什么必须清</b>（2026-10-17 实机报告「制作代理莫名奇妙不识别，隔一会又好了」）：
+        /// <c>WorkGiver_DoBill.StartOrResumeBillJob</c> 在 <c>:261-266</c> 里，只要
+        /// <c>TryFindBestBillIngredients</c> 失败一次就会写
+        /// <c>bill.nextTickToSearchForIngredients = now + ReCheckFailedBillTicksRange.RandomInRange</c>
+        /// （<c>:95</c>，500~600 tick），而 <c>:194</c> 的硬闸会在
+        /// <c>TicksGame &lt;= bill.nextTickToSearchForIngredients &amp;&amp; FloatMenuMakerMap.makingFor != pawn</c>
+        /// 时**整条跳过这张 bill**（我们借台子时 <c>makingFor</c> 恒为 null ⇒ 永远命中这个分支）。</para>
+        ///
+        /// <para>⚠️ 我们这条 bill <b>不是临时的</b>：它由 <c>MakeLine</c> 一次创建、随 <see cref="CraftLine"/>
+        /// 一直存活到 <c>ClearAll</c>（为了 <c>Notify_*</c> 与 HUD 进度）。所以原版这个缓存会**粘在它身上**：
+        /// 任何一次取活失败（刚做完一件还没补料 / 另一条线占着这堆 / 料被顺走几件）之后，
+        /// 接下来 8~10 秒（1×）代理对本线彻底失明，且退避期间面板照旧报「缺料」——
+        /// 与用户看到的「不识别、隔一会又好了」完全吻合。</para>
+        ///
+        /// <para>* 顺带修一个更隐蔽的同源问题：不同 WorkGiverDef 派生类共用同一个 bill，
+        /// 前一个 giver 失败写的缓存会让**同一次取活里的后一个 giver** 直接拿到 null。</para>
+        /// </summary>
+        private static void ResetVanillaNegativeCache(Bill bill)
+        {
+            if (bill != null) bill.nextTickToSearchForIngredients = 0;
+        }
+
+        private static int lastLogTick = -1;
+        private static string lastLogKey;
+
+        /// <summary>
+        /// 调试日志（仅 <c>enableDebugLog</c>）：同一条线同一原因最多 300 tick 一条，
+        /// 只在「原因变了」或「刚清掉负缓存」时刷屏才有价值 —— 报障时这段是唯一直接证据。
+        /// </summary>
+        private static void LogProbe(CraftLine line, bool ok, int stale, int now)
+        {
+            string block = ok ? "OK" : (line.BlockKey ?? "?");
+            string recipe = (line.Bill != null && line.Bill.recipe != null) ? line.Bill.recipe.defName : "?";
+            string key = block + "|" + recipe;
+            if (key == lastLogKey && now - lastLogTick < 300) return;
+            lastLogKey = key;
+            lastLogTick = now;
+            Log.Message("[DigitalStorage] 制作代理取活 " + (ok ? "成功" : "失败：" + block)
+                + "｜配方 " + recipe
+                + "｜台子 " + (line.Bench != null ? line.Bench.def.defName : "无")
+                + (stale > 0 ? "｜清掉了原版负缓存（本来是 1.6 的 500~600 tick 致盲，还剩 " + stale + " tick）" : ""));
+        }
 
         private static List<WorkGiverDef> doBillDefs;
 
@@ -55,8 +105,24 @@ namespace DigitalStorage.AI
             return doBillDefs;
         }
 
-        /// <summary>给一条在产线取一件活。返回 true 表示 <c>Ingredients/WorkLeft</c> 已就绪。</summary>
+        /// <summary>
+        /// 给一条在产线取一件活。返回 true 表示 <c>Ingredients/WorkLeft</c> 已就绪。
+        ///
+        /// <para>外面这一层只做一件事：**记录进门前原版负缓存还剩多少 tick**，再在调试日志里带出来。
+        /// 这是「莫名奇妙不识别」类报障的第一现场证据（见 <see cref="ResetVanillaNegativeCache"/>）。</para>
+        /// </summary>
         public static bool TryAcquire(CompBillAutomation comp, CraftPlan plan, CraftLine line, Map map, Pawn w, int now)
+        {
+            int stale = (line.Bill != null) ? line.Bill.nextTickToSearchForIngredients - now : 0;
+            bool ok = TryAcquireInternal(comp, plan, line, map, w, now);
+            if (DigitalStorage.Settings.DigitalStorageSettings.enableDebugLog && (stale > 0 || !ok))
+            {
+                LogProbe(line, ok, stale, now);
+            }
+            return ok;
+        }
+
+        private static bool TryAcquireInternal(CompBillAutomation comp, CraftPlan plan, CraftLine line, Map map, Pawn w, int now)
         {
             line.ClearWork();
             line.BlockKey = "DS_BA_NoBill";
@@ -117,6 +183,9 @@ namespace DigitalStorage.AI
                     if (doBill == null) continue;
 
                     Job candidate;
+                    // 每次问原版之前都清一遍负缓存：上一个 giver / 上一轮失败写的 500~600 tick
+                    // 会让这次的 JobOnThing 直接返回 null（见 ResetVanillaNegativeCache 的说明）。
+                    ResetVanillaNegativeCache(line.Bill);
                     try { candidate = doBill.JobOnThing(w, bench, false); }
                     catch (Exception e)
                     {
@@ -140,8 +209,11 @@ namespace DigitalStorage.AI
                     // Pawn_PlayerSettings.EffectiveAreaRestrictionInPawnCurrentMap，
                     // 而它拿 pawn.MapHeld 当字典键 —— 假 pawn 一旦出了作用域，MapHeld 是 null
                     // ⇒ Dictionary.TryGetValue(null) 抛 ArgumentNullException（2026-10-03 实机炸过）。
-                    line.BlockKey = Diagnose(bench, plan, map, w);
-                    line.NextAcquireTick = now + RetryTicks;
+                    string block = Diagnose(bench, plan, map, w);
+                    line.BlockKey = block;
+                    // 材料面失败会连带一次全图候选遍历（见 CraftBackoffTicks 注释），退得久一点；
+                    // 站位/资质这类便宜失败 30 tick 就够了。
+                    line.NextAcquireTick = now + (block == "DS_BA_Block_Material" ? CraftBackoffTicks : RetryTicks);
                     return false;
                 }
 
@@ -149,23 +221,38 @@ namespace DigitalStorage.AI
                 // （其中有读 pawn.Map / MapHeld 的部分），出作用域就是同一个 null 键/NRE。
                 Thing[] things;
                 int[] counts;
-                if (!ExtractIngredients(got, map, out things, out counts))
+                if (!ExtractIngredients(got, line, map, out things, out counts, out bool claimedConflict))
                 {
                     // 原版选了地面上的料（核心里凑不齐）⇒ 用户拍板"物品在核心里才可以被自动化使用"
-                    line.BlockKey = "DS_BA_NoCoreMaterial";
+                    line.BlockKey = claimedConflict ? "DS_BA_Block_Claimed" : "DS_BA_NoCoreMaterial";
                     line.NextAcquireTick = now + CraftBackoffTicks;
                     return false;
                 }
 
+                // 先把原料与数量落位，再算速率/工作量：万一下面抛异常，
+                // ClearWork（唯一的认领退出口）才有东西可退（B1）。
                 line.Probe = got;
                 line.Ingredients = things;
                 line.Counts = counts;
-                line.BaseRate = ComputeBaseRate(plan.recipe, bench, w);
-                line.WorkAmount = line.Bill.GetWorkAmount(LastIngredient(things, got));
-            line.WorkLeft = line.WorkAmount;
-            line.NextAcquireTick = 0;
-            line.BlockKey = null;
-            Performance.DevDrawProfiler.Bump("账单取活", 1);
+
+                try
+                {
+                    line.BaseRate = ComputeBaseRate(plan.recipe, bench, w);
+                    line.WorkAmount = line.Bill.GetWorkAmount(LastIngredient(things, got));
+                    line.WorkLeft = line.WorkAmount;
+                }
+                catch (Exception e)
+                {
+                    Log.ErrorOnce("[DigitalStorage] 制作代理估价失败（本轮作废，原料认领已退回）：" + e, 771134);
+                    line.ClearWork();
+                    line.BlockKey = "DS_BA_NoBill";
+                    line.NextAcquireTick = now + RetryTicks;
+                    return false;
+                }
+
+                line.NextAcquireTick = 0;
+                line.BlockKey = null;
+                Performance.DevDrawProfiler.Bump("账单取活", 1);
 
             // 与 JobDriver_DoBill 的两个 toil 对齐（:100 Notify_DoBillStarted / DoRecipeWork init:76）
             try
@@ -297,8 +384,9 @@ namespace DigitalStorage.AI
         /// （<c>WorkGiver_DoBill.cs:529-551</c>），核心里凑不齐时它会把**地上的东西**选进来。
         /// 不挡的话，制作代理就变成"第二套自动收纳"，直接从地上吃料。</para>
         /// </summary>
-        private static bool ExtractIngredients(Job job, Map map, out Thing[] things, out int[] counts)
+        private static bool ExtractIngredients(Job job, CraftLine owner, Map map, out Thing[] things, out int[] counts, out bool claimedConflict)
         {
+            claimedConflict = false;
             List<LocalTargetInfo> q = job.targetQueueB;
             int n = (q == null) ? 0 : q.Count;
             things = new Thing[n];
@@ -317,6 +405,27 @@ namespace DigitalStorage.AI
                 Building_StorageCore core = t.ParentHolder as Building_StorageCore;
                 if (core == null || core.Map != map) return false;   // 地上的 / 别的图的 / 书架衣架里的
                 if (counts[i] > t.stackCount) return false;          // 被人顺走了几件，数量对不上
+            }
+
+            // B1（审计 2026-10-17，对应第三方补丁 FIX-13）：**原料认领**。
+            //
+            // 不认领的后果（三份独立审计同时命中）：几条线对同一堆料各记一份账，
+            // 谁先做完谁扣料 ⇒ 其余线下一 tick <c>StillValid</c> 数量对不上 ⇒ 整轮作废
+            // ⇒ 并行塌缩成串行（台子越多越明显）。
+            //
+            // 用"认领"而非 ReservationManager：预约要 (thing, pawn)，而代理只有一个共享的
+            // 资质载体 pawn，同一 pawn 再预约同一堆会被原版拒 ⇒ 还是塌缩（详见 CraftIngredientClaims）。
+            for (int i = 0; i < n; i++)
+            {
+                if (!CraftIngredientClaims.TryClaim(things[i], owner))
+                {
+                    // 已被别的线占了：把本次已认领的退掉，等下一轮（原版会把这一堆换成另一堆再试）
+                    CraftIngredientClaims.Release(owner);
+                    things = new Thing[0];
+                    counts = new int[0];
+                    claimedConflict = true;
+                    return false;
+                }
             }
             return true;
         }

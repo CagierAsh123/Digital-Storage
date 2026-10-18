@@ -23,6 +23,15 @@ $dest = 'B:\SteamLibrary\steamapps\common\RimWorld\Mods\【CA】数字存储-Dig
 
 if (-not (Test-Path $dest)) { throw "找不到目标 mod 目录：$dest" }
 
+# B22 / 审计 2026-10-17：0Harmony.dll 绝不能随包发布。
+# Harmony 由 HarmonyMod 本体分发；Assemblies\ 下的 dll 会被 ModAssemblyHandler **全部**加载，
+# 带一份就是二次加载（版本错配、静态状态双份，崩得很随机）。
+# 编译期引用已经挪到 Source\refs\，这里再兜一道，谁把它拷回 Assemblies\ 都会当场被拦下。
+$strayHarmony = Join-Path $repo 'Assemblies\0Harmony.dll'
+if (Test-Path $strayHarmony) {
+    throw "Assemblies\0Harmony.dll 存在 —— 它不能进发布目录（见 Source\refs\ 与 About.xml 的依赖声明）。删掉它再部署。"
+}
+
 $running = Get-Process RimWorldWin64 -ErrorAction SilentlyContinue
 if ($running) {
     throw "RimWorld 正在运行（PID $($running.Id -join ',')）—— 先关掉游戏再部署（DLL 被锁着，拷一半会留下坏状态）。"

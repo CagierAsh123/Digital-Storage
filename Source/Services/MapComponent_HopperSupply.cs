@@ -70,11 +70,26 @@ namespace DigitalStorage.Services
             }
             if (hoppers == null || hoppers.Count == 0) return;
 
+            // 候选表**一轮只汇总一次**：GatherContents 是 O(核心数 × 核心内容物数)，
+            // 原先每台料斗都各扫一遍（20 台料斗 + 3000 堆 = 每轮 6 万次迭代）。
+            // 快照里被前一台料斗取走的堆会失效（ParentHolder 变 null / Destroyed），TrySupply 逐件复查。
+            tmpCandidates.Clear();
+            try
+            {
+                CoreSupply.GatherContents(map, hoppers[0].Position, tmpCandidates);
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[DigitalStorage] 料斗候选汇总异常（本轮跳过）：" + e, 0x44534851);
+                return;
+            }
+            if (tmpCandidates.Count == 0) return; // 没料可投，整轮省掉
+
             for (int i = 0; i < hoppers.Count; i++)
             {
                 try
                 {
-                    TrySupply(hoppers[i]);
+                    TrySupply(hoppers[i], tmpCandidates);
                 }
                 catch (Exception e)
                 {
@@ -83,7 +98,7 @@ namespace DigitalStorage.Services
             }
         }
 
-        private void TrySupply(Thing thing)
+        private void TrySupply(Thing thing, List<Thing> candidates)
         {
             if (thing == null || thing.Destroyed || !thing.Spawned) return;
 
@@ -124,14 +139,12 @@ namespace DigitalStorage.Services
             ReservationManager resMgr = map.reservationManager;
             if (resMgr != null && resMgr.IsReservedByAnyoneOf(hopper, Faction.OfPlayer)) return; // 有搬运工在路上
 
-            // ② 从核心挑一件（判据全是原版自己的）。
-            tmpCandidates.Clear();
-            CoreSupply.GatherContents(map, cell, tmpCandidates);
+            // ② 从核心挑一件（判据全是原版自己的）。候选表由调用方一轮汇总一次，这里只读。
 
             Thing pick = null;
-            for (int i = 0; i < tmpCandidates.Count; i++)
+            for (int i = 0; i < candidates.Count; i++)
             {
-                Thing t = tmpCandidates[i];
+                Thing t = candidates[i];
                 if (t == null || t.Destroyed || t.def == null) continue;
                 if (!(t.ParentHolder is Building_StorageCore)) continue; // 只搬核心里的
                 if (t.IsForbidden(Faction.OfPlayer)) continue;

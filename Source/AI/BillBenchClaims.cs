@@ -88,5 +88,12 @@ namespace DigitalStorage.AI
         }
 
         private static readonly List<Thing> tmp = new List<Thing>();
+
+        /// <summary>清空整表（读档 / 换档；键是 <c>Map</c> 与 <c>Thing</c> 实例，读档后全是死引用）。</summary>
+        public static void ClearAll()
+        {
+            claims.Clear();
+            tmp.Clear();
+        }
     }
 }

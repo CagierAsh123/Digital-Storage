@@ -59,7 +59,11 @@ namespace DigitalStorage.AI
 
             Thing best = HaulSourceContents.FindBestIncludingRemote(
                 map,
-                t => FoodScoring.Score(pawn, t.def),
+                // A2：食物用"带 WillEat 的同口径评分"，药物仍按 def 评分
+                //（药物是否适合由下面的 DrugIsSuitable 判，不走 WillEat —— 药不是"吃"）。
+                t => t.def.IsNutritionGivingIngestible
+                    ? FoodScoring.Score(pawn, t, pawn)
+                    : FoodScoring.Score(pawn, t.def),
                 t =>
                 {
                     seen++;

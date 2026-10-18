@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text;
 using DigitalStorage.AI;
 using LudeonTK;
@@ -6,6 +8,7 @@ using RimWorld;
 using UnityEngine;
 using Verse;
 using Verse.AI;
+using Verse.AI.Group;
 
 namespace DigitalStorage.Components
 {
@@ -287,11 +290,280 @@ namespace DigitalStorage.Components
                 SB.AppendLine("  工作类型：workSettings 不可用（非玩家派系 / 机械体 / 无工作能力）");
             }
 
+            // 为什么它拿不到活：机械体身份 / 工作模式 / 领主 duty / 当前 job 的指纹
+            AppendThinkTreeState(p);
+
+            // 它真正的活源：原版待搬表（表里没有的东西谁也搬不走）
+            AppendHaulWorkload(map, p);
+
             // 本图工地盘点：有活却没派给它，还是压根没活
             AppendConstructionWorkload(map, p);
 
             SB.AppendLine("=== [DS pawn] 结束 ===");
             Log.Warning(SB.ToString());
+        }
+
+        /// <summary>
+        /// <b>为什么这个 pawn 拿不到活</b>：把 Ancot 无人机思考树（<c>Ancot_Drone</c>）上决定走哪条分支的
+        /// 每个字段都打出来。
+        ///
+        /// <para><b>树的分支顺序</b>（<c>Ancot Library/1.6/Defs/ThinkTreeDefs/Drone.xml</c>）：
+        /// 低电量自停 → 排队 job → 征召 → <b>领主职责（LordDuty）</b> → 玩家机械体〔工作模式 = 工作 时才有
+        /// <c>JobGiver_Work</c>〕→ 非玩家机械体战斗 → 玩家机械体闲逛 → 闲逛 → <c>JobGiver_IdleError</c>。</para>
+        ///
+        /// <para><b>三个字段决定它走哪条</b>：<c>RaceProps.IsMechanoid</c>（配合阵营算出
+        /// <c>IsColonyMech</c>，而 <c>ThinkNode_ConditionalPlayerMech</c> 判的就是它 ——
+        /// 不是殖民地机械体就<b>永远到不了 <c>JobGiver_Work</c></b>）、<c>mindState.duty</c>
+        /// （有 duty 就被<b>排在 JobGiver_Work 前面</b>的领主分支先接管）、
+        /// <c>CompDrone.workMode</c>（Ancot 的工作模式：工作 / 充电 / 休眠）。</para>
+        ///
+        /// <para><b>「一直 Wait」在这棵树里只有三个来源，各有指纹</b>：</para>
+        /// <list type="number">
+        /// <item><c>JobGiver_IdleError</c> —— <c>expiryInterval = 100</c>，并在日志里留一行
+        ///   <c>... issued IdleError wait job. The behavior tree should never get here.</c>
+        ///   ⇒ 说明它前面<b>每一个</b>节点都没给出 job（含闲逛那份）；</item>
+        /// <item>领主 duty 里的 <c>JobGiver_Idle</c> —— <c>expiryInterval</c> 是那个 DutyDef 的 ticks
+        ///   （不是 100）；</item>
+        /// <item>派活出错之后的恢复等待 —— <c>expiryInterval</c> 是 <b>250</b>
+        ///   （<c>Pawn_JobTracker</c> 的 Errored / ErroredPather）或 <b>150</b>
+        ///   （<c>JobUtility.StartErrorRecoverJob</c>），日志里有那一次的异常栈。</item>
+        /// </list>
+        /// </summary>
+        private static void AppendThinkTreeState(Pawn p)
+        {
+            SB.AppendLine("  —— 它能不能拿到活（思考树分支）——");
+            try
+            {
+                SB.AppendLine("    IsMechanoid=" + p.RaceProps.IsMechanoid
+                              + "  IsColonyMech=" + p.IsColonyMech
+                              + "  IsColonyMechPlayerControlled=" + p.IsColonyMechPlayerControlled
+                              + "  精神状态=" + (p.MentalStateDef == null ? "无" : p.MentalStateDef.defName)
+                              + "  Overseer=" + (p.GetOverseer() == null ? "无" : p.GetOverseer().LabelShort));
+                SB.AppendLine("    征召中=" + p.Drafted
+                              + "  正在移动=" + ((p.pather == null) ? "?" : p.pather.Moving.ToString())
+                              + "  行动能力=" + p.health.capacities.CapableOf(PawnCapacityDefOf.Moving)
+                              + "  可站立格=" + p.PositionHeld.Standable(p.MapHeld));
+                if (!p.RaceProps.IsMechanoid || !p.IsColonyMech)
+                {
+                    SB.AppendLine("    ⚠ 它不是「殖民地机械体」⇒ Drone.xml 里那条玩家机械体分支"
+                                  + "（含 JobGiver_Work）整条被跳过，它做不了任何工作（只剩战斗 / 闲逛）。");
+                }
+            }
+            catch (Exception e) { SB.AppendLine("    身份判定异常：" + e.GetType().Name); }
+
+            ThingComp drone = FindDroneComp(p);
+            if (drone == null)
+            {
+                SB.AppendLine("    工作模式：这个 pawn 身上没有 AncotLibrary.CompDrone（不是 Ancot 无人机系）");
+            }
+            else
+            {
+                object mode;
+                object initial;
+                try
+                {
+                    mode = FieldValue(drone, "workMode");
+                    initial = FieldValue(PropValue(drone, "Props"), "initialWorkMode");
+                    SB.AppendLine("    工作模式 CompDrone.workMode = " + DefName(mode)
+                                  + "（出厂值 " + DefName(initial) + "）"
+                                  + "  depleted=" + FieldValue(drone, "depleted")
+                                  + "  initialized=" + FieldValue(drone, "initialized"));
+                    SB.AppendLine("    电量 PowerTicksLeft=" + PropValue(drone, "PowerTicksLeft")
+                                  + "  PercentFull=" + PropValue(drone, "PercentFull")
+                                  + "  IsSelfShutdown=" + PropValue(drone, "IsSelfShutdown"));
+                    if (mode == null)
+                    {
+                        SB.AppendLine("    ⚠ workMode 为 null ⇒ 三个「工作模式」分支全不匹配，"
+                                      + "它会一直掉到闲逛 / IdleError。这是 Ancot 无人机最典型的「不动」原因。");
+                    }
+                    else if (DefName(mode) != "Ancot_Work")
+                    {
+                        SB.AppendLine("    ⚠ 当前不是 Ancot_Work（工作）模式 ⇒ 它按设计就不干活（充电 / 休眠）。");
+                    }
+                }
+                catch (Exception e) { SB.AppendLine("    工作模式读取异常：" + e.GetType().Name); }
+            }
+
+            try
+            {
+                Lord lord = p.GetLord();
+                PawnDuty duty = (p.mindState == null) ? null : p.mindState.duty;
+                SB.AppendLine("    领主 lord = " + ((lord == null)
+                    ? "无"
+                    : lord.LordJob.GetType().Name
+                      + " / toil=" + ((lord.CurLordToil == null) ? "null" : lord.CurLordToil.GetType().Name)
+                      + " / 在本 toil 已 " + lord.ticksInToil + " tick / 成员 " + lord.ownedPawns.Count));
+                SB.AppendLine("    职责 mindState.duty = " + ((duty == null) ? "无" : duty.def.defName));
+                if (duty != null)
+                {
+                    SB.AppendLine("    ⚠ 有 duty ⇒ Drone.xml 里**领主分支排在 JobGiver_Work 前面**，"
+                                  + "它先被领主接管；领主不给活才轮到工作 / 闲逛。");
+                }
+            }
+            catch (Exception e) { SB.AppendLine("    领主/duty 读取异常：" + e.GetType().Name); }
+
+            Job cur = p.CurJob;
+            if (cur != null)
+            {
+                SB.AppendLine("    job 指纹：" + cur.def.defName
+                              + " / driver=" + ((cur.def.driverClass == null) ? "null" : cur.def.driverClass.Name)
+                              + " / expiryInterval=" + cur.expiryInterval
+                              + " / checkOverrideOnExpire=" + cur.checkOverrideOnExpire
+                              + " / overrideFacing=" + cur.overrideFacing
+                              + " / workGiver=" + ((cur.workGiverDef == null) ? "无" : cur.workGiverDef.defName));
+                if (cur.def == JobDefOf.Wait)
+                {
+                    if (cur.expiryInterval == 100)
+                    {
+                        SB.AppendLine("       ⇒ expiryInterval=100 = **JobGiver_IdleError**：它前面的每个节点都没给出 job。"
+                                      + "去 Player.log 搜「issued IdleError wait job」。");
+                    }
+                    else if (cur.expiryInterval == 250)
+                    {
+                        SB.AppendLine("       ⇒ expiryInterval=250 = 上一件活以 Errored / ErroredPather 收场后的恢复等待："
+                                      + "日志里那次的异常栈才是根因。");
+                    }
+                    else if (cur.expiryInterval == 150)
+                    {
+                        SB.AppendLine("       ⇒ expiryInterval=150 = JobUtility.StartErrorRecoverJob：派活时抛异常了"
+                                      + "（日志里那次的异常栈才是根因）。");
+                    }
+                    else
+                    {
+                        SB.AppendLine("       ⇒ 不是 100 / 250 / 150 ⇒ 多半来自**领主 duty 的 JobGiver_Idle**（看上面的 duty）。");
+                    }
+                }
+            }
+
+            try
+            {
+                if (p.mindState != null)
+                {
+                    SB.AppendLine("    mindState.IsIdle=" + p.mindState.IsIdle
+                                  + "  lastJobTag=" + p.mindState.lastJobTag);
+                }
+                Area area = (p.playerSettings == null) ? null : p.playerSettings.AreaRestrictionInPawnCurrentMap;
+                SB.AppendLine("    活动区 = " + ((area == null) ? "无限制" : area.Label)
+                              + ((area == null) ? "" : "  它在区内=" + area[p.PositionHeld]));
+                if (p.needs != null && p.needs.energy != null)
+                {
+                    SB.AppendLine("    机械体能量 needs.energy = " + p.needs.energy.CurLevelPercentage.ToStringPercent());
+                }
+            }
+            catch (Exception e) { SB.AppendLine("    状态读取异常：" + e.GetType().Name); }
+        }
+
+        /// <summary>
+        /// <b>它真正的活源</b>：原版 <c>WorkGiver_Haul</c> 的候选**只有**
+        /// <c>map.listerHaulables.ThingsPotentiallyNeedingHauling()</c>。
+        ///
+        /// <para>这张表空了 ⇒ 全殖民地（含无人机）都没得搬。而本 mod 的「算中即入」正是让地表常年没有待搬物
+        /// —— 那是<b>设计</b>，不是卡死：它站着不动是因为「没有活」，不是因为「拿不到活」。
+        /// 这两件事在日志里长得一模一样，所以必须分开量。</para>
+        /// </summary>
+        private static void AppendHaulWorkload(Map map, Pawn p)
+        {
+            ICollection<Thing> haulables;
+            try
+            {
+                haulables = map.listerHaulables.ThingsPotentiallyNeedingHauling();
+            }
+            catch (Exception e)
+            {
+                SB.AppendLine("  —— 搬运活盘点 ——");
+                SB.AppendLine("      原版待搬表读取失败：" + e.GetType().Name);
+                return;
+            }
+            if (haulables == null)
+            {
+                SB.AppendLine("  —— 搬运活盘点 ——");
+                SB.AppendLine("      原版待搬表 = null");
+                return;
+            }
+
+            SB.AppendLine("  —— 搬运活盘点 ——");
+            SB.AppendLine("      原版待搬表 listerHaulables = " + haulables.Count + " 件"
+                          + "（WorkGiver_Haul 的候选**只有**这一张表里的东西）");
+
+            WorkGiver_Scanner haulWg = null;
+            WorkGiverDef haulDef = DefDatabase<WorkGiverDef>.GetNamed("Haul", false);
+            if (haulDef != null) haulWg = haulDef.Worker as WorkGiver_Scanner;
+
+            int shown = 0;
+            foreach (Thing t in haulables)
+            {
+                if (t == null) continue;
+                if (shown >= 3) break;
+                shown++;
+                string note;
+                bool has = false;
+                try
+                {
+                    if (haulWg != null) has = haulWg.HasJobOnThing(p, t, false);
+                    note = "  CanReserve=" + p.CanReserve(t)
+                           + "  CanReach=" + p.CanReach(t, PathEndMode.ClosestTouch, Danger.Deadly)
+                           + "  已被订=" + map.reservationManager.IsReservedByAnyoneOf(t, p.Faction);
+                }
+                catch (Exception e) { note = "  判定异常：" + e.GetType().Name; }
+                SB.AppendLine("      · " + ((t.def == null) ? "?" : t.def.defName) + " @" + t.PositionHeld
+                              + "  HasJobOnThing=" + has + note);
+            }
+
+            if (haulables.Count == 0)
+            {
+                SB.AppendLine("      ⇒ 表是空的：**没有搬运活可派**。地表物品已被核心收走（算中即入），"
+                              + "它不动是正确行为 —— 想让它干活就得有框架 / 蓝图（我们的「从核心取料送工地」）"
+                              + "或者别把东西全收进核心。");
+            }
+        }
+
+        /// <summary>
+        /// 找 Ancot 的 <c>CompDrone</c>（<b>不引用</b> AncotLibrary —— 那是软依赖）：
+        /// 按类型沿继承链找名字为 <c>CompDrone</c> 的 comp（Milira 的子类 <c>CompDrone_Milira</c> 也命中）。
+        /// </summary>
+        private static ThingComp FindDroneComp(Pawn p)
+        {
+            List<ThingComp> comps = p.AllComps;
+            if (comps == null) return null;
+            for (int i = 0; i < comps.Count; i++)
+            {
+                ThingComp c = comps[i];
+                if (c == null) continue;
+                for (Type t = c.GetType(); t != null; t = t.BaseType)
+                {
+                    if (t.Name == "CompDrone") return c;
+                }
+            }
+            return null;
+        }
+
+        private static object FieldValue(object obj, string name)
+        {
+            if (obj == null) return null;
+            for (Type t = obj.GetType(); t != null; t = t.BaseType)
+            {
+                FieldInfo f = t.GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (f != null) return f.GetValue(obj);
+            }
+            return null;
+        }
+
+        private static object PropValue(object obj, string name)
+        {
+            if (obj == null) return null;
+            for (Type t = obj.GetType(); t != null; t = t.BaseType)
+            {
+                PropertyInfo pr = t.GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (pr != null && pr.CanRead) return pr.GetValue(obj, null);
+            }
+            return null;
+        }
+
+        private static string DefName(object obj)
+        {
+            if (obj == null) return "null";
+            Def d = obj as Def;
+            return (d != null) ? d.defName : obj.ToString();
         }
 
         /// <summary>

@@ -62,6 +62,13 @@ namespace DigitalStorage.Services
         {
             base.FinalizeInit();
 
+            // B7 / 审计 2026-10-17：跨档静态表按 thingIDNumber 记，换档必须清
+            //（否则上一档的编号会命中新档里无关的东西）。四张表都是"运行时加速器"，
+            // 清空只丢一点缓存，不影响任何已存状态。
+            Components.CompAutoIngest.ClearSessionCaches();
+            AI.BillBenchClaims.ClearAll();
+            AI.CraftIngredientClaims.Clear();
+
             if (!shown40Letter)
             {
                 shown40Letter = true;

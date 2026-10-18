@@ -42,12 +42,23 @@ namespace DigitalStorage.HarmonyPatches
 
             Thing best = HaulSourceContents.FindBestIncludingRemote(
                 getter.Map,
-                t => FoodScoring.Score(eater, t.def),
+                // A2：评分也用带 WillEat 的那种重载 —— 评分与下面的谓词必须同口径，
+                // 否则会出现"评分认为最好、但这个人根本不能吃"的候选。
+                t => FoodScoring.Score(eater, t, getter),
                 t => t.def.IsNutritionGivingIngestible && t.def.IsIngestible
                      && (capturedFilter == null || capturedFilter.Allows(t.def))
-                     && eater.RaceProps.Eats(t.def.ingestible.foodType));
+                     && eater.RaceProps.Eats(t.def.ingestible.foodType)
+                     // A2（审计 2026-10-17）：原版 TryFindBestFoodSourceFor 对每个候选都会过
+                     // FoodUtility.WillEat（食物方案/戒律/头衔/婴儿不能吃固体/生食厌恶…）。
+                     // 我们直连容器绕过了这一层 ⇒ 抽到脚下后下游判据再次拒绝 ⇒ 食物撒一地、
+                     // 喂食 job 反复重试（补丁仓库 v0.65 实测抽取次数 ×2→×53）。
+                     && eater.WillEat(t, getter, careIfNotAcceptableForTitle: true));
 
             if (best == null) return;
+
+            // 第二道闸：即使上面因将来改动漏了谓词，也绝不在"不能吃"的前提下去抽取。
+            // 铁律：ExtractToFeet 是有副作用的（物品真会离开容器落地），必须先确认能用。
+            if (!eater.WillEat(best, getter, careIfNotAcceptableForTitle: true)) return;
 
             int take = CalculateFeedAmount(eater, best.def, best.stackCount);
             if (take <= 0) return;

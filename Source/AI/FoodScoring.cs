@@ -9,6 +9,21 @@ namespace DigitalStorage.AI
     /// </summary>
     public static class FoodScoring
     {
+        /// <summary>
+        /// A2（审计 2026-10-17）：**带原版判据的同一口径评分**。
+        /// <c>Score(Pawn, ThingDef)</c> 只看 def 可吃性，看不到"这个人这一顿到底能不能吃"
+        /// （婴儿不能吃固体、戒律禁止、头衔要求、食物方案、生食厌恶……）。取料路径如果只按 def 打分就
+        /// <c>ExtractToFeet</c>，会出现"抽出来才发现不能吃 ⇒ 东西掉一地 + 下游 job 起不来"
+        /// （补丁仓库 v0.65 的喂食事故即此：抽取次数 ×2→×53）。
+        /// 现统一用这个重载打分：不可食直接 -9999，与 <see cref="RimWorld.FoodUtility.WillEat(Pawn, Thing, Pawn, bool, bool)"/> 同一判据。
+        /// </summary>
+        public static float Score(Pawn eater, Thing thing, Pawn getter = null)
+        {
+            if (eater == null || thing == null || thing.def?.ingestible == null) return -9999f;
+            if (!eater.WillEat(thing, getter ?? eater, careIfNotAcceptableForTitle: true)) return -9999f;
+            return Score(eater, thing.def);
+        }
+
         public static float Score(Pawn eater, ThingDef def)
         {
             if (def.ingestible == null) return -9999f;

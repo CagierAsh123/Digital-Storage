@@ -59,6 +59,22 @@ namespace DigitalStorage.Components
 
         private static int lastSweepTick = -1;
 
+        /// <summary>
+        /// 换档 / 新开档时清掉所有跨档静态表（<b>B7 / 审计 2026-10-17</b>）。
+        ///
+        /// 这两张表都以 <c>thingIDNumber</c> 为键，而 <c>thingIDNumber</c> 是**每个存档各自从 1 开始**的
+        /// 计数器 ⇒ 不清的话，上一档里"刚被取出、300 tick 内别吸回"的编号，会命中新档里
+        /// <b>完全无关的另一件东西</b>，表现是"刚进档某些东西莫名其妙不被自动收纳"。
+        /// 顺带也清轮转游标与清扫 tick，避免大编号残留导致扫描顺序异常。
+        /// </summary>
+        internal static void ClearSessionCaches()
+        {
+            withdrawnUntil.Clear();
+            rimFirstSeen.Clear();
+            scanOffset = 0;
+            lastSweepTick = -1;
+        }
+
         public static void MarkWithdrawn(Thing t)
         {
             if (t != null)
@@ -163,6 +179,11 @@ namespace DigitalStorage.Components
             var map = core.Map;
             if (map == null) return;
 
+            // 装满了就别扫表：候选筛选里最贵的一步是"原版会不会把它搬进我这儿"
+            // （WouldVanillaHaulIntoCore → 两次原版储存搜索），容量满了它必然回答"不会"，
+            // 但每个候选仍要付一次搜索代价。装满时直接整轮省掉（其它核心各有自己的 comp）。
+            if (core.innerContainer.Count >= core.maxStacks) return;
+
             SweepWithdrawn(); // L1: 清扫过期标记
 
             // M4: 候选收集不再按核心过滤器/容量过滤——被过滤的物品仍应路由到合格储存区，
@@ -198,7 +219,11 @@ namespace DigitalStorage.Components
             {
                 Thing t = candidateBuffer[i];
                 Building_StorageCore dest = candidateDestBuffer[i];
-                if (t == null || t.Destroyed || dest == null || dest.Destroyed) continue;
+                // !t.Spawned：同相位（thingIDNumber % 15 相同）的另一个核心先把这件吸走了
+                // ⇒ 它现在是别人的**容器内容物**。此时再 SplitOff 会把它从那个核心里拆出来
+                // （B12：跨核心互相偷货）。候选集来自 listerHaulables（只含地上的东西），
+                // 所以此刻"不在地上"= 已失效。
+                if (t == null || t.Destroyed || !t.Spawned || dest == null || dest.Destroyed) continue;
 
                 // 立刻入库（零延迟的产品决策不变）。光束只是**余像**：物品此刻已经进核心，
                 // 所以在它被搬走之前先把原来的格子和绘制位置记下来交给光束。
@@ -245,12 +270,20 @@ namespace DigitalStorage.Components
             if (start < 0) start = 0;
             scanOffset = (start + bufSize) % total;
 
+            // 单轮扫描上限：待搬表很大且长时间无可吸件时（例如地上全是"已在更优储存"的东西），
+            // 原先会把整张表扫一遍，每件都付出一次原版储存搜索的代价。
+            // 上限只限制**这一轮**的工作量；轮转起点仍在推进 ⇒ 表尾不会被饿死（2026-10-02 那条教训）。
+            int maxScanned = Math.Max(32, bufSize * 8);
+            int scanned = 0;
+
             // 第一遍：从轮转起点扫到表尾
             int index = 0;
             foreach (Thing t in haulables)
             {
                 if (index++ < start) continue;
                 if (bufCount >= bufSize) return;
+                if (scanned >= maxScanned) return;
+                scanned++;
                 TryAddCandidate(t, map, ref bufCount);
             }
 
@@ -261,6 +294,8 @@ namespace DigitalStorage.Components
             {
                 if (index++ >= start) break;
                 if (bufCount >= bufSize) return;
+                if (scanned >= maxScanned) return;
+                scanned++;
                 TryAddCandidate(t, map, ref bufCount);
             }
         }

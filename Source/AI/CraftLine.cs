@@ -82,6 +82,9 @@ namespace DigitalStorage.AI
         /// <summary>丢掉这一轮（保留线与台子认领）。</summary>
         public void ClearWork()
         {
+            // B1：这一轮不做了 ⇒ 立刻把原料认领退掉，别让别的线干等（StillValid 失败、
+            // 产出结算、线释放都会走到这里，是唯一的收口点）。
+            if (Ingredients != null) CraftIngredientClaims.Release(this);
             Probe = null;
             Ingredients = null;
             Counts = null;
