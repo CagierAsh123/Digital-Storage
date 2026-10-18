@@ -211,4 +211,10 @@
   <!-- ========== 交易结算前夹卖单（审计 2026-10-17 A3）========== -->
   <DS_TradePreflight_Clamped>交易前复核：这些货开窗后已经变少了，成交额已按实际库存下调 —— {0}（格式：品名 现有/原想卖）。</DS_TradePreflight_Clamped>
 
+  <!-- ========== 右键蓝图 / 框：用数字存储的材料建造（2026-10-18 用户反馈：地上没材料时右键没反应）========== -->
+  <DS_FM_SupplyConstruct>用数字存储的材料建造：{0}</DS_FM_SupplyConstruct>
+  <DS_FM_SupplyConstructBlocked>用数字存储的材料建造（现在不行）</DS_FM_SupplyConstructBlocked>
+  <DS_FM_SupplyShort>核心里还缺：{0}</DS_FM_SupplyShort>
+  <DS_FM_SupplyReserved>核心里有这种料，但都被其他工作预留了 —— 等它们做完，或在核心的「筛选」里放开这种材料。</DS_FM_SupplyReserved>
+
 </LanguageData>

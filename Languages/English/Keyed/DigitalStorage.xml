@@ -213,4 +213,10 @@
   <!-- ========== Pre-confirm sell clamp (audit 2026-10-17, A3) ========== -->
   <DS_TradePreflight_Clamped>Trade re-check: some of these goods became unavailable while the window was open, so the deal was reduced to what is actually in stock - {0} (format: item have/wanted).</DS_TradePreflight_Clamped>
 
+  <!-- ========== Right-click blueprint / frame: build from digital storage (2026-10-18 user report: silent right-click when nothing is on the ground) ========== -->
+  <DS_FM_SupplyConstruct>Build {0} from digital storage</DS_FM_SupplyConstruct>
+  <DS_FM_SupplyConstructBlocked>Build from digital storage (not possible now)</DS_FM_SupplyConstructBlocked>
+  <DS_FM_SupplyShort>Still missing in cores: {0}</DS_FM_SupplyShort>
+  <DS_FM_SupplyReserved>The cores have this material, but other jobs have reserved all of it - wait for them, or allow it in the core's filter.</DS_FM_SupplyReserved>
+
 </LanguageData>

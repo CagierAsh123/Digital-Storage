@@ -86,6 +86,7 @@
     <Compile Include="Components\AutoIngestDevTool.cs" />
     <Compile Include="Components\DigitalWorkerDevTool.cs" />
     <Compile Include="Components\CraftAutomationDevTool.cs" />
+    <Compile Include="Components\SupplyDevTool.cs" />
     <Compile Include="Components\CompProperties_DigitalWorker.cs" />
     <Compile Include="Components\CompDigitalWorker.cs" />
     <Compile Include="Components\CompProperties_BillAutomation.cs" />
@@ -139,6 +140,7 @@
     <Compile Include="UI\Dialog_WithdrawAmount.cs" />
     <Compile Include="UI\Dialog_StorageFilter.cs" />
     <Compile Include="UI\FloatMenuOptionProvider_DS_Withdraw.cs" />
+    <Compile Include="UI\FloatMenuOptionProvider_DS_SupplyConstruct.cs" />
 
     <Compile Include="HarmonyPatches\HarmonyInit.cs" />
     <Compile Include="HarmonyPatches\Patch_ConsumeFromLedger.cs" />
