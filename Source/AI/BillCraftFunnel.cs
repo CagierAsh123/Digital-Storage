@@ -81,7 +81,7 @@ namespace DigitalStorage.AI
 
             // ② 产物（唯一漏斗）。生成期间抑制"大师/传奇"信件 —— 工厂量产会把信件栏刷爆；
             //    品质信息由左上角那条完成提示带上（见 CompBillAutomation.NoteProduct / DescribeProduct）。
-            Thing dominant = DominantIngredient(bill.recipe, ingredients);
+            Thing dominant = DominantIngredient(bill.recipe, ingredients, line.StuffDef);
             List<Thing> products;
             bool prevSuppress = BillAutomationScope.SuppressCraftLetters;
             BillAutomationScope.SuppressCraftLetters = true;
@@ -137,7 +137,20 @@ namespace DigitalStorage.AI
             plan.NoteCompleted();
 
             // ⑥ 产物：直塞核心，塞不进就落在台子旁（绝不吞）
-            StoreProducts(comp, products, map, bench);
+            StoreProducts(comp, plan, products, map, bench);
+            // ★ "造完就立马扫出来"：产物入库后立刻按新数量重算维持状态，
+            //   否则调度会在计数更新前又配新线 ⇒ 同一步骤多做 1 个。
+            //
+            //   ★★ 注意：这里要重算的是**这一件产物对应的那条订单**，不是根订单！
+            //   上游步骤（中间产物）的维持订单和根是两条不同的 plan，原来只重算 plan（=根）
+            //   ⇒ 中间产物那条要等 30 tick 才更新 ⇒ 中间产物多做（实机反馈：
+            //   "一直在造一个东西然后读不到数量增加"）。
+            if (bill != null && bill.recipe != null)
+            {
+                CraftPlan ownerPlan = CraftTree.FindPlan(comp, bill.recipe);
+                if (ownerPlan != null) comp.RecountNow(ownerPlan);
+            }
+            comp.RecountNow(plan);
             Performance.DevDrawProfiler.Bump("账单完成", 1);
             return CraftResult.Done;
         }
@@ -146,23 +159,59 @@ namespace DigitalStorage.AI
         /// 产物去向（用户拍板）：**直塞最近的核心**；核心不收（过滤器/容量）或没有核心 ⇒ 落在台子旁。
         /// 不走 <c>bill.GetStoreMode()</c> —— 自动化出来的东西一律进核心，"落地"只是失败兜底。
         /// </summary>
-        private static void StoreProducts(CompBillAutomation comp, List<Thing> products, Map map, Thing bench)
+        private static void StoreProducts(CompBillAutomation comp, CraftPlan plan, List<Thing> products, Map map, Thing bench)
         {
             if (products == null || products.Count == 0) return;
 
             Building_StorageCore core = DigitalDropRedirect.NearestUsableCore(map, bench.PositionHeld);
             IntVec3 cell = bench.PositionHeld;
 
+            // ★ 兜底：NearestUsableCore 只认【已通电】的核心（IsUsableNow = Spawned && Powered）。
+            //   核心没电 / 刚好在断电瞬间时它会返回 null ⇒ 产物全部落地 ⇒
+            //   「制作完成：X（核心放不下或未启用，放在工作台旁）」一直刷。
+            //   这里退一步：本图有核心就挑最近的那台（哪怕没电）——产物进核心比落一地好，
+            //   等来电了自己会被正常使用。
+            if (core == null)
+            {
+                core = FindNearestCoreIgnoringPower(map, bench.PositionHeld);
+                if (core != null)
+                {
+                    Log.ErrorOnce("[DigitalStorage] 没有【已通电】的核心，产物改送最近的核心（"
+                        + core.Position + "）—— 检查核心供电。", 0x44534398);
+                }
+            }
+
             for (int i = 0; i < products.Count; i++)
             {
                 Thing p = products[i];
                 if (p == null || p.Destroyed) continue;
 
+                // ★ 恢复原语义：Accepts 说不收就**落地**（不再绕过核心自己的存储筛选/容量判断直塞容器）。
+                //   "绕过"会把被禁用的物品塞进核心、并且每件都打一条未限流的 Warning（刷日志），
+                //   两件事都不该进上游。
                 if (core != null && DigitalDropRedirect.TryIngestUnspawned(core, p))
                 {
                     comp.NoteProduct(p, true);
                     continue;
                 }
+
+                // ★ 修复（用户反馈："造好的树测试的物品没被吸进核心里"）：
+                //   口径：**自动合成出来的产物一律优先送进核心**，只受容量 + 入库开关约束。
+                //   原来要求"这件产物是某个在跑 Job 需要的"才允许绕过筛选，但合成**做完那一刻**
+                //   Job 可能已经结束 / 已被清理 ⇒ 判定 false ⇒ 产物落地
+                //   （实况：已产出 26 件、落地 12 件）。
+                //
+                //   ⚠️ 适配上游 2026-10-12 的重构：旧接口
+                //     DigitalDropRedirect.TryIngestUnspawnedIgnoringFilter
+                //     Building_StorageCore.AcceptsByCapacityOnly
+                //   上游已删除（新版 TryStore 一律走 Accepts ⇒ 受筛选约束）。
+                //   这里自己判：容器有容量 + 入库开关/电力允许 ⇒ 直接塞进容器（跳过筛选）。
+                if (core != null && TryIngestIgnoringFilter(core, p))
+                {
+                    comp.NoteProduct(p, true);
+                    continue;
+                }
+
                 if (GenPlace.TryPlaceThing(p, cell, map, ThingPlaceMode.Near))
                 {
                     comp.NoteProduct(p, false);
@@ -177,12 +226,89 @@ namespace DigitalStorage.AI
         }
 
         /// <summary>
-        /// 照抄原版 <c>Toils_Recipe.CalculateDominantIngredient:348-370</c>（去掉未完成品那一支 ——
-        /// v1 不做 UFT 配方）。这个值决定 stuff 类产物的材质与颜色，**传 null 会在 GenRecipe.cs:21 直接 NRE**。
+        /// 本图**最近的核心**，<b>不管有没有电</b>（供 <see cref="StoreProducts"/> 兜底用）。
+        /// 只在"没有已通电核心"时调用，所以不做缓存 —— 顺手遍历一次就够。
         /// </summary>
-        private static Thing DominantIngredient(RecipeDef recipe, List<Thing> ingredients)
+        private static Building_StorageCore FindNearestCoreIgnoringPower(Map map, IntVec3 near)
+        {
+            if (map == null) return null;
+            List<Thing> all = map.listerThings.AllThings;
+            if (all == null) return null;
+
+            Building_StorageCore best = null;
+            float bestDist = float.MaxValue;
+            for (int i = 0; i < all.Count; i++)
+            {
+                Building_StorageCore c = all[i] as Building_StorageCore;
+                if (c == null || !c.Spawned || c.Destroyed) continue;
+                float d = (c.Position - near).LengthHorizontalSquared;
+                if (d < bestDist) { bestDist = d; best = c; }
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// 把**未落地**的产物优先送进核心（自动合成产物专用）。
+        ///
+        /// <para><b>为什么需要这个入口</b>：上游 2026-10-12 把 <c>innerContainer</c> 从
+        /// <c>ThingOwner&lt;Thing&gt;</c> 换成了 <c>CoreStorageContainer</c>，而它的 <c>TryAdd</c>
+        /// 会先问 <c>OwnerAllowsInsert</c>（入库开关 + 电力 + <b>存储筛选</b>）——
+        /// 实测数据：<c>take=1 canAccept=1 added=0 FilterAllows=False</c>，
+        /// 也就是说**只要筛选里没这个 def，从容器外面怎么写都塞不进去**。
+        /// 而自动合成的产物不能因为没勾筛选器就落地 —— 那会让前置树的下一步永远等不到料
+        /// （链断在第二步），实机现象是「制作完成：X（核心放不下或未启用，放在工作台旁）」一直刷。</para>
+        ///
+        /// <para>真正的处理在 <c>Building_StorageCore.TryStoreIgnoringFilter</c>：
+        /// 它**先把该 def 允许进筛选**，再走正常 <c>TryStore</c>（失败了还会撤回去），
+        /// 这样原版管线看到的仍是"核心确实收这个 def"。</para>
+        ///
+        /// <para>口径仍然窄：**只有自动合成的产物**走这条；玩家手工搬运、搬运 mod
+        /// 一律照旧走 <c>Accepts</c>（受筛选约束），那条路不经过这里。</para>
+        /// </summary>
+        private static bool TryIngestIgnoringFilter(Building_StorageCore core, Thing t)
+        {
+            if (core == null || t == null || t.Destroyed) return false;
+            if (t.Spawned || t.holdingOwner != null) return false;   // 只处理未落地的
+            int added = core.TryStoreIgnoringFilter(t, t.stackCount);
+            if (added <= 0)
+            {
+                // 进不去就写一条（限流）：省得下次排查靠猜
+                Log.ErrorOnce("[DigitalStorage] 合成产物未进核心：" + t.def.defName
+                    + " | Spawned=" + core.Spawned
+                    + " 入库开关=" + core.HaulDestinationEnabled
+                    + " Powered=" + core.Powered
+                    + " 容量还能收=" + core.GetDirectlyHeldThings().GetCountCanAccept(t)
+                    + " ⇒ 将落在台子旁", 0x44534399);
+            }
+            return added > 0;
+        }
+
+        /// <summary>
+        /// 照抄原版 <c>Toils_Recipe.CalculateDominantIngredient</c>。
+        /// 这个值决定 stuff 类产物的材质与颜色，**传 null 会在 GenRecipe.cs:21 直接 NRE**。
+        ///
+        /// <para><b>未完成品（UFT）那一支现在补回来了。</b>原版对该配方的第一支是
+        /// <c>if (uft != null &amp;&amp; uft.def.MadeFromStuff) return uft.ingredients.First(ing =&gt; ing.def == uft.Stuff);</c>
+        /// —— 即"认未完成品身上那个 stuff"。代理不造 UFT，但把同一件事记在
+        /// <see cref="CraftLine.StuffDef"/> 上（取活时定，见 <see cref="BillProbe.UftStuffDef"/>），
+        /// 于是这里用 <paramref name="preferredStuff"/> 复现同一支，保证"算工时用的材质"与"做产物用的材质"一致。</para>
+        ///
+        /// <para>普通配方的 <paramref name="preferredStuff"/> 恒为 null，行为和改之前完全一样。</para>
+        /// </summary>
+        internal static Thing DominantIngredient(RecipeDef recipe, IList<Thing> ingredients, ThingDef preferredStuff)
         {
             if (ingredients == null || ingredients.Count == 0) return null;
+
+            // ★ UFT 配方：取活时定下的主材质优先（= 原版 uft.ingredients.First(ing => ing.def == uft.Stuff)）
+            if (preferredStuff != null)
+            {
+                for (int i = 0; i < ingredients.Count; i++)
+                {
+                    Thing t = ingredients[i];
+                    if (t != null && t.def == preferredStuff) return t;
+                }
+            }
+
             if (recipe.productHasIngredientStuff) return ingredients[0];
 
             bool stuffProduct = false;

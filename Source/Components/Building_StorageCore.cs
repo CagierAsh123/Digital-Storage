@@ -335,6 +335,65 @@ namespace DigitalStorage.Components
             return 0;
         }
 
+        /// <summary>
+        /// <b>自动合成产物专用</b>：把未落地的物品存进核心，<b>必要时把该 def 加进核心的存储筛选</b>，
+        /// 然后再走正常入库路径。
+        ///
+        /// <para><b>为什么不是"绕过筛选"</b>：上游 2026-10-12 把 <c>innerContainer</c> 从
+        /// <c>ThingOwner&lt;Thing&gt;</c> 换成了 <see cref="Core.CoreStorageContainer"/>，而它在
+        /// <c>TryAdd</c> 里加了 <c>OwnerAllowsInsert</c>（入库开关 + 电力 + 筛选）——
+        /// 实测数据：<c>take=1 canAccept=1 added=0 ContainerType=CoreStorageContainer
+        /// AllowsInsert=False FilterAllows=False</c>。
+        /// 也就是说<b>从容器外部无论怎么写都绕不过去</b>（<c>TryAdd</c> 是 virtual，
+        /// 连 <c>base.TryAdd</c> 最终也要过 <c>CanAcceptAnyOf</c> 那条线）。</para>
+        ///
+        /// <para><b>改成"打开筛选"</b>：把这一件产物的 def 允许进筛选，再走正常
+        /// <see cref="TryStore"/> —— 这样原版管线（搬运工、资源计数、内容物面板）看到的
+        /// 都是"核心确实收这个 def"，不会出现"东西在核心里但核心说不收"的怪状态。</para>
+        ///
+        /// <para><b>口径仍然窄</b>：只有"自动合成出来的产物"走这条；玩家手工搬运、
+        /// 搬运 mod 一律照旧受筛选约束。</para>
+        /// </summary>
+        public int TryStoreIgnoringFilter(Thing t, int count)
+        {
+            if (t == null || t.Destroyed || count <= 0) return 0;
+            if (!Spawned) return 0;
+            if (!haulDestinationEnabled) return 0;                 // 入库开关照旧管
+            if (t.Spawned) return 0;                               // 只处理未落地的
+            if (ReferenceEquals(t.holdingOwner, innerContainer)) return 0;
+
+            // ★ 关键一步：筛选不允许这个 def 就先把它允许掉（否则后面每一步都过不去）
+            bool openedFilter = false;
+            try
+            {
+                StorageSettings st = GetStoreSettings();
+                if (st != null && st.filter != null && !st.filter.Allows(t))
+                {
+                    st.filter.SetAllow(t.def, true);
+                    Notify_SettingsChanged();      // 筛选变了要重算库存
+                    openedFilter = true;
+                }
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[DigitalStorage] 自动产物打开核心筛选失败：" + e, 0x4453439B);
+            }
+
+            int got = TryStore(t, count);
+
+            // 没存进去 ⇒ 把刚才那次"打开筛选"撤回去（不留副作用）
+            if (got <= 0 && openedFilter)
+            {
+                try
+                {
+                    StorageSettings st = GetStoreSettings();
+                    if (st != null && st.filter != null) { st.filter.SetAllow(t.def, false); Notify_SettingsChanged(); }
+                }
+                catch { /* 撤销失败无所谓，最多筛选里多一个允许项 */ }
+            }
+            return got;
+        }
+
         private void EnsureContainer()
         {
             if (innerContainer is CoreStorageContainer) return;
