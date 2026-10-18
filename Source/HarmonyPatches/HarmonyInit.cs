@@ -17,9 +17,10 @@ namespace DigitalStorage.HarmonyPatches
             ManualInstallAll(harmony);
             // 第三方定向兼容（可选 mod）：必须在 PatchAll 之后单独装，失败也不能影响本 mod 的补丁
             Compatibility.PhinixCompatPatch.Install(harmony);
-            // 与 Pick Up And Haul 的冲突声明（不兼容是**设计决定**，见类注释）：启动时把三行写进日志。
-            // 放这里而不是读档时 —— 反馈里附的第一个文件永远是 Player.log，那时玩家可能还没进档。
-            Compatibility.PickUpAndHaulConflict.LogOnce();
+            // Pick Up And Haul：现在是**兼容**不是互斥（结论见 PickUpAndHaulCompat 类注释）。
+            // 加载顺序有讲究：必须在 PatchAll 之前探明它是否在场吗？——不需要，这里只是打一行日志；
+            // 真正决定自动收纳闸门的是运行期的 PickUpAndHaulCompat.YieldToJobTargets。
+            Compatibility.PickUpAndHaulCompat.LogOnce();
             // Log.Message 在游戏内日志窗口不显示（只有 Player.log 有），诊断一律用 Warning。
             // 带上 DLL 的最后写入时间：实测对账时最怕"跑的是哪一版"，以后一眼可辨。
             string buildTime;

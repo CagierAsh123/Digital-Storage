@@ -397,7 +397,7 @@ namespace DigitalStorage.Components
         /// 甲-1 的机制，对容器里的东西 <c>DeSpawn</c> 是错的）、**工作台材料区 / 关押区**两条豁免、
         /// **只读的预订检查**（不碰 <c>ReservationManager.Reserve</c>，与 MoreOrgans 的劳务手同款）、
         /// **"刚被取出"保护窗口**，以及 2026-10 加的两条（都是"东西正被别人用着"的形态，
-        /// <b>由设置 <c>autoIngestYieldToJobs</c> 控制、默认关</b>）：
+        /// 第一条由设置 <c>autoIngestYieldToJobs</c> 控制、**默认关**，但装了 Pick Up And Haul 时强制开）：
         /// <see cref="Reject.JobTarget"/>（是某个 pawn 作业的目标）与
         /// <see cref="Reject.OnBillGiverRim"/>（躺在"还在等料"的工作台旁边、还没过宽限）。
         ///
@@ -426,9 +426,12 @@ namespace DigitalStorage.Components
             // ★ 2026-10：作业已经指着它 —— 抢走 = 让那个作业找不到东西（见方法注释）。
             //   **默认不生效**（见设置 autoIngestYieldToJobs）：本 mod 的取向是"算中即入"，
             //   让位只是留给"万一起了取料死循环"时的一键对照。
+            //   **例外**：装了 Pick Up And Haul 时无条件生效 —— 它一趟要捡七八堆，
+            //   尾部的堆在 TryMakePreToilReservations 里常常没订上，被瞬移走就白跑一趟
+            //   （依据见 Compatibility.PickUpAndHaulCompat 的三条研究结论）。
             //   生效时刻意排在预订检查**之前**：绝大多数 job 目标同时也被预订着，
             //   但"作业在手、预订还没写"与"落地的料根本没人预订"这两种情况只有这条能拦。
-            if (DigitalStorage.Settings.DigitalStorageSettings.autoIngestYieldToJobs
+            if (Compatibility.PickUpAndHaulCompat.YieldToJobTargets
                 && IsTargetOfAnyPawnJob(t, map)) return Reject.JobTarget;
             // 【曾经在这里加过一条 Reject.OnConstructionSite（工地 3×3 不收），已删除】
             // 当时我以为"送料到工地会落地、落地就会被吸走"。**这个前提是错的**：

@@ -78,9 +78,8 @@ namespace DigitalStorage.Services
                     LetterDefOf.NeutralEvent);
             }
 
-            // 与 Pick Up And Haul 的冲突：**每次进档都弹**（不兼容声明，不是一次性通知）。
-            // 刻意放在 4.0 更新信之后 ⇒ 它压在信件栏最上面，最显眼。
-            Compatibility.PickUpAndHaulConflict.ReceiveLetter();
+            // 与 Pick Up And Haul 不再互斥（2026-10-18 改为真兼容，结论见 PickUpAndHaulCompat 类注释），
+            // 那封「每次进档都弹」的红信已删除 —— 兼容改动本身不需要玩家做任何事。
         }
 
         public override void ExposeData()

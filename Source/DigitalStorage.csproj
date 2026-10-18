@@ -80,7 +80,7 @@
     <Compile Include="Compatibility\CoreSlotGroupAdapter.cs" />
     <Compile Include="Compatibility\Legacy30Migration.cs" />
     <Compile Include="Compatibility\PhinixCompatPatch.cs" />
-    <Compile Include="Compatibility\PickUpAndHaulConflict.cs" />
+    <Compile Include="Compatibility\PickUpAndHaulCompat.cs" />
     <Compile Include="Components\CompProperties_AutoIngest.cs" />
     <Compile Include="Components\CompAutoIngest.cs" />
     <Compile Include="Components\AutoIngestDevTool.cs" />

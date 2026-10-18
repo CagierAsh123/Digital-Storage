@@ -623,6 +623,9 @@ namespace DigitalStorage.Components
             SB.AppendLine("  设置·自动收纳总开关 autoIngestEnabled = " + DigitalStorage.Settings.DigitalStorageSettings.autoIngestEnabled);
             SB.AppendLine("  设置·避让作业 autoIngestYieldToJobs = " + DigitalStorage.Settings.DigitalStorageSettings.autoIngestYieldToJobs
                           + "（关 = 算中即入：『作业目标 / 工作台旁边宽限』那两条闸门不参与判定）");
+            SB.AppendLine("  兼容·Pick Up And Haul 在场 = " + Compatibility.PickUpAndHaulCompat.IsActive
+                          + " / 作业目标让位实际生效 = " + Compatibility.PickUpAndHaulCompat.YieldToJobTargets
+                          + "（PUAH 在场时强制生效：它一趟捡多堆，被瞬移走就白跑）");
             SB.AppendLine("  研究·DigitalStorage_AutoIngest1 = " + ResearchDone("DigitalStorage_AutoIngest1")
                           + " / 2 = " + ResearchDone("DigitalStorage_AutoIngest2")
                           + " / 3 = " + ResearchDone("DigitalStorage_AutoIngest3"));
