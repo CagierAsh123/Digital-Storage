@@ -47,18 +47,22 @@ namespace DigitalStorage.AI
         /// <list type="number">
         /// <item><b>真的产出东西</b> —— 有 <c>products</c> 或有 <c>specialProducts</c>（熔炼/屠宰/切石）。
         ///   手术、植入体这类 <c>products</c> 为空的配方在建筑上本来也不会出现，这里再挡一道。</item>
-        /// <item><b>不需要未完成品</b> —— <c>UsesUnfinishedThing</c>（艺术/雕塑/生物塑型）要先造 UFT，
-        ///   是另一条链，v1 不做（用户拍板）。</item>
         /// <item><b>不是手术</b> —— 手术配方的 <c>recipeUsers</c> 是人不是建筑，正常进不来，
         ///   但 mod 可能塞进来，挡一道便宜。</item>
         /// </list>
         /// 注意：**研究门槛（<c>RecipeDef.AvailableNow</c>）不在这里过滤** —— 它随研究进度变化，
         /// 而本方法按 def 缓存。研究门槛在 <see cref="MenuRecipes"/> 每次扫描时过滤。
+        /// <para>
+        /// <b>2026-10-18 起允许 <c>UsesUnfinishedThing</c>（原版仿生体一整类）</b>：以前挡掉它们，
+        /// 结果「精密装配台能做的 60 条配方里 57 条看不见」。现在按「一步成型」处理 ——
+        /// 不造未完成品（<c>UnfinishedThing</c>），直接调 <c>GenRecipe.MakeRecipeProducts</c> 出最终产物
+        /// （原版这条链本来就是「造 UFT → 再加工完成」，两段消耗的是同一批原料；
+        /// <c>MakeRecipeProducts</c> 只看 <c>recipeDef.products</c>，不关心 UFT，所以跳过第一段是安全的）。
+        /// </para>
         /// </summary>
         private static bool IsAutomationCandidate(RecipeDef r)
         {
             if (r == null) return false;
-            if (r.UsesUnfinishedThing) return false;
             if (r.IsSurgery) return false;
             bool produces = (r.products != null && r.products.Count > 0)
                 || (r.specialProducts != null && r.specialProducts.Count > 0);

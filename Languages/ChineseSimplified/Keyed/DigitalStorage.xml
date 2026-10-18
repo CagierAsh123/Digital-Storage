@@ -126,7 +126,7 @@
   <DS_BA_Block_Unsupported>这种工作台不支持代工（换不了账单）</DS_BA_Block_Unsupported>
   <DS_BA_Block_Research>研究未解锁</DS_BA_Block_Research>
   <DS_BA_RangeSummary>范围内工作台 {0} 台 · 可做配方 {1} 个 · 扫描范围 {2}×{2}</DS_BA_RangeSummary>
-  <DS_BA_RecipeSurvey>范围内配方 {0} 个：可添加 {1} · 研究未解锁 {2} · 不支持（需未完成品/手术/无产物）{3}</DS_BA_RecipeSurvey>
+  <DS_BA_RecipeSurvey>范围内配方 {0}：可添加 {1} · 研究未解锁 {2} · 非制作 {3}</DS_BA_RecipeSurvey>
 
   <!-- ========== 制作代理识别（社区反馈 2026-10-18 第 2 条）========== -->
   <DS_CraftAnyBenchToggle>识别 mod 工作台</DS_CraftAnyBenchToggle>

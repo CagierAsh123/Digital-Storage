@@ -126,7 +126,7 @@
   <DS_BA_Block_Unsupported>This workbench type cannot be automated</DS_BA_Block_Unsupported>
   <DS_BA_Block_Research>Research not unlocked</DS_BA_Block_Research>
   <DS_BA_RangeSummary>Benches in range: {0} | Recipes available: {1} | Scan area {2}x{2}</DS_BA_RangeSummary>
-  <DS_BA_RecipeSurvey>Recipes in range: {0} | addable {1} | research locked {2} | unsupported (needs unfinished thing / surgery / no product) {3}</DS_BA_RecipeSurvey>
+  <DS_BA_RecipeSurvey>Recipes: {0} | addable {1} | research locked {2} | non-craft {3}</DS_BA_RecipeSurvey>
 
   <!-- ========== Craft proxy recognition (community report 2026-10-18 #2) ========== -->
   <DS_CraftAnyBenchToggle>Recognize modded workbenches</DS_CraftAnyBenchToggle>
