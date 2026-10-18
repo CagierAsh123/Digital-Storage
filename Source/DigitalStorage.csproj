@@ -178,6 +178,8 @@
     <Compile Include="HarmonyPatches\Patch_WortFromCore.cs" />
     <Compile Include="HarmonyPatches\Patch_GeneAssemblerFromCore.cs" />
     <Compile Include="HarmonyPatches\Patch_BiosculpterFromCore.cs" />
+    <!-- 2026-10-18 社区反馈：删储存区时的「Removing haul destination that isn't registered」红字 -->
+    <Compile Include="HarmonyPatches\Patch_HaulDestinationManager_RemoveGuard.cs" />
     <!-- ⚠️ 这个项目是**显式文件清单**，新增 .cs 必须在这里加一行，否则构建照样成功、
          但那个文件根本不参与编译（DLL 里连类型名都没有）。2026-10-02 就因此白跑了一轮：
          跨图的 bill 发现层补丁没进 DLL，症状是"吃饭/建造/加油跨界正常，bill/手术报缺料"。 -->

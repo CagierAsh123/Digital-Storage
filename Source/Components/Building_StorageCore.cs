@@ -136,6 +136,12 @@ namespace DigitalStorage.Components
 
         public bool HaulDestinationEnabled => haulDestinationEnabled && IsUsableNow;
 
+        /// <summary>只给开发期诊断用：把"入库开关"这一道门单独暴露出来（玩家关没关、档里存的是什么）。</summary>
+        internal bool DevHaulDestinationSwitchOn => haulDestinationEnabled;
+
+        /// <summary>只给开发期诊断用：同上，取出方向。</summary>
+        internal bool DevHaulSourceSwitchOn => haulSourceEnabled;
+
         // 已有库存只检查筛选, 入库再检查入库开关/电力/筛选/容量
         public bool Accepts(Thing t)
         {

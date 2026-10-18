@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using DigitalStorage.AI;
+using DigitalStorage.Core;
 using LudeonTK;
 using RimWorld;
 using UnityEngine;
@@ -812,8 +813,13 @@ namespace DigitalStorage.Components
                 acceptSamePriority: false, requiresDestReservation: false);
 
             if (!found)
-                return "原版没找到更好的**非格子**容器（当前优先级 " + curPrio
-                       + "；`acceptSamePriority: false` ⇒ 核心优先级必须**严格高于**它现在待的地方）";
+            {
+                StringBuilder tr = new StringBuilder();
+                tr.Append("原版没找到更好的**非格子**容器（当前优先级 ").Append(curPrio)
+                  .Append("；`acceptSamePriority: false` ⇒ 核心优先级必须**严格高于**它现在待的地方）");
+                AppendDestinationTable(tr, map, t, cores, curPrio);
+                return tr.ToString();
+            }
 
             Building_StorageCore core = dest as Building_StorageCore;
             if (core == null)
@@ -835,9 +841,146 @@ namespace DigitalStorage.Components
 
             if (!core.Accepts(t))
                 return "核心 " + core.LabelCap + " 的 Accepts() 返回 false（存储筛选不允许 / 容量满 / 已经装不下）"
-                       + "；筛选允许=" + FilterAllows(core, t) + " 堆=" + core.innerContainer.Count + "/" + core.maxStacks;
+                       + "；筛选允许=" + FilterAllows(core, t) + " 堆=" + core.innerContainer.Count + "/" + core.maxStacks
+                       + " stackLimit=" + (t.def == null ? "?" : t.def.stackLimit.ToString())
+                       + " 还能装=" + core.innerContainer.GetCountCanAccept(t)
+                       + " 还能装(long)=" + ((CoreStorageContainer)core.innerContainer).CountCanAcceptSafe(t);
 
             return "（走到这里说明应该能进 —— 若仍不吸请把这整段发我）";
+        }
+
+        /// <summary>
+        /// 把 <c>haulDestinationManager</c> 的目的地表整表复刻一遍。
+        ///
+        /// <para>原版 <c>StoreUtility.TryFindBestBetterNonSlotGroupStorageFor</c> 走的就是这张表、就是下面这几道门：
+        /// 优先级降序 ⇒ 跳过 <c>ISlotGroupParent</c> / <c>!HaulDestinationEnabled</c> ⇒ 优先级闸 ⇒
+        /// <c>Accepts</c> ⇒ 阵营 ⇒ 被禁。表里每一行的 <c>enabled / prio / accepts</c> 就是"为什么没选中核心"的直接答案。</para>
+        /// </summary>
+        private static void AppendDestinationTable(StringBuilder sb, Map map, Thing t,
+            List<Building_StorageCore> cores, StoragePriority curPrio)
+        {
+            sb.AppendLine();
+            sb.AppendLine("     —— 目的地表 dump（原版搜索顺序 = 优先级降序；当前件优先级 " + curPrio + "）——");
+            sb.AppendLine("     —— 我方复刻（不调原版方法，只按同一串门重扫一遍）会选中：" + ReplicateBestContainer(map, t, curPrio) + " ——");
+
+            List<IHaulDestination> list = map.haulDestinationManager.AllHaulDestinationsListForReading;
+            for (int i = 0; i < list.Count; i++)
+            {
+                IHaulDestination d = list[i];
+                string prio, en, acc;
+                try
+                {
+                    StorageSettings ss = d.GetStoreSettings();
+                    prio = (ss == null) ? "<null>" : ss.Priority.ToString();
+                }
+                catch (Exception e) { prio = "<ex:" + e.GetType().Name + ">"; }
+                try { en = d.HaulDestinationEnabled.ToString(); } catch (Exception e) { en = "<ex:" + e.GetType().Name + ">"; }
+                try { acc = d.Accepts(t).ToString(); } catch (Exception e) { acc = "<ex:" + e.GetType().Name + ">"; }
+
+                sb.Append("       [").Append(i).Append("] ").Append(TypeName(d))
+                  .Append(" prio=").Append(prio)
+                  .Append(" enabled=").Append(en)
+                  .Append(" accepts=").Append(acc);
+
+                if (d is ISlotGroupParent) sb.Append("  ← 格子型：原版直接跳过");
+
+                Thing th = d as Thing;
+                if (th != null)
+                {
+                    sb.Append(" spawned=").Append(th.Spawned)
+                      .Append(" 阵营=").Append(th.Faction == null ? "<null>" : th.Faction.Name)
+                      .Append(" 被禁=").Append(th.IsForbidden(Faction.OfPlayer))
+                      .Append(" 距离=").Append(th.PositionHeld.DistanceTo(t.PositionHeld).ToString("F1"));
+                }
+                else
+                {
+                    sb.Append("  ← 不是 Thing（没有阵营/被禁/距离这几道门）");
+                }
+                sb.AppendLine();
+            }
+
+            for (int i = 0; i < cores.Count; i++)
+            {
+                Building_StorageCore core = cores[i];
+                sb.Append("       核心「").Append(core.LabelCap).Append("」")
+                  .Append(" 在目的地表里=").Append(list.Contains(core))
+                  .Append(" spawned=").Append(core.Spawned)
+                  .Append(" 已毁=").Append(core.Destroyed)
+                  .Append(" 通电=").Append(core.Powered)
+                  .Append(" IsUsableNow=").Append(core.IsUsableNow)
+                  .Append(" 入库开关=").Append(core.DevHaulDestinationSwitchOn)
+                  .Append(" HaulDestinationEnabled=").Append(core.HaulDestinationEnabled)
+                  .Append(" 优先级=").Append(core.GetStoreSettings().Priority)
+                  .Append(" Accepts=").Append(core.Accepts(t))
+                  .Append(" 筛选允许=").Append(FilterAllows(core, t))
+                  .Append(" 堆=").Append(core.innerContainer.Count).Append("/").Append(core.maxStacks)
+                  .Append(" stackLimit=").Append(t.def == null ? "?" : t.def.stackLimit.ToString())
+                  .Append(" 还能装=").Append(core.innerContainer.GetCountCanAccept(t))
+                  .Append(" 还能装(long)=").Append(((CoreStorageContainer)core.innerContainer).CountCanAcceptSafe(t))
+                  .Append(" 被禁=").Append(core.IsForbidden(Faction.OfPlayer))
+                  .Append(" 阵营=").Append(core.Faction == null ? "<null>" : core.Faction.Name)
+                  .AppendLine();
+            }
+        }
+
+        /// <summary>
+        /// 我方复刻版「容器腿」：**不调** <c>StoreUtility.TryFindBestBetterNonSlotGroupStorageFor</c>，
+        /// 只按它那串门自己扫一遍 <c>AllHaulDestinationsListInPriorityOrder</c>。
+        ///
+        /// <para>用途：分辨 <c>false</c> 的两种来源 ——</para>
+        /// <list type="bullet">
+        /// <item>复刻结果也是「无」⇒ 表里确实没有合格目的地（核心自身某道门没过 / 不在表里）；</item>
+        /// <item>复刻结果选中了核心、原版却返回 false ⇒ 原版那个方法**被别的 mod 打了岔**（Prefix 短路 / Transpiler 改坏），
+        /// 这时再怎么调原版结果都一样，我们得自己扫表（<c>WouldVanillaHaulIntoCore</c> 要加一条自扫兜底）。</item>
+        /// </list>
+        /// </summary>
+        private static string ReplicateBestContainer(Map map, Thing t, StoragePriority curPrio)
+        {
+            List<IHaulDestination> list = map.haulDestinationManager.AllHaulDestinationsListInPriorityOrder;
+            IntVec3 from = t.SpawnedOrAnyParentSpawned ? t.PositionHeld : IntVec3.Invalid;
+            float bestDist = float.MaxValue;
+            IHaulDestination best = null;
+
+            for (int i = 0; i < list.Count; i++)
+            {
+                IHaulDestination d = list[i];
+                if (d is ISlotGroupParent) continue;                 // 格子型：原版容器腿不认
+                if (!d.HaulDestinationEnabled) continue;
+
+                StoragePriority p;
+                try
+                {
+                    StorageSettings ss = d.GetStoreSettings();
+                    if (ss == null) continue;
+                    p = ss.Priority;
+                }
+                catch (Exception) { continue; }
+
+                // 列表是优先级降序 ⇒ 一旦掉到"不比当前件高"，后面不可能再有 → 原版在这里 break
+                if ((int)p <= (int)curPrio) break;
+
+                float dist = from.IsValid ? from.DistanceToSquared(d.Position) : 0f;
+                if (dist > bestDist) continue;
+
+                bool accepts;
+                try { accepts = d.Accepts(t); } catch (Exception) { continue; }
+                if (!accepts) continue;
+
+                Thing th = d as Thing;
+                if (th != null)
+                {
+                    if (th.Faction != Faction.OfPlayer) continue;
+                    if (th.IsForbidden(Faction.OfPlayer)) continue;
+                }
+
+                best = d;
+                bestDist = dist;
+            }
+
+            if (best == null) return "<无>";
+            Thing bestThing = best as Thing;
+            return TypeName(best) + (bestThing == null ? "" : "「" + bestThing.LabelShort + "」")
+                   + " prio=" + best.GetStoreSettings().Priority + " @" + best.Position;
         }
 
         private static string Verdict(Thing t, bool inPool, CompAutoIngest.Reject rej,
