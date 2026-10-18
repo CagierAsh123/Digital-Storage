@@ -6,17 +6,22 @@ namespace DigitalStorage.Core
     /// <summary>
     /// 「有害垃圾」判定：有毒垃圾 / 废料包这一族（<c>ThingDefOf.Wastepack</c> 及其 mod 变体）。
     ///
-    /// <para><b>为什么需要单列一类</b>（社区反馈 2026-10-18 第 1 条）：这类物品原版的清理链是
+    /// <para><b>为什么要单列一类</b>：这类物品的清理链是
     /// <c>WorkGiver_EmptyWasteContainer</c> → <c>JobDriver_EmptyThingContainer</c>，而那条 driver
     /// <b>只支持格子目的地</b>（收尾是 <c>CarryHauledThingToCell</c> + <c>PlaceHauledThingInCell</c>）。
     /// 只要"最优目的地"是容器（例如高优先级的存储核心），原版就会把
     /// <c>foundCell = IntVec3.Invalid</c> 塞进 <c>job.targetC</c>，而
     /// <c>JobDriver_EmptyThingContainer.TryMakePreToilReservations</c> 会预订这个非法格子并失败
-    /// ⇒ 作业永远建不起来、也没有任何报错（"小人就是不来清理"）。</para>
+    /// ⇒ 作业永远建不起来、也没有任何报错（玩家只看到"小人就是不来清理"）。</para>
     ///
-    /// <para>所以核心的**默认筛选**要把这一族关掉（关掉 = 它不再是"最优目的地"，原版回到格子腿，
-    /// 玩家建一个垃圾储存区就能正常清理）。玩家仍可在筛选窗口里手动勾回来 —— 勾回来就意味着
-    /// 承担"原版清空作业会被容器目的地搞坏"的后果（<c>Patch_EmptyWasteContainerFallback</c> 会兜一层）。</para>
+    /// <para><b>现在的做法</b>（2026-10-18 下午，社区反馈后反转）：核心<b>照收</b>有害垃圾，
+    /// 清空链由我们自己接管 —— <c>HarmonyPatches/Patch_EmptyWasteContainerFallback</c> 发现
+    /// "最优目的地是能收这份垃圾的<b>核心</b>"时，换成
+    /// <c>DigitalStorage.AI.JobDriver_DS_EmptyWasteToCore</c>（先把废料散到地上，再抱起来送进核心）。
+    /// 于是原版那条只会往格子里放的 driver 根本不会被用在容器目的地上。</para>
+    ///
+    /// <para>本类在这里的价值：① 判定"这是垃圾"，避免把普通容器清空作业也改道；
+    /// ② 给测试/日志一个统一的判据。**筛选器不再用它做默认排除**。</para>
     /// </summary>
     public static class WasteUtil
     {

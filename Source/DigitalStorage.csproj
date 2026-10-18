@@ -108,6 +108,7 @@
     <Compile Include="AI\ConsumptionHelper.cs" />
     <Compile Include="AI\FoodScoring.cs" />
     <Compile Include="AI\JobDriver_DS_Consume.cs" />
+    <Compile Include="AI\JobDriver_DS_EmptyWasteToCore.cs" />
     <Compile Include="AI\CoreFinder.cs" />
     <Compile Include="AI\DigitalWorkerTasks.cs" />
     <Compile Include="AI\DigitalPlantTasks.cs" />

@@ -34,6 +34,14 @@ namespace DigitalStorage.AI
         /// —— 账本已整体删除，"FromLedger" 这个名字不再成立。</summary>
         public static JobDef DigitalStorage_Consume;
 
+        /// <summary>
+        /// 清空废料容器 → 废料直接送进存储核心（2026-10-18 社区反馈）。
+        /// 原版 <c>JobDriver_EmptyThingContainer</c> 只支持格子目的地：容器目的地会让
+        /// <c>targetC</c> 变成 <c>IntVec3.Invalid</c> ⇒ 作业静默建不起来。
+        /// 由 <c>Patch_EmptyWasteContainerFallback</c> 在「最优目的地是核心」时换成这条。
+        /// </summary>
+        public static JobDef DigitalStorage_EmptyWasteToCore;
+
         static DigitalStorage_JobDefOf()
         {
             DefOfHelper.EnsureInitializedInCtor(typeof(DigitalStorage_JobDefOf));

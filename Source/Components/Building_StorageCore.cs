@@ -337,9 +337,12 @@ namespace DigitalStorage.Components
                 // 用父过滤器而不是 SetAllowAll(null)，让"自己的可选范围"与"UI 显示的全集"
                 // 完全一致 —— 否则过滤器窗口里会出现 UI 看不见/勾不到的条目。
                 storeSettings.filter.SetAllowAll(GetParentFilterPublic());
-                // 有害垃圾（有毒垃圾/废料）默认不收：容器目的地会让原版「清空废料容器」作业
-                // 建不起来（详见 Core.WasteUtil 的类注释）。玩家可在筛选窗口里手动勾回来。
-                ApplyHazardousWasteExclusion(storeSettings.filter);
+                // 有害垃圾（有毒垃圾/废料）**照收**：2026-10-18 下午反转了上午的决定。
+                // 上午之所以默认关掉，是因为原版「清空废料容器」作业只要目的地是容器就会
+                // 拿到 foundCell=Invalid ⇒ 作业静默建不起来（详见 Core.WasteUtil 的类注释）。
+                // 现在那条链由 JobDriver_DS_EmptyWasteToCore 直接对接核心（废料进核心），
+                // 所以这里不再排除；玩家想不收可以自己在筛选窗口关掉，那时清空作业会退回
+                // 原版「找格子」的路（Patch_EmptyWasteContainerFallback 兜底）。
                 storeSettings.Priority = storagePriorityField;
             }
             return storeSettings;
@@ -679,11 +682,17 @@ namespace DigitalStorage.Components
         private bool corpseFilterMigrated;
 
         /// <summary>
-        /// 一次性：把「有害垃圾」从**已有存档**的筛选器里关掉（见
-        /// <see cref="MigrateHazardousWasteFilterIfNeeded"/>）。与尸体迁移同理 —— 筛选是逐 def
-        /// 白名单，老档里垃圾本来就是允许的，不迁移就只剩新档有效。玩家之后自己勾回来不会被覆盖。
+        /// 历史标记（2026-10-18 上午曾用它把「有害垃圾」从老档筛选里关掉）。现在已经反转，
+        /// 只保留这个键做存档兼容：它 true 说明这个存档被那次迁移碰过，值得再跑一次「重开」。
         /// </summary>
         private bool hazardousWasteFilterMigrated;
+
+        /// <summary>
+        /// 一次性：把被上面那次迁移**自动关掉**的有害垃圾重新放开（见
+        /// <see cref="MigrateHazardousWasteFilterIfNeeded"/> 的注释：核心现在能存垃圾了）。
+        /// 只跑一次，玩家之后自己再关掉不会被覆盖。
+        /// </summary>
+        private bool hazardousWasteFilterReopened;
 
         public override void ExposeData()
         {
@@ -701,6 +710,7 @@ namespace DigitalStorage.Components
             Scribe_Values.Look(ref legacy30Migrated, "dsLegacy30Migrated", false);
             Scribe_Values.Look(ref corpseFilterMigrated, "dsCorpseFilterMigrated", false);
             Scribe_Values.Look(ref hazardousWasteFilterMigrated, "dsWasteFilterMigrated", false);
+            Scribe_Values.Look(ref hazardousWasteFilterReopened, "dsWasteReopened", false);
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
@@ -757,57 +767,48 @@ namespace DigitalStorage.Components
         }
 
         /// <summary>
-        /// 新核心的默认筛选：把有害垃圾（有毒垃圾/废料）关掉。原因见 <see cref="Core.WasteUtil"/>：
-        /// 容器当目的地会让原版「清空废料容器」作业永远建不起来（<c>foundCell = Invalid</c>）。
-        /// </summary>
-        private static void ApplyHazardousWasteExclusion(ThingFilter filter)
-        {
-            if (filter == null) return;
-            try
-            {
-                foreach (ThingDef def in DefDatabase<ThingDef>.AllDefs)
-                {
-                    if (Core.WasteUtil.IsHazardousWaste(def))
-                        filter.SetAllow(def, false);
-                }
-            }
-            catch (Exception e)
-            {
-                Log.ErrorOnce("[DigitalStorage] 有害垃圾默认筛选设置失败（其余功能不受影响）：" + e, 0x44534402);
-            }
-        }
-
-        /// <summary>
-        /// <b>一次性</b>：把有害垃圾从**已有存档**的筛选器里关掉（2026-10-18 社区反馈第 1 条）。
+        /// <b>一次性</b>：把有害垃圾（有毒垃圾/废料）重新放回**已有存档**的筛选器
+        /// （2026-10-18 下午，社区反馈反转上午的「默认不收」）。
         ///
-        /// <para>老存档的 <c>StorageSettings.filter</c> 是读档恢复的逐 def 白名单，里面垃圾是允许的
-        /// ⇒ 不迁移就"只对新档生效"，老玩家照样踩同一条 bug。</para>
+        /// <para><b>为什么需要</b>：上午为了让原版「清空废料容器」作业避开容器目的地，
+        /// 把垃圾从核心默认筛选里关掉了，并迁移了老档。现在清空链改成由
+        /// <c>JobDriver_DS_EmptyWasteToCore</c> 直接送进核心，垃圾本来就该能存 ——
+        /// 但老档筛选是逐 def 白名单，读档后垃圾还停在「关着」的状态 ⇒ 必须重开一次。</para>
         ///
-        /// <para>只动**当前允许**的垃圾 def；迁移标记 Scribe 下去 ⇒ 玩家之后自己勾回来不会被覆盖。</para>
+        /// <para><b>只重开那次迁移关掉的</b>：<c>dsWasteFilterMigrated</c> 是上午迁移留下的标记，
+        /// 只有它为 true（= 这个存档被我们动过）才重开；玩家自己关的勾选不在其列。
+        /// 重开用完 <c>dsWasteReopened</c> 标记，之后玩家自己的勾选不会再被覆盖。</para>
         /// </summary>
         private void MigrateHazardousWasteFilterIfNeeded()
         {
-            if (hazardousWasteFilterMigrated) return;
-            hazardousWasteFilterMigrated = true;
+            if (hazardousWasteFilterReopened) return;
+
+            bool previouslyExcluded = hazardousWasteFilterMigrated;
+            hazardousWasteFilterMigrated = true;    // 旧键保留，别再让上午那套逻辑复活
+            hazardousWasteFilterReopened = true;
+
+            if (!previouslyExcluded) return;        // 这个存档没被上午的迁移碰过 ⇒ 筛选本来就是开的
 
             try
             {
                 StorageSettings st = GetStoreSettings();
                 if (st == null || st.filter == null) return;
 
+                ThingFilter universe = GetParentFilterPublic();
                 bool changed = false;
                 foreach (ThingDef def in DefDatabase<ThingDef>.AllDefs)
                 {
                     if (!Core.WasteUtil.IsHazardousWaste(def)) continue;
-                    if (!st.filter.Allows(def)) continue;   // 已经关着（或被老档外的规则关掉）⇒ 不动
-                    st.filter.SetAllow(def, false);
+                    if (!universe.Allows(def)) continue;      // 全集都不认 ⇒ 别硬塞
+                    if (st.filter.Allows(def)) continue;      // 已经开着（玩家自己勾回来过）⇒ 不动
+                    st.filter.SetAllow(def, true);
                     changed = true;
                 }
                 if (changed) Notify_SettingsChanged();
             }
             catch (Exception e)
             {
-                Log.ErrorOnce("[DigitalStorage] 有害垃圾筛选一次性迁移失败（其余功能不受影响）：" + e, 0x44534403);
+                Log.ErrorOnce("[DigitalStorage] 有害垃圾筛选一次性重开失败（其余功能不受影响）：" + e, 0x44534403);
             }
         }
 

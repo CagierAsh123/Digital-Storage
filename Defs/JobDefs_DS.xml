@@ -21,5 +21,15 @@
     <driverClass>DigitalStorage.AI.JobDriver_DS_Consume</driverClass>
     <reportString>从数字存储核心取用 TargetA。</reportString>
   </JobDef>
+  <!-- 2026-10-18：清空废料容器（机械培育舱 / 机械组装平台）→ 废料直接送进存储核心。
+       原版 JobDriver_EmptyThingContainer 只会往格子里放（CarryHauledThingToCell）：
+       目的地是容器时 targetC 会是 Invalid 格子 ⇒ 作业静默建不起来。 -->
+  <JobDef>
+    <defName>DigitalStorage_EmptyWasteToCore</defName>
+    <driverClass>DigitalStorage.AI.JobDriver_DS_EmptyWasteToCore</driverClass>
+    <reportString>清理 TargetA 里的 TargetC，送进数字存储核心。</reportString>
+    <!-- 与 WorkGiver_EmptyWasteContainer.GetReservationLayer 同一个层，否则同一个容器会被两个小人各清一次 -->
+    <containerReservationLayer>Empty</containerReservationLayer>
+  </JobDef>
 
 </Defs>
