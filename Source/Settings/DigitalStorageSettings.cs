@@ -78,6 +78,32 @@ namespace DigitalStorage.Settings
         public static int craftScanRadius = 6;
 
         /// <summary>
+        /// <b>配方展开深度</b>（制作代理 · 用户拍板方案 A，2026-10-18）。
+        ///
+        /// <para>原版漏斗只认"配方原料本身在核心里"。缺<b>中间产物</b>（高级零部件这类）时，
+        /// <see cref="AI.RecipeExpansion"/> 会把它摊成"做它的那份原料"，一步造出最终产物。
+        /// 这个值就是"能连着摊几层"：</para>
+        /// <list type="bullet">
+        /// <item><b>1</b> —— 只把最终配方的直接原料里的中间件摊开一层
+        ///   （超凡仿生眼 ← 高级零部件？摊成 精密零部件 + 钢）。</item>
+        /// <item><b>2（默认）</b> —— 摊出来的东西若本身也是中间件，再摊一层
+        ///   （覆盖 超凡仿生眼 ← 高级零部件 ← 精密零部件 这种三级链）。</item>
+        /// <item><b>3</b> —— 再深一层。再深就没意义了：显式上限防 mod 里超长链把一次取活拖成全 Def 遍历。</item>
+        /// </list>
+        /// <para>超过上限 ⇒ 放弃展开，退回原来的"缺料"状态（不会凭空变出材料）。</para>
+        /// </summary>
+        public static int craftExpandDepth = 2;
+
+        /// <summary>
+        /// <b>中间件工作量折扣</b>（0..1，默认 0.5 = 半额）：展开时把每个中间件的配方工作量
+        /// 按这个比例计入总工作量（用户原文："中间件工作量按半额计入"）。
+        ///
+        /// <para>为什么不是 1.0：中间件并没有真的被造出来、也不占第二张台子，
+        /// 全额会把"一步成型"变成单纯的慢；0 又等于白拿。0.5 是可调的折中。</para>
+        /// </summary>
+        public static float craftExpandWorkFactor = 0.5f;
+
+        /// <summary>
         /// <b>多个小人能不能同时往同一个核心送货</b>（社区反馈 2026-10-18 第 4 条）。
         ///
         /// <para>原版 <c>JobDriver_HaulToContainer.TryMakePreToilReservations</c> 对容器
@@ -164,6 +190,8 @@ namespace DigitalStorage.Settings
             Scribe_Values.Look(ref autoIngestYieldToJobs, "autoIngestYieldToJobs", true);
             Scribe_Values.Look(ref craftAnyBench, "craftAnyBench", true);
             Scribe_Values.Look(ref craftScanRadius, "craftScanRadius", 6);
+            Scribe_Values.Look(ref craftExpandDepth, "craftExpandDepth", 2);
+            Scribe_Values.Look(ref craftExpandWorkFactor, "craftExpandWorkFactor", 0.5f);
             Scribe_Values.Look(ref concurrentCoreDelivery, "concurrentCoreDelivery", true);
             Scribe_Values.Look(ref backpackForMechanoids, "backpackForMechanoids", true);
             Scribe_Values.Look(ref perfOptimizationsEnabled, "perfOptimizationsEnabled", true);
@@ -234,6 +262,20 @@ namespace DigitalStorage.Settings
             float scan = craftScanRadius;
             scan = listing.Slider(scan, 2f, 20f);
             craftScanRadius = Mathf.Clamp(Mathf.RoundToInt(scan), 2, 20);
+            listing.Gap(6f);
+
+            // 配方展开（方案 A）：缺中间产物时摊成原料，一步成型
+            listing.Label("DS_CraftExpandDepth".Translate(craftExpandDepth));
+            float dep = craftExpandDepth;
+            dep = listing.Slider(dep, 1f, 3f);
+            craftExpandDepth = Mathf.Clamp(Mathf.RoundToInt(dep), 1, 3);
+            listing.Label("DS_CraftExpandDepthDesc".Translate());
+            listing.Gap(4f);
+            listing.Label("DS_CraftExpandWork".Translate(Mathf.RoundToInt(craftExpandWorkFactor * 100f)));
+            float fac = craftExpandWorkFactor;
+            fac = listing.Slider(fac, 0f, 1f);
+            craftExpandWorkFactor = Mathf.Clamp01(fac);
+            listing.Label("DS_CraftExpandWorkDesc".Translate());
             listing.Gap(6f);
             listing.CheckboxLabeled("DS_PerfToggle".Translate(), ref perfOptimizationsEnabled,
                 "DS_PerfToggleDesc".Translate());

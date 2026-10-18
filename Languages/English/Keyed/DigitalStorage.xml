@@ -126,11 +126,18 @@
   <DS_BA_Block_Unsupported>This workbench type cannot be automated</DS_BA_Block_Unsupported>
   <DS_BA_Block_Research>Research not unlocked</DS_BA_Block_Research>
   <DS_BA_RangeSummary>Benches in range: {0} | Recipes available: {1} | Scan area {2}x{2}</DS_BA_RangeSummary>
+  <DS_BA_RecipeSurvey>Recipes in range: {0} | addable {1} | research locked {2} | unsupported (needs unfinished thing / surgery / no product) {3}</DS_BA_RecipeSurvey>
 
   <!-- ========== Craft proxy recognition (community report 2026-10-18 #2) ========== -->
   <DS_CraftAnyBenchToggle>Recognize modded workbenches</DS_CraftAnyBenchToggle>
   <DS_CraftAnyBenchToggleDesc>Vanilla only lets a bill giver use benches named in its fixedBillGiverDefs (electric stove, stonecutter, tailor bench...), so modded benches can be picked in the menu while the proxy never gets a job. On (default) relaxes that whitelist only for benches no vanilla giver claims; vanilla benches and real colonists behave exactly as before. Off = vanilla rules (modded benches cannot be automated).</DS_CraftAnyBenchToggleDesc>
   <DS_CraftScanRadius>Craft proxy scan radius: {0} tiles ({1}x{1}); applies on the next scan.</DS_CraftScanRadius>
+
+  <!-- ========== Recipe expansion / one-step crafting (user decision, plan A, 2026-10-18) ========== -->
+  <DS_CraftExpandDepth>Recipe expansion depth: {0} level(s)</DS_CraftExpandDepth>
+  <DS_CraftExpandDepthDesc>When the core lacks an intermediate (advanced components and the like), it is flattened into whatever crafts it, so the final product is made in one step. 1 level = only the direct intermediates; 2 (default) = intermediates found inside those are flattened too (covers archotech eye &lt;- advanced component &lt;- component three-level chains); beyond the limit the proxy gives up and waits for materials instead of conjuring them. Fixed-ingredient recipes only (stuff categories and nutrition-priced food are not expanded).</DS_CraftExpandDepthDesc>
+  <DS_CraftExpandWork>Intermediate work discount: {0}%</DS_CraftExpandWork>
+  <DS_CraftExpandWorkDesc>The intermediates are never actually crafted and need no second bench, so their recipe work is counted at 50% by default. 0% = free (only the final recipe's time), 100% = same as crafting them for real.</DS_CraftExpandWorkDesc>
 
   <!-- ========== Craft automation · three-column window ========== -->
   <DS_CA_NoProxy>No crafting proxy on this map - build one first</DS_CA_NoProxy>
@@ -158,6 +165,8 @@
   <DS_CA_Have>need {0} · core {1}</DS_CA_Have>
   <DS_CA_Sub>{0} · requires {1}</DS_CA_Sub>
   <DS_CA_Working>working</DS_CA_Working>
+  <DS_CA_WorkingExpanded>working (expanded recipe)</DS_CA_WorkingExpanded>
+  <DS_CA_ExpandedTip>Expanded recipe: missing intermediates are crafted from core stock first, at half work cost.\n{0}</DS_CA_ExpandedTip>
   <DS_CA_Waiting>waiting</DS_CA_Waiting>
   <DS_CA_Up>Up</DS_CA_Up>
   <DS_CA_Down>Down</DS_CA_Down>

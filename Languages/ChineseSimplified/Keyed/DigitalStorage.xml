@@ -126,11 +126,18 @@
   <DS_BA_Block_Unsupported>这种工作台不支持代工（换不了账单）</DS_BA_Block_Unsupported>
   <DS_BA_Block_Research>研究未解锁</DS_BA_Block_Research>
   <DS_BA_RangeSummary>范围内工作台 {0} 台 · 可做配方 {1} 个 · 扫描范围 {2}×{2}</DS_BA_RangeSummary>
+  <DS_BA_RecipeSurvey>范围内配方 {0} 个：可添加 {1} · 研究未解锁 {2} · 不支持（需未完成品/手术/无产物）{3}</DS_BA_RecipeSurvey>
 
   <!-- ========== 制作代理识别（社区反馈 2026-10-18 第 2 条）========== -->
   <DS_CraftAnyBenchToggle>识别 mod 工作台</DS_CraftAnyBenchToggle>
   <DS_CraftAnyBenchToggleDesc>原版「能做 bill」的白名单只认它自己列出的台子（电炉、切石台、缝纫台…），mod 工作台一个都不在名单里 —— 于是面板能选配方、代理却永远取不到活。打开（默认）后，只对「没有任何原版 giver 认领的台子」放宽这道白名单；原版台子与真人小人的行为完全不变。关掉即退回原版口径（mod 工作台无法自动化）。</DS_CraftAnyBenchToggleDesc>
   <DS_CraftScanRadius>制作代理扫描半径：{0} 格（{1}×{1} 方形，下一次扫描生效）</DS_CraftScanRadius>
+
+  <!-- ========== 配方展开 / 一步成型（用户拍板方案 A，2026-10-18）========== -->
+  <DS_CraftExpandDepth>配方展开深度：{0} 层</DS_CraftExpandDepth>
+  <DS_CraftExpandDepthDesc>核心里缺中间产物（高级零部件这类）时，把它摊成「做它的那份原料」，一步造出最终产物。1 层 = 只摊最终配方的直接中间件；2 层（默认）= 摊出来的东西若本身也是中间件再摊一层（覆盖 超凡仿生眼 ← 高级零部件 ← 精密零部件 这种三级链）；超过深度就放弃展开，退回原来的缺料状态，不会凭空变出材料。只支持固定材料的配方（衣物/家具的材料类别、食物的营养计价不展开）。</DS_CraftExpandDepthDesc>
+  <DS_CraftExpandWork>中间件工作量折扣：{0}%</DS_CraftExpandWork>
+  <DS_CraftExpandWorkDesc>中间件并没有真的被造出来、也不占第二张台子，所以默认按半额 50% 计入总工作量。0% = 白拿（只花最终配方的时间），100% = 与真的造一遍等价。</DS_CraftExpandWorkDesc>
 
   <!-- ========== 制作自动化 · 三栏面板（Window_CraftAutomation）========== -->
   <DS_CA_NoProxy>本图没有制作代理 —— 先造一台「制作代理」</DS_CA_NoProxy>
@@ -158,6 +165,8 @@
   <DS_CA_Have>需要 {0} · 核心 {1}</DS_CA_Have>
   <DS_CA_Sub>{0} · 需要 {1}</DS_CA_Sub>
   <DS_CA_Working>正在生产</DS_CA_Working>
+  <DS_CA_WorkingExpanded>正在生产（展开成型）</DS_CA_WorkingExpanded>
+  <DS_CA_ExpandedTip>展开成型：缺的中间产物由核心原料现做，按半额计入工作量。\n{0}</DS_CA_ExpandedTip>
   <DS_CA_Waiting>等待中</DS_CA_Waiting>
   <DS_CA_Up>上移</DS_CA_Up>
   <DS_CA_Down>下移</DS_CA_Down>

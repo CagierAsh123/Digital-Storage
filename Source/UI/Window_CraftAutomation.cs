@@ -522,14 +522,19 @@ namespace DigitalStorage.UI
 
             // 三行信息
             SKind kind = KindOf(plan);
+            CraftLine first = (plan.lines.Count > 0) ? plan.lines[0] : null;
             y = InfoRow(inner, x, y, "DS_CA_Mode".Translate(), ModeText(plan), ColText);
             y = InfoRow(inner, x, y, "DS_CA_Running".Translate(),
                 "DS_BA_Lines".Translate(plan.lines.Count, comp.UsableBenchCountFor(plan.recipe)).ToString(), ColText);
+            Rect statusRect = new Rect(x, y, inner.width - 8f, 22f);
+            if (first != null && first.Expanded && !first.ExpandNote.NullOrEmpty())
+            {
+                TooltipHandler.TipRegion(statusRect, "DS_CA_ExpandedTip".Translate(first.ExpandNote));
+            }
             y = InfoRow(inner, x, y, "DS_CA_Status".Translate(), StatusText(plan), ColorOf(kind));
             y += 6f;
 
             // 进度
-            CraftLine first = (plan.lines.Count > 0) ? plan.lines[0] : null;
             float pct = (first != null && first.HasWork) ? Mathf.Clamp01(first.Progress01) : 0f;
             Widgets.Label(new Rect(x, y, inner.width - 8f, 20f), "DS_CA_Progress".Translate());
             y += 20f;
@@ -831,7 +836,12 @@ namespace DigitalStorage.UI
                     ? "DS_BA_NoBench".Translate().ToString()
                     : "DS_CA_TargetPaused".Translate(plan.countedCount, plan.targetCount).ToString();
             }
-            if (line.HasWork) return "DS_CA_Working".Translate().ToString();
+            if (line.HasWork)
+            {
+                return line.Expanded
+                    ? "DS_CA_WorkingExpanded".Translate().ToString()
+                    : "DS_CA_Working".Translate().ToString();
+            }
             if (line.BlockKey.NullOrEmpty()) return "DS_CA_Waiting".Translate().ToString();
             return line.BlockKey.Translate().ToString();
         }

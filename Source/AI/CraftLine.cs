@@ -60,6 +60,15 @@ namespace DigitalStorage.AI
         /// <summary>没在干活时的原因（Keyed 键名）；null = 正在干活。</summary>
         public string BlockKey;
 
+        /// <summary>
+        /// 这一轮的原料是**配方展开**（中间产物摊成原料）得来的 —— 见 <see cref="RecipeExpansion"/>。
+        /// 只影响面板标注，不影响结算（<see cref="BillCraftFunnel"/> 照常按 Counts 扣料产出）。
+        /// </summary>
+        public bool Expanded;
+
+        /// <summary>展开链路的人类可读说明（成功时是"高级零部件×2 ← 制作零部件×2"，失败时是失败原因）。</summary>
+        public string ExpandNote;
+
         // ---- 表现件（手 / 黄条）----
         public Mote_DS_WorkHand Hand;
         public Effecter Bar;
@@ -91,6 +100,8 @@ namespace DigitalStorage.AI
             BaseRate = 1f;
             WorkAmount = 0f;
             WorkLeft = 0f;
+            Expanded = false;
+            ExpandNote = null;
         }
 
         /// <summary>彻底释放这条线（连带表现件）。</summary>

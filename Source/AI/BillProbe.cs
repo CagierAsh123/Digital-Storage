@@ -25,7 +25,7 @@ namespace DigitalStorage.AI
     internal static class BillProbe
     {
         /// <summary>取活失败（站位/资质/条件不满足）后的重试间隔。</summary>
-        private const int RetryTicks = 30;
+        internal const int RetryTicks = 30;
 
         /// <summary>
         /// 材料面失败的退避（2 秒）：<c>DS_BA_Block_Material</c>（核心里真没料）、
@@ -241,6 +241,15 @@ namespace DigitalStorage.AI
                     // 而它拿 pawn.MapHeld 当字典键 —— 假 pawn 一旦出了作用域，MapHeld 是 null
                     // ⇒ Dictionary.TryGetValue(null) 抛 ArgumentNullException（2026-10-03 实机炸过）。
                     string block = Diagnose(bench, plan, map, w);
+
+                    // 展开（方案 A：配方展开 / 一步成型）：原版报"缺料"时，把缺的中间产物摊成
+                    // 我们自己的台子能做的原料，一步造出最终产物。只有材料面失败才值得试。
+                    if (block == "DS_BA_Block_Material"
+                        && RecipeExpansion.TryAcquire(comp, plan, line, map, w, now, bench))
+                    {
+                        return true;
+                    }
+
                     line.BlockKey = block;
                     // 材料面失败会连带一次全图候选遍历（见 CraftBackoffTicks 注释），退得久一点；
                     // 站位/资质这类便宜失败 30 tick 就够了。
@@ -254,6 +263,13 @@ namespace DigitalStorage.AI
                 int[] counts;
                 if (!ExtractIngredients(got, line, map, out things, out counts, out bool claimedConflict))
                 {
+                    // 展开（方案 A）：核心里缺的是中间产物时，把中间件摊成它的原料再试一次。
+                    // 只在这两条"材料面"失败上尝试 —— 站位/资质/研究不够时展开毫无意义。
+                    if (!claimedConflict && RecipeExpansion.TryAcquire(comp, plan, line, map, w, now, bench))
+                    {
+                        return true;
+                    }
+
                     // 原版选了地面上的料（核心里凑不齐）⇒ 用户拍板"物品在核心里才可以被自动化使用"
                     line.BlockKey = claimedConflict ? "DS_BA_Block_Claimed" : "DS_BA_NoCoreMaterial";
                     line.NextAcquireTick = now + CraftBackoffTicks;
@@ -386,7 +402,7 @@ namespace DigitalStorage.AI
         /// <para>**刻意不额外乘技能**：<c>workSpeedStat</c> 自己就吃技能（做饭类是 <c>CookSpeed</c>），
         /// 再乘一次就是双算。</para>
         /// </summary>
-        private static float ComputeBaseRate(RecipeDef r, Thing bench, Pawn w)
+        internal static float ComputeBaseRate(RecipeDef r, Thing bench, Pawn w)
         {
             float rate = (r.workSpeedStat == null) ? 1f : w.GetStatValue(r.workSpeedStat);
             Building_WorkTable table = bench as Building_WorkTable;

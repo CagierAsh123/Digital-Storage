@@ -124,6 +124,7 @@
     <Compile Include="AI\BillProbe.cs" />
     <Compile Include="AI\BenchWhitelistScope.cs" />
     <Compile Include="AI\BillCraftFunnel.cs" />
+    <Compile Include="AI\RecipeExpansion.cs" />
 
     <Compile Include="Effects\Mote_DS_IngestBeam.cs" />
     <Compile Include="Effects\Mote_DS_WorkHand.cs" />

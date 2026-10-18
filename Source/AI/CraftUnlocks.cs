@@ -93,5 +93,40 @@ namespace DigitalStorage.AI
         }
 
         private static readonly HashSet<RecipeDef> tmpSeen = new HashSet<RecipeDef>();
+
+        /// <summary>
+        /// <b>「为什么只显示这么几个配方」的现场证据</b>（社区反馈 2026-10-18 第 5 条）。
+        ///
+        /// <para>面板底部原来只有"台子 N 台 / 可做配方 M 个"，玩家看不出剩下的去哪了：
+        /// 是被研究挡了、被"需要未完成品"挡了，还是这台机器本来就没那么多配方。
+        /// 这里按原版同一个口径（<c>ThingDef.AllRecipes</c>）把候选拆成三段报数。</para>
+        /// </summary>
+        public static void Survey(HashSet<ThingDef> benchDefs, out int total, out int unsupported,
+            out int researchLocked, out int available)
+        {
+            total = 0;
+            unsupported = 0;
+            researchLocked = 0;
+            available = 0;
+            if (benchDefs == null || benchDefs.Count == 0) return;
+
+            HashSet<RecipeDef> seen = tmpSeen;
+            seen.Clear();
+            foreach (ThingDef def in benchDefs)
+            {
+                List<RecipeDef> rs = def.AllRecipes;
+                if (rs == null) continue;
+                for (int i = 0; i < rs.Count; i++)
+                {
+                    RecipeDef r = rs[i];
+                    if (r == null || !seen.Add(r)) continue;
+                    total++;
+                    if (!IsAutomationCandidate(r)) { unsupported++; continue; }
+                    if (!r.AvailableNow) { researchLocked++; continue; }
+                    available++;
+                }
+            }
+            seen.Clear();
+        }
     }
 }
