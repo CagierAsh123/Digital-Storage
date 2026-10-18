@@ -187,6 +187,7 @@
     <Compile Include="HarmonyPatches\Patch_WorkGiver_DoBill_RemoteIngredients.cs" />
     <Compile Include="HarmonyPatches\Patch_MakeLordsAsAppropriate_InstantLoad.cs" />
     <Compile Include="HarmonyPatches\Patch_ReservationManager_CanReserve.cs" />
+    <Compile Include="HarmonyPatches\Patch_ReservationManager_CanReserve_SharedCore.cs" />
     <Compile Include="HarmonyPatches\Patch_GenPlace_DropRedirect.cs" />
     <Compile Include="HarmonyPatches\Patch_Building_SubcoreScanner_SupplyFromCore.cs" />
     <Compile Include="HarmonyPatches\Patch_Building_GrowthVat_SupplyFromCore.cs" />

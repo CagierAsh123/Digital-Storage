@@ -142,6 +142,119 @@ namespace DigitalStorage.Components
         /// <summary>只给开发期诊断用：同上，取出方向。</summary>
         internal bool DevHaulSourceSwitchOn => haulSourceEnabled;
 
+        // ===================================================================
+        // 多交互格（原版 1.6 的多交互格基建只做了「列出」这一半）
+        // ===================================================================
+
+        /// <summary>交互格候选缓冲（主线程独占，避免每次问都分配）。</summary>
+        private static readonly List<IntVec3> tmpInteractionCells = new List<IntVec3>(24);
+
+        /// <summary>轮转起点：让排队的小人各自拿到不同的一格。</summary>
+        private int interactionCellCursor;
+
+        /// <summary>
+        /// 3×3 外圈里**站得下**的所有格子（最多 16 格）。
+        ///
+        /// <para><b>为什么不用 <c>ThingDef.multipleInteractionCellOffsets</c></b>：那个字段只被
+        /// <c>ThingUtility.InteractionCellsWhenAt</c> 读（全仓唯一消费者是
+        /// <c>SchoolUtility</c> 找课桌的两侧），而**真正决定"小人走到哪一格"的是
+        /// <c>GenPath.ResolvePathMode</c>（<c>Verse.AI/GenPath.cs:14-22</c>）：
+        /// <code>
+        /// if (peMode == PathEndMode.InteractionCell) {
+        ///     peMode = PathEndMode.OnCell;
+        ///     return new TargetInfo(dest.Thing.InteractionCell, dest.Thing.Map);   // ← 单格
+        /// }
+        /// </code>
+        /// 所以光加 <c>multipleInteractionCellOffsets</c> 不会让任何人分散站位，
+        /// 必须重写实例属性 <c>InteractionCell</c>（原版先例：
+        /// <c>Building_Bed.InteractionCell</c>、<c>Pawn.InteractionCell</c>）。</para>
+        ///
+        /// <para><b>为什么可以放心改</b>：全仓 <c>.InteractionCells</c> 的实例调用只有
+        /// <c>SchoolUtility</c> 两处（对象是课桌）；<c>.InteractionCell</c> 的消费者里
+        /// 与本建筑相关的只有 <c>GenPath</c> 与 <c>ReservationManager:192-207</c> 那两条
+        /// 「交互格被预约了就订不到」的判定 —— 而后者对核心已经被
+        /// <see cref="HarmonyPatches.Patch_ReservationManager_CanReserve_SharedCore"/> 放开。</para>
+        /// </summary>
+        public override List<IntVec3> InteractionCells
+        {
+            get
+            {
+                if (!Spawned) return base.InteractionCells;
+                Map map = Map;
+                if (map == null) return base.InteractionCells;
+                var list = new List<IntVec3>(16);
+                CollectInteractionCells(map, list);
+                if (list.Count == 0) return base.InteractionCells;
+                return list;
+            }
+        }
+
+        /// <summary>
+        /// 动态挑一格：外圈站得下的格子里，**优先没人站着的那格**，起点按请求顺序轮转。
+        ///
+        /// <para>轮转是关键：两个同一 tick 起步的小人如果都按「离核心最近」挑，会挑到同一格
+        /// （谁也没站在那里、分数也一样）。轮转让「第 N 个来问的人」拿到第 N 格，
+        /// 于是几个小人各自占一格，视觉上就是围着核心一字排开。</para>
+        ///
+        /// <para>不判可达性（<c>reachability</c> 每次问都做一遍太贵）：挑不到路的那一格时，
+        /// 走路 toil 自己会 <c>FailOnNoPath</c>，下一个 job 重来。</para>
+        /// </summary>
+        public override IntVec3 InteractionCell
+        {
+            get
+            {
+                if (!Spawned) return base.InteractionCell;
+                Map map = Map;
+                if (map == null) return base.InteractionCell;
+
+                CollectInteractionCells(map, tmpInteractionCells);
+                int count = tmpInteractionCells.Count;
+                if (count == 0) return base.InteractionCell;
+
+                interactionCellCursor++;
+                if (interactionCellCursor >= count) interactionCellCursor = 0;
+                int start = interactionCellCursor;
+
+                for (int i = 0; i < count; i++)
+                {
+                    IntVec3 cell = tmpInteractionCells[(start + i) % count];
+                    if (!CellHasStandingMapPawn(map, cell)) return cell;
+                }
+                return tmpInteractionCells[start];
+            }
+        }
+
+        private void CollectInteractionCells(Map map, List<IntVec3> outCells)
+        {
+            outCells.Clear();
+            if (outCells.Capacity < 24) outCells.Capacity = 24;
+
+            CellRect own = this.OccupiedRect();
+            CellRect ring = own.ExpandedBy(1);
+            int y = Position.y;
+            for (int x = ring.minX; x <= ring.maxX; x++)
+            {
+                for (int z = ring.minZ; z <= ring.maxZ; z++)
+                {
+                    var cell = new IntVec3(x, y, z);
+                    if (own.Contains(cell)) continue;         // 自己的 3×3 里不站人
+                    if (!cell.InBounds(map)) continue;
+                    if (!cell.Standable(map)) continue;       // 墙/家具/深水都排除
+                    outCells.Add(cell);
+                }
+            }
+        }
+
+        private static bool CellHasStandingMapPawn(Map map, IntVec3 cell)
+        {
+            List<Thing> things = map.thingGrid.ThingsListAtFast(cell);
+            for (int i = 0; i < things.Count; i++)
+            {
+                if (things[i] is Pawn) return true;
+            }
+            return false;
+        }
+
         // 已有库存只检查筛选, 入库再检查入库开关/电力/筛选/容量
         public bool Accepts(Thing t)
         {
