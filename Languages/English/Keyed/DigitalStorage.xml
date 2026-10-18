@@ -226,4 +226,147 @@
   <DS_FM_SupplyShort>Still missing in cores: {0}</DS_FM_SupplyShort>
   <DS_FM_SupplyReserved>The cores have this material, but other jobs have reserved all of it - wait for them, or allow it in the core's filter.</DS_FM_SupplyReserved>
 
+
+  <!-- ★ 2026-10-18 合入社区 PR #7（AE2 界面）新增文案 -->
+    <DS_BA_RangeLabel>Range {0}</DS_BA_RangeLabel>
+    <DS_BA_RangeDesc>Click to cycle the scan range (default -> larger -> whole map -> back to default). A bigger range covers more workbenches and cores.</DS_BA_RangeDesc>
+    <DS_BA_RangeWholeMap>whole map</DS_BA_RangeWholeMap>
+    <DS_JOB_St_TooSmall>Crafting storage too small: {0} needs {1} items, current tier is only {2}</DS_JOB_St_TooSmall>
+    <DS_JOB_SubCannotDelete>{0} is a subordinate step - delete the final product order instead</DS_JOB_SubCannotDelete>
+    <DS_JOB_Submitted>Submitted craft: {0} x{1} ({2} steps)</DS_JOB_Submitted>
+    <DS_JOB_Done>Craft finished: {0} x{1} ({2} steps)</DS_JOB_Done>
+    <DS_JOB_Cancelled>Cancelled the whole craft: {0} ({1} steps, {2} orders removed)</DS_JOB_Cancelled>
+    <DS_AE2_Title>Craft automation</DS_AE2_Title>
+    <DS_AE2_OpenCraft>Craft CPU</DS_AE2_OpenCraft>
+    <DS_AE2_ToCore>Storage core</DS_AE2_ToCore>
+    <DS_AE2_OpenPanel>Open craft panel</DS_AE2_OpenPanel>
+    <DS_AE2_TooSmall>Window too small - please enlarge (at least 620x360)</DS_AE2_TooSmall>
+    <DS_AE2PREVIEW>UI</DS_AE2PREVIEW>
+    <DS_AE2PREVIEW_DESC>Open the crafting UI.</DS_AE2PREVIEW_DESC>
+    <DS_AE2_Blocked>Blocked</DS_AE2_Blocked>
+    <DS_AE2_CoreItems>Digital storage core</DS_AE2_CoreItems>
+    <DS_AE2_CoreEmpty>Core is empty (or no core in range)</DS_AE2_CoreEmpty>
+    <DS_AE2_CatAll>All categories</DS_AE2_CatAll>
+    <DS_AE2_Stuff>Material: {0}</DS_AE2_Stuff>
+    <DS_AE2_StuffAny>Any material</DS_AE2_StuffAny>
+    <DS_AE2_Style>Style: {0}</DS_AE2_Style>
+    <DS_AE2_StyleAny>Default style</DS_AE2_StyleAny>
+    <DS_AE2_ModeKeep>Keep {0}</DS_AE2_ModeKeep>
+    <DS_AE2_ModeCount>Count {0}</DS_AE2_ModeCount>
+    <DS_AE2_ModeForever>Forever</DS_AE2_ModeForever>
+    <DS_AE2_NeedWithCore>{0} x{1} · core {2}</DS_AE2_NeedWithCore>
+    <DS_AE2_Tree_Btn>Craft tree</DS_AE2_Tree_Btn>
+    <DS_AE2_Tree_Title>Craft tree · {0}</DS_AE2_Tree_Title>
+    <DS_AE2_Tree_Live>Craft tree (live) · {0} x{1}</DS_AE2_Tree_Live>
+    <DS_AE2_Tree_Count>Count {0}</DS_AE2_Tree_Count>
+    <DS_AE2_Tree_Submit>Submit request</DS_AE2_Tree_Submit>
+    <DS_AE2_Tree_CancelJob>Cancel whole craft</DS_AE2_Tree_CancelJob>
+    <DS_AE2_Tree_St_Done>done</DS_AE2_Tree_St_Done>
+    <DS_AE2_Tree_St_Susp>suspended</DS_AE2_Tree_St_Susp>
+    <DS_AE2_Tree_St_Doing>doing {0}%</DS_AE2_Tree_St_Doing>
+    <DS_AE2_Tree_St_Wait>waiting for bench</DS_AE2_Tree_St_Wait>
+    <DS_AE2_Tree_NoOrder>no order</DS_AE2_Tree_NoOrder>
+    <DS_AE2_Tree_DoneSteps>{0}/{1} steps done</DS_AE2_Tree_DoneSteps>
+    <DS_AE2_Tree_Req>request {0}</DS_AE2_Tree_Req>
+    <DS_AE2_Tree_Warn>No recipe {0} · cycle {1} · chance {2}</DS_AE2_Tree_Warn>
+    <DS_AE2_Tree_Need>need {0} ({1} crafts)</DS_AE2_Tree_Need>
+    <DS_AE2_Tree_Enough>enough in core ({0})</DS_AE2_Tree_Enough>
+    <DS_AE2_Tree_NoRecipe>no recipe (core {0})</DS_AE2_Tree_NoRecipe>
+    <DS_AE2_Tree_Cycle>cycle, cut</DS_AE2_Tree_Cycle>
+    <DS_AE2_Tree_Craftable>craftable (core {0}, short {1})</DS_AE2_Tree_Craftable>
+    <DS_AE2_Tree_Empty>empty tree</DS_AE2_Tree_Empty>
+    <DS_AE2_NeedAny>Any of: {0} (core {1})</DS_AE2_NeedAny>
+    <DS_EmptyCoreText>Core is empty (put something in)</DS_EmptyCoreText>
+    <DS_KindsEmpty>No matching entries (try another search)</DS_KindsEmpty>
+    <DS_JOB_St_Crafting>Crafting</DS_JOB_St_Crafting>
+    <DS_JOB_St_Finished>Craft finished</DS_JOB_St_Finished>
+    <DS_JOB_St_Cancelled>Cancelled</DS_JOB_St_Cancelled>
+    <DS_JOB_St_NoProxy>No crafting proxy</DS_JOB_St_NoProxy>
+    <DS_JOB_St_Disabled>Crafting proxy disabled</DS_JOB_St_Disabled>
+    <DS_JOB_St_NoPower>Crafting proxy has no power</DS_JOB_St_NoPower>
+    <DS_JOB_St_Incomplete>Incomplete plan: the order for {0} is gone</DS_JOB_St_Incomplete>
+    <DS_JOB_St_Done>Done</DS_JOB_St_Done>
+    <DS_JOB_St_Missing>Missing: {0}</DS_JOB_St_Missing>
+    <DS_JOB_St_Busy>Workbench is busy</DS_JOB_St_Busy>
+    <DS_JOB_St_NoBench>No usable workbench in range</DS_JOB_St_NoBench>
+    <DS_JOB_St_Queue>Queued for a workbench</DS_JOB_St_Queue>
+    <DS_AE2_AddTitle>Crafting terminal - add recipe</DS_AE2_AddTitle>
+    <DS_AE2_NoRecipeInCat>No craftable recipes in this category</DS_AE2_NoRecipeInCat>
+    <DS_AE2_NoRecipeMatch>No recipe matching "{0}"</DS_AE2_NoRecipeMatch>
+    <DS_AE2_PickRecipeFirst>Pick a recipe above first</DS_AE2_PickRecipeFirst>
+    <DS_AE2_Submit>Submit request</DS_AE2_Submit>
+    <DS_AE2_AlreadyInJob>Already in this request</DS_AE2_AlreadyInJob>
+    <DS_AE2_StuffNone>Any material (whatever the core holds)</DS_AE2_StuffNone>
+    <DS_AE2_NoStuff>(this recipe takes no material)</DS_AE2_NoStuff>
+    <DS_AE2_TakeHint>Left-click to open the withdraw dialog</DS_AE2_TakeHint>
+    <DS_AE2_CoreSummary>{0} kinds · {1} items</DS_AE2_CoreSummary>
+    <DS_AE2_NoProxyInMap>No crafting proxy on this map</DS_AE2_NoProxyInMap>
+    <DS_AE2_FilterAllHint>All orders</DS_AE2_FilterAllHint>
+    <DS_AE2_FilterRunningHint>Orders a workbench is already working on</DS_AE2_FilterRunningHint>
+    <DS_AE2_FilterWaitingHint>Queued, but no free workbench yet (or waiting for the previous item)</DS_AE2_FilterWaitingHint>
+    <DS_AE2_FilterBlockedHint>Blocked: not enough material, or no usable workbench in range</DS_AE2_FilterBlockedHint>
+    <DS_AE2_FilterSuspendedHint>Orders you suspended by hand</DS_AE2_FilterSuspendedHint>
+    <DS_AE2_FilterDoneHint>Finished or satisfied (target mode resumes when the products get used up)</DS_AE2_FilterDoneHint>
+    <DS_AE2_Tree_StInCore>in core {0}</DS_AE2_Tree_StInCore>
+    <DS_AE2_Tree_StNoRecipe>no recipe {0}</DS_AE2_Tree_StNoRecipe>
+    <DS_AE2_Tree_StCycle>cycle</DS_AE2_Tree_StCycle>
+    <DS_AE2_Tree_StMissing>missing {0}</DS_AE2_Tree_StMissing>
+    <DS_AE2_Tree_StNoOrder>no order</DS_AE2_Tree_StNoOrder>
+    <DS_AE2_Tree_StDone>done</DS_AE2_Tree_StDone>
+    <DS_AE2_Tree_StSusp>suspended</DS_AE2_Tree_StSusp>
+    <DS_AE2_Tree_StWait>waiting for bench</DS_AE2_Tree_StWait>
+    <DS_AE2_Tree_Zoom>Zoom {0}%</DS_AE2_Tree_Zoom>
+    <DS_CT_Added>Added {0} stock-keeping order(s) ({1} existing left untouched)</DS_CT_Added>
+    <DS_CT_AddSingle>Add just this one</DS_CT_AddSingle>
+    <DS_CT_AddTree>Add with intermediates ({0})</DS_CT_AddTree>
+    <DS_CT_AddTreeNone>no intermediates</DS_CT_AddTreeNone>
+    <DS_CT_Cancel>Cancel</DS_CT_Cancel>
+    <DS_CT_CompactOff>Compact: off</DS_CT_CompactOff>
+    <DS_CT_CompactOn>Compact: on</DS_CT_CompactOn>
+    <DS_CT_Current>current</DS_CT_Current>
+    <DS_CT_HoverCovered>{0}: {1} in core, no need to craft</DS_CT_HoverCovered>
+    <DS_CT_HoverCycle>{0}: cyclic dependency, truncated</DS_CT_HoverCycle>
+    <DS_CT_HoverHint>Hover a box for details; click a box that has alternatives to switch recipe</DS_CT_HoverHint>
+    <DS_CT_HoverNode>{0}: need {1} · recipe {2} · craft {3}x · {4} per craft</DS_CT_HoverNode>
+    <DS_CT_HoverNoRecipe>{0}: needs {1} but has no available recipe (prepare manually)</DS_CT_HoverNoRecipe>
+    <DS_CT_Raw>Raw materials</DS_CT_Raw>
+    <DS_CT_RawLine>{0} x{1} (core {2} / short {3})</DS_CT_RawLine>
+    <DS_CT_RawMore>...and {0} more</DS_CT_RawMore>
+    <DS_CT_RawNone>(no raw materials needed)</DS_CT_RawNone>
+    <DS_CT_Root>Final product: {0}</DS_CT_Root>
+    <DS_CT_Skipped>Skipped {0} existing order(s) (your settings were not overwritten)</DS_CT_Skipped>
+    <DS_CT_Sub>need {0} · craft {1}x · {2} per craft</DS_CT_Sub>
+    <DS_CT_SubCovered>{0} in core, covered</DS_CT_SubCovered>
+    <DS_CT_SubNoRecipe>no recipe available</DS_CT_SubNoRecipe>
+    <DS_CT_TagChance>chance</DS_CT_TagChance>
+    <DS_CT_TagCycle>cycle</DS_CT_TagCycle>
+    <DS_CT_Title>Crafting tree</DS_CT_Title>
+    <DS_CT_Wanted>Keep stocked</DS_CT_Wanted>
+    <DS_CT_WantedHint>Intermediates are scaled from this number by per-item usage</DS_CT_WantedHint>
+    <DS_CT_WarnAmbiguous>{0} with alternatives</DS_CT_WarnAmbiguous>
+    <DS_CT_WarnChance>{0} chance-based</DS_CT_WarnChance>
+    <DS_CT_WarnCycle>{0} cyclic</DS_CT_WarnCycle>
+    <DS_CT_WarnNoRecipe>{0} without recipe</DS_CT_WarnNoRecipe>
+      <DS_CA_ModeKeepShort>Keep</DS_CA_ModeKeepShort>
+      <DS_CA_ModeCountShort>Count</DS_CA_ModeCountShort>
+      <DS_CA_ModeForeverShort>Infinite</DS_CA_ModeForeverShort>    <DS_CA_SwitchProxy>Switch craft proxy</DS_CA_SwitchProxy>
+      <DS_CA_Detail>Details</DS_CA_Detail>
+      <DS_CA_Skill>Skill</DS_CA_Skill>
+      <DS_CA_Material>Material</DS_CA_Material>
+      <DS_CA_Bench>Bench</DS_CA_Bench>
+      <DS_CA_CoreHave>core {0}</DS_CA_CoreHave>
+      <DS_CA_CoreStore>Storage</DS_CA_CoreStore>
+      <DS_CA_SuspendAll>Pause all</DS_CA_SuspendAll>
+      <DS_CA_ResumeAll>Resume all</DS_CA_ResumeAll>
+      <DS_CA_SuspendAllMsg>{1}: {0} order(s)</DS_CA_SuspendAllMsg>
+
+  <!-- ★ 2026-10-18 PR #7 AE2 面板「删树」相关（原本被作者放错到 Source/Languages/） -->
+
+
+  <!-- ★ 2026-10-18 PR #7 AE2 面板「删树」相关（原作者放错到 Source/Languages/） -->
+  <DS_CA_DeletedOne>Deleted order "{0}"</DS_CA_DeletedOne>
+  <DS_CA_DeletedTree>Deleted the whole craft tree ({0} order(s))</DS_CA_DeletedTree>
+  <DS_CA_DeleteTree>Delete tree</DS_CA_DeleteTree>
+  <DS_CA_DeleteTreeNoSel>Select an order first</DS_CA_DeleteTreeNoSel>
+  <DS_CA_SkillNone>none</DS_CA_SkillNone>
 </LanguageData>

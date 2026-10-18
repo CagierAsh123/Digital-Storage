@@ -224,4 +224,147 @@
   <DS_FM_SupplyShort>核心里还缺：{0}</DS_FM_SupplyShort>
   <DS_FM_SupplyReserved>核心里有这种料，但都被其他工作预留了 —— 等它们做完，或在核心的「筛选」里放开这种材料。</DS_FM_SupplyReserved>
 
+
+  <!-- ★ 2026-10-18 合入社区 PR #7（AE2 界面）新增文案 -->
+    <DS_BA_RangeLabel>范围 {0}</DS_BA_RangeLabel>
+    <DS_BA_RangeDesc>点一下切换扫描范围（默认 → 更大 → 全图 → 回默认）。范围越大，能扫到的工作台与核心越多。</DS_BA_RangeDesc>
+    <DS_BA_RangeWholeMap>全图</DS_BA_RangeWholeMap>
+    <DS_JOB_St_TooSmall>合成存储装不下这个请求：{0} 需要 {1} 件，当前档位只有 {2}（换大档位或缩小数量）</DS_JOB_St_TooSmall>
+    <DS_JOB_SubCannotDelete>「{0}」是最终产物的附属步骤，请删除最终产物那条订单（会整树一起撤）</DS_JOB_SubCannotDelete>
+    <DS_JOB_Submitted>已提交合成：{0} ×{1}（连带 {2} 个步骤一起）</DS_JOB_Submitted>
+    <DS_JOB_Done>合成完成：{0} ×{1}（{2} 步）</DS_JOB_Done>
+    <DS_JOB_Cancelled>已取消整条合成：{0}（共 {1} 步，连带删除 {2} 条订单）</DS_JOB_Cancelled>
+    <DS_AE2_Title>制作自动化</DS_AE2_Title>
+    <DS_AE2_OpenCraft>制作代理</DS_AE2_OpenCraft>
+    <DS_AE2_ToCore>存储核心</DS_AE2_ToCore>
+    <DS_AE2_OpenPanel>打开制作面板</DS_AE2_OpenPanel>
+    <DS_AE2_TooSmall>窗口太小：请把窗口拉大（至少 620×360）</DS_AE2_TooSmall>
+    <DS_AE2PREVIEW>界面</DS_AE2PREVIEW>
+    <DS_AE2PREVIEW_DESC>打开制作界面：订单列表、材料与合成树。</DS_AE2PREVIEW_DESC>
+    <DS_AE2_Blocked>阻塞</DS_AE2_Blocked>
+    <DS_AE2_CoreItems>数字存储核心</DS_AE2_CoreItems>
+    <DS_AE2_CoreEmpty>核心是空的（或范围内没有核心）</DS_AE2_CoreEmpty>
+    <DS_AE2_CatAll>全部分类</DS_AE2_CatAll>
+    <DS_AE2_Stuff>材料：{0}</DS_AE2_Stuff>
+    <DS_AE2_StuffAny>不限材料</DS_AE2_StuffAny>
+    <DS_AE2_Style>风格：{0}</DS_AE2_Style>
+    <DS_AE2_StyleAny>默认风格</DS_AE2_StyleAny>
+    <DS_AE2_ModeKeep>维持 {0}</DS_AE2_ModeKeep>
+    <DS_AE2_ModeCount>数量 {0}</DS_AE2_ModeCount>
+    <DS_AE2_ModeForever>无限</DS_AE2_ModeForever>
+    <DS_AE2_NeedWithCore>{0} ×{1} · 核心 {2}</DS_AE2_NeedWithCore>
+    <DS_AE2_Tree_Btn>合成树</DS_AE2_Tree_Btn>
+    <DS_AE2_Tree_Title>合成树 · {0}</DS_AE2_Tree_Title>
+    <DS_AE2_Tree_Live>合成树（实时）· {0} ×{1}</DS_AE2_Tree_Live>
+    <DS_AE2_Tree_Count>数量 {0}（点 −1 / +1 改）</DS_AE2_Tree_Count>
+    <DS_AE2_Tree_Submit>提交合成请求</DS_AE2_Tree_Submit>
+    <DS_AE2_Tree_CancelJob>取消整个合成</DS_AE2_Tree_CancelJob>
+    <DS_AE2_Tree_St_Done>已完成</DS_AE2_Tree_St_Done>
+    <DS_AE2_Tree_St_Susp>已挂起</DS_AE2_Tree_St_Susp>
+    <DS_AE2_Tree_St_Doing>在做 {0}%</DS_AE2_Tree_St_Doing>
+    <DS_AE2_Tree_St_Wait>等台子</DS_AE2_Tree_St_Wait>
+    <DS_AE2_Tree_NoOrder>没有订单</DS_AE2_Tree_NoOrder>
+    <DS_AE2_Tree_DoneSteps>已完成 {0}/{1} 步</DS_AE2_Tree_DoneSteps>
+    <DS_AE2_Tree_Req>请求 {0}</DS_AE2_Tree_Req>
+    <DS_AE2_Tree_Warn>无配方 {0} · 循环 {1} · 概率 {2}</DS_AE2_Tree_Warn>
+    <DS_AE2_Tree_Need>需 {0}（做 {1} 次）</DS_AE2_Tree_Need>
+    <DS_AE2_Tree_Enough>核心已够（{0}）</DS_AE2_Tree_Enough>
+    <DS_AE2_Tree_NoRecipe>没有配方（核心 {0}）</DS_AE2_Tree_NoRecipe>
+    <DS_AE2_Tree_Cycle>循环依赖，已截断</DS_AE2_Tree_Cycle>
+    <DS_AE2_Tree_Craftable>可代工（核心 {0}，还差 {1}）</DS_AE2_Tree_Craftable>
+    <DS_AE2_Tree_Empty>这棵树是空的（换一条订单试试）</DS_AE2_Tree_Empty>
+    <DS_AE2_NeedAny>可选：{0}（核心 {1}）</DS_AE2_NeedAny>
+    <DS_EmptyCoreText>核心是空的（把东西放进去就有了）</DS_EmptyCoreText>
+    <DS_KindsEmpty>没有匹配的条目（换个搜索词）</DS_KindsEmpty>
+    <DS_JOB_St_Crafting>正在合成</DS_JOB_St_Crafting>
+    <DS_JOB_St_Finished>合成完成</DS_JOB_St_Finished>
+    <DS_JOB_St_Cancelled>已取消</DS_JOB_St_Cancelled>
+    <DS_JOB_St_NoProxy>没有制作代理</DS_JOB_St_NoProxy>
+    <DS_JOB_St_Disabled>制作代理已关闭</DS_JOB_St_Disabled>
+    <DS_JOB_St_NoPower>制作代理断电</DS_JOB_St_NoPower>
+    <DS_JOB_St_Incomplete>计划不完整：「{0}」的订单没了</DS_JOB_St_Incomplete>
+    <DS_JOB_St_Done>已完成</DS_JOB_St_Done>
+    <DS_JOB_St_Missing>缺料：{0}</DS_JOB_St_Missing>
+    <DS_JOB_St_Busy>工作台被占用</DS_JOB_St_Busy>
+    <DS_JOB_St_NoBench>范围内没有可用工作台</DS_JOB_St_NoBench>
+    <DS_JOB_St_Queue>排队等待工作台</DS_JOB_St_Queue>
+    <DS_AE2_AddTitle>合成终端 · 添加配方</DS_AE2_AddTitle>
+    <DS_AE2_NoRecipeInCat>这个分类下没有可做的配方</DS_AE2_NoRecipeInCat>
+    <DS_AE2_NoRecipeMatch>没有匹配「{0}」的配方</DS_AE2_NoRecipeMatch>
+    <DS_AE2_PickRecipeFirst>在上面选一条配方</DS_AE2_PickRecipeFirst>
+    <DS_AE2_Submit>提交合成请求</DS_AE2_Submit>
+    <DS_AE2_AlreadyInJob>已在这个请求里</DS_AE2_AlreadyInJob>
+    <DS_AE2_StuffNone>不限材料（核心里有啥用啥）</DS_AE2_StuffNone>
+    <DS_AE2_NoStuff>（这个配方不吃材料）</DS_AE2_NoStuff>
+    <DS_AE2_TakeHint>左键点一下 ⇒ 弹窗填数量取出</DS_AE2_TakeHint>
+    <DS_AE2_CoreSummary>{0} 种 · {1} 件</DS_AE2_CoreSummary>
+    <DS_AE2_NoProxyInMap>本图没有制作代理</DS_AE2_NoProxyInMap>
+    <DS_AE2_FilterAllHint>全部订单</DS_AE2_FilterAllHint>
+    <DS_AE2_FilterRunningHint>已经有工作台在做的订单</DS_AE2_FilterRunningHint>
+    <DS_AE2_FilterWaitingHint>排上了但还没有空闲工作台（或在等上一件做完）</DS_AE2_FilterWaitingHint>
+    <DS_AE2_FilterBlockedHint>被挡住：材料不够 / 范围内没有能做工的工作台</DS_AE2_FilterBlockedHint>
+    <DS_AE2_FilterSuspendedHint>你手动挂起的订单</DS_AE2_FilterSuspendedHint>
+    <DS_AE2_FilterDoneHint>已完成或已达标（维持模式下产物被用掉会自动恢复）</DS_AE2_FilterDoneHint>
+    <DS_AE2_Tree_StInCore>核心 {0}</DS_AE2_Tree_StInCore>
+    <DS_AE2_Tree_StNoRecipe>无配方 {0}</DS_AE2_Tree_StNoRecipe>
+    <DS_AE2_Tree_StCycle>循环</DS_AE2_Tree_StCycle>
+    <DS_AE2_Tree_StMissing>缺 {0}</DS_AE2_Tree_StMissing>
+    <DS_AE2_Tree_StNoOrder>无订单</DS_AE2_Tree_StNoOrder>
+    <DS_AE2_Tree_StDone>完成</DS_AE2_Tree_StDone>
+    <DS_AE2_Tree_StSusp>挂起</DS_AE2_Tree_StSusp>
+    <DS_AE2_Tree_StWait>等台子</DS_AE2_Tree_StWait>
+    <DS_AE2_Tree_Zoom>缩放 {0}%</DS_AE2_Tree_Zoom>
+    <DS_CT_Added>已加入 {0} 条维持订单（已有 {1} 条保持原样）</DS_CT_Added>
+    <DS_CT_AddSingle>只加这一条</DS_CT_AddSingle>
+    <DS_CT_AddTree>连中间产物一起加（{0} 条）</DS_CT_AddTree>
+    <DS_CT_AddTreeNone>无中间产物</DS_CT_AddTreeNone>
+    <DS_CT_Cancel>取消</DS_CT_Cancel>
+    <DS_CT_CompactOff>紧凑：关</DS_CT_CompactOff>
+    <DS_CT_CompactOn>紧凑：开</DS_CT_CompactOn>
+    <DS_CT_Current>当前</DS_CT_Current>
+    <DS_CT_HoverCovered>{0}：核心已有 {1} 个，不用合成</DS_CT_HoverCovered>
+    <DS_CT_HoverCycle>{0}：循环依赖，已截断</DS_CT_HoverCycle>
+    <DS_CT_HoverHint>鼠标停到方块上看详情；有多条配方的方块点一下可换配方</DS_CT_HoverHint>
+    <DS_CT_HoverNode>{0}：需要 {1} 个 · 配方「{2}」· 做 {3} 次 · 一次出 {4}</DS_CT_HoverNode>
+    <DS_CT_HoverNoRecipe>{0}：需要 {1} 个，但没有可用配方（要手动准备）</DS_CT_HoverNoRecipe>
+    <DS_CT_Raw>原生材料合计</DS_CT_Raw>
+    <DS_CT_RawLine>{0} ×{1}（核心 {2} / 缺 {3}）</DS_CT_RawLine>
+    <DS_CT_RawMore>…还有 {0} 项</DS_CT_RawMore>
+    <DS_CT_RawNone>（这棵树不需要原生材料）</DS_CT_RawNone>
+    <DS_CT_Root>最终产物：{0}</DS_CT_Root>
+    <DS_CT_Skipped>跳过 {0} 条已有订单（没有覆盖你原来的设置）</DS_CT_Skipped>
+    <DS_CT_Sub>需要 {0} · 做 {1} 次 · 一次出 {2}</DS_CT_Sub>
+    <DS_CT_SubCovered>核心已有 {0}，够用</DS_CT_SubCovered>
+    <DS_CT_SubNoRecipe>没有可用配方</DS_CT_SubNoRecipe>
+    <DS_CT_TagChance>概率</DS_CT_TagChance>
+    <DS_CT_TagCycle>循环</DS_CT_TagCycle>
+    <DS_CT_Title>合成树</DS_CT_Title>
+    <DS_CT_Wanted>维持数量</DS_CT_Wanted>
+    <DS_CT_WantedHint>中间产物按"每件用量"跟着这个数换算（最终维持 10 ⇒ 中间维持 每件用量×10）</DS_CT_WantedHint>
+    <DS_CT_WarnAmbiguous>{0} 处有多条配方</DS_CT_WarnAmbiguous>
+    <DS_CT_WarnChance>{0} 处概率产出</DS_CT_WarnChance>
+    <DS_CT_WarnCycle>{0} 处循环依赖</DS_CT_WarnCycle>
+    <DS_CT_WarnNoRecipe>{0} 项没有可用配方</DS_CT_WarnNoRecipe>
+      <DS_CA_ModeKeepShort>维持</DS_CA_ModeKeepShort>
+      <DS_CA_ModeCountShort>次数</DS_CA_ModeCountShort>
+      <DS_CA_ModeForeverShort>无限</DS_CA_ModeForeverShort>    <DS_CA_SwitchProxy>切换制作代理</DS_CA_SwitchProxy>
+      <DS_CA_Detail>详情</DS_CA_Detail>
+      <DS_CA_Skill>技能要求</DS_CA_Skill>
+      <DS_CA_Material>材料</DS_CA_Material>
+      <DS_CA_Bench>工作台</DS_CA_Bench>
+      <DS_CA_CoreHave>核心 {0}</DS_CA_CoreHave>
+      <DS_CA_CoreStore>合成存储</DS_CA_CoreStore>
+      <DS_CA_SuspendAll>全部暂停</DS_CA_SuspendAll>
+      <DS_CA_ResumeAll>全部开始</DS_CA_ResumeAll>
+      <DS_CA_SuspendAllMsg>已{1} {0} 条订单</DS_CA_SuspendAllMsg>
+
+  <!-- ★ 2026-10-18 PR #7 AE2 面板「删树」相关（原本被作者放错到 Source/Languages/） -->
+
+
+  <!-- ★ 2026-10-18 PR #7 AE2 面板「删树」相关（原作者放错到 Source/Languages/） -->
+  <DS_CA_DeletedOne>已删除订单「{0}」</DS_CA_DeletedOne>
+  <DS_CA_DeletedTree>已删除整棵合成树（{0} 条订单）</DS_CA_DeletedTree>
+  <DS_CA_DeleteTree>删除这棵树</DS_CA_DeleteTree>
+  <DS_CA_DeleteTreeNoSel>请先在订单栏选中一条订单</DS_CA_DeleteTreeNoSel>
+  <DS_CA_SkillNone>无</DS_CA_SkillNone>
 </LanguageData>

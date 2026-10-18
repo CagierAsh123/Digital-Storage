@@ -125,6 +125,9 @@
     <Compile Include="AI\BenchWhitelistScope.cs" />
     <Compile Include="AI\BillCraftFunnel.cs" />
     <Compile Include="AI\RecipeExpansion.cs" />
+    <Compile Include="AI\CraftJobStatus.cs" />
+    <Compile Include="AI\CraftJob.cs" />
+    <Compile Include="AI\CraftTree.cs" />
 
     <Compile Include="Effects\Mote_DS_IngestBeam.cs" />
     <Compile Include="Effects\Mote_DS_WorkHand.cs" />
@@ -140,6 +143,11 @@
     <Compile Include="UI\MainButtonWorker_CraftAutomation.cs" />
     <Compile Include="UI\Dialog_WithdrawAmount.cs" />
     <Compile Include="UI\Dialog_StorageFilter.cs" />
+    <Compile Include="UI\AE2Draw.cs" />
+    <Compile Include="UI\AE2Theme.cs" />
+    <Compile Include="UI\Window_AE2CraftPanel.cs" />
+    <Compile Include="UI\Dialog_AE2AddRecipe.cs" />
+    <Compile Include="UI\Window_AE2CraftTreeGraph.cs" />
     <Compile Include="UI\FloatMenuOptionProvider_DS_Withdraw.cs" />
     <Compile Include="UI\FloatMenuOptionProvider_DS_SupplyConstruct.cs" />
 
