@@ -291,10 +291,33 @@ namespace DigitalStorage.Components
             Performance.DevDrawProfiler.MarkAlloc("DS-allocMB", heap0);
         }
 
+        private List<WorkTypeDef> effectiveWorkTypes;
+
+        /// <summary>
+        /// <b>实际要扫的工作类型</b> = XML 配的 <see cref="CompProperties_DigitalWorker.workTypes"/>
+        /// ∪ 各适配器的跟随集（<see cref="DigitalTaskRegistry.ExpandFollowed"/>）。
+        ///
+        /// <para>为什么不能只信 XML：拆分工作类型的 mod（Complex Jobs 的 <c>FSF*</c> 那一族）
+        /// 在**载入时**改 <c>WorkGiverDef.workType</c>，而建筑 XML 是静态的 ——
+        /// 表现就是"建造代理会建、不拆"甚至"什么活都不干"，且<b>一条日志都没有</b>
+        /// （wiki `专属Bug记录` 里登记为静默失效；2026-10-20 本次修掉）。</para>
+        /// </summary>
+        internal List<WorkTypeDef> EffectiveWorkTypes
+        {
+            get
+            {
+                if (effectiveWorkTypes == null)
+                {
+                    effectiveWorkTypes = DigitalTaskRegistry.ExpandFollowed(Props.workTypes);
+                }
+                return effectiveWorkTypes;
+            }
+        }
+
         /// <summary>再找一件活（受"每类并行配额"限制）。找到并认领返回 true。</summary>
         private bool TryAddOneWork(Map map, Pawn w)
         {
-            List<WorkTypeDef> types = Props.workTypes;
+            List<WorkTypeDef> types = EffectiveWorkTypes;
             if (types == null) return false;
 
             if (Props.maxParallelTotal > 0 && works.Count >= Props.maxParallelTotal) return false;
@@ -324,7 +347,7 @@ namespace DigitalStorage.Components
         /// <summary>把本建筑关心的每个 giver 的候选集刷新推进一步（分帧；多数适配器是空操作）。</summary>
         private void SliceCandidates(Map map, Pawn w)
         {
-            List<WorkTypeDef> types = Props.workTypes;
+            List<WorkTypeDef> types = EffectiveWorkTypes;
             if (types == null) return;
             for (int i = 0; i < types.Count; i++)
             {

@@ -149,16 +149,36 @@ namespace DigitalStorage.AI
         /// ⇒ <b>"种植代理不可能建造"成为结构保证</b>，与玩家装了什么 mod 无关。</para>
         ///
         /// <para>清单里顺带列了 Complex Jobs 的拆分类工作类型（<c>FSFHarvesting</c> / <c>FSFDeconstruct</c>）：
-        /// 不装该 mod 时这些 defName 根本不存在，列着零成本；装了以后若仍想让代理干那类活，
-        /// 在建筑的 <c>workTypes</c> 里补上同名工作类型即可（<b>两处都放开才生效</b>）。</para>
+        /// 不装该 mod 时这些 defName 根本不存在，列着零成本。<b>2026-10-20 起不必再手工往建筑 XML 里补了</b>：
+        /// <see cref="FollowedWorkTypes"/> 会自动跟上"canonical giver 被搬去的工作类型"
+        /// （旧实现要"适配器清单 + 建筑 workTypes 两处都放开才生效"，等于没生效）。</para>
         /// </summary>
         public virtual string[] HomeWorkTypes
         {
             get { return null; }
         }
 
-        /// <summary><paramref name="workType"/> 下允许用本适配器吗（见 <see cref="HomeWorkTypes"/>）。</summary>
+        /// <summary>
+        /// <paramref name="workType"/> 下允许用本适配器吗 = <b>按名字认</b>（见 <see cref="HomeWorkTypes"/>）
+        /// **或**落在 <see cref="FollowedWorkTypes"/> 里（giver 被别的 mod 搬去了别的工作类型）。
+        /// </summary>
         public bool AcceptsWorkType(WorkTypeDef workType)
+        {
+            if (AcceptsByHomeName(workType)) return true;
+
+            // ★ 跟随：canonical giver 现在实际挂在哪个工作类型下，就也认哪个。
+            //   没有这条时，Complex Jobs 一类"把 giver 搬去 FSF* 工作类型"的 mod 会让拆除/收割**静默失效**
+            //   （giver 还在，只是不在建筑配置的那个 workType 下 ⇒ FindGivers 永远返回空）。
+            List<WorkTypeDef> follow = FollowedWorkTypes;
+            for (int i = 0; i < follow.Count; i++)
+            {
+                if (follow[i] == workType) return true;
+            }
+            return false;
+        }
+
+        /// <summary>只按 <see cref="HomeWorkTypes"/> 里的 <c>defName</c> 认（跟随集不算）。</summary>
+        public bool AcceptsByHomeName(WorkTypeDef workType)
         {
             string[] home = HomeWorkTypes;
             if (home == null) return true;
@@ -168,6 +188,46 @@ namespace DigitalStorage.AI
                 if (home[i] == workType.defName) return true;
             }
             return false;
+        }
+
+        private List<WorkTypeDef> followedWorkTypes;
+
+        /// <summary>
+        /// <b>这个适配器负责的那族 giver 现在实际挂在哪些工作类型下</b>（懒算一次，def 表加载后才有值）。
+        ///
+        /// <para><b>为什么需要</b>：我们的实现是"借原版 WorkGiver 找活"，而 <c>WorkGiverDef.workType</c>
+        /// 是**可被 mod 改的**。Complex Jobs 就把 <c>Deconstruct</c> 从 <c>Construction</c> 搬到了
+        /// <c>FSFDeconstruct</c>、把 <c>GrowerHarvest</c> 搬到 <c>FSFHarvesting</c> ——
+        /// giver 类一个字没变，只是不挂在建筑配置的工作类型下了 ⇒ <see cref="DigitalTaskRegistry.FindGivers"/>
+        /// 返回空集、**一条日志都没有**（2026-10 wiki 已登记为"静默失效"，本轮修掉）。</para>
+        ///
+        /// <para><b>为什么用"精确类相等"而不是 <c>IsAssignableFrom</c></b>：
+        /// 后者会把**别的 mod 的派生 giver**也算进来 —— 那正是「种植代理可以建造」的来源
+        /// （某整地/农地类 mod 的 <c>WorkGiver_ConstructFinishFrames</c> 派生类挂在 <c>PlantCutting</c> 下）。
+        /// 只认"canonical def 自己的类"⇒ 只跟随"原版那条被搬家"，不跟随"外来派生类"。</para>
+        /// </summary>
+        public List<WorkTypeDef> FollowedWorkTypes
+        {
+            get
+            {
+                if (followedWorkTypes != null) return followedWorkTypes;
+
+                List<WorkTypeDef> list = new List<WorkTypeDef>();
+                Type cls = WorkGiverClass;
+                if (cls != null)
+                {
+                    List<WorkGiverDef> all = DefDatabase<WorkGiverDef>.AllDefsListForReading;
+                    for (int i = 0; i < all.Count; i++)
+                    {
+                        WorkGiverDef d = all[i];
+                        if (d == null || d.workType == null) continue;
+                        if (d.giverClass != cls) continue;
+                        if (!list.Contains(d.workType)) list.Add(d.workType);
+                    }
+                }
+                followedWorkTypes = list;
+                return list;
+            }
         }
 
         public abstract DigitalTask MakeTask(Thing t, CompDigitalWorker comp);
@@ -313,6 +373,44 @@ namespace DigitalStorage.AI
             }
             giversCache[workType] = found;
             return found;
+        }
+
+        /// <summary>
+        /// 把建筑配置的工作类型展开成"实际要扫的工作类型"= 配置项 ∪ 各适配器的
+        /// <see cref="DigitalTaskAdapter.FollowedWorkTypes"/>（只对"按名字认这个配置项"的适配器展开）。
+        ///
+        /// <para><b>为什么在运行时展开而不是写进 XML</b>：跟随是**运行时**才知道的（要看别人把 giver 挪去了哪），
+        /// XML 是静态的；而且跟随集为空时展开结果恰好等于配置项，零风险。展开后
+        /// <c>TryScanWorkType</c> 会多问几个工作类型，<c>FindGivers</c> 有缓存，成本可忽略。</para>
+        /// </summary>
+        public static List<WorkTypeDef> ExpandFollowed(List<WorkTypeDef> configured)
+        {
+            List<WorkTypeDef> list = new List<WorkTypeDef>();
+            if (configured != null)
+            {
+                for (int i = 0; i < configured.Count; i++)
+                {
+                    WorkTypeDef wt = configured[i];
+                    if (wt != null && !list.Contains(wt)) list.Add(wt);
+                }
+            }
+
+            int configuredCount = list.Count;   // 只对"配置来的"展开，避免跟随集自己再放大
+            for (int i = 0; i < configuredCount; i++)
+            {
+                WorkTypeDef wt = list[i];
+                for (int a = 0; a < All.Count; a++)
+                {
+                    DigitalTaskAdapter adapter = All[a];
+                    if (!adapter.AcceptsByHomeName(wt)) continue;
+                    List<WorkTypeDef> follow = adapter.FollowedWorkTypes;
+                    for (int f = 0; f < follow.Count; f++)
+                    {
+                        if (!list.Contains(follow[f])) list.Add(follow[f]);
+                    }
+                }
+            }
+            return list;
         }
 
         public static DigitalTaskAdapter AdapterFor(WorkGiver giver)
@@ -1206,8 +1304,14 @@ namespace DigitalStorage.AI
 
         public override bool StillValid(Pawn pawn, Map map)
         {
+            // ⚠️ 判的是**外层**（拆除命令挂在外层）在图上，不是"内层建筑 spawned"：
+            //    迷你化建筑（<c>MinifiedThing</c>）里的内层建筑**永远不 spawn**（被外层 ThingOwner 持有），
+            //    旧写法 `!b.Spawned` 会让 CanTarget 放行的迷你建筑**永远拿不到拆除活**（静默跳过）。
+            //    原版拆的也是外层（JobDriver_Deconstruct 的 Target 就是那个 MinifiedThing）。
+            if (target == null || target.Destroyed || !target.Spawned) return false;
+
             Building b = BuildingTarget;
-            if (b == null || b.Destroyed || !b.Spawned) return false;
+            if (b == null || b.Destroyed) return false;
             if (pawn.Faction != null && !b.DeconstructibleBy(pawn.Faction)) return false;
             if (map.designationManager.DesignationOn(target, DesignationDefOf.Deconstruct) == null) return false;
             CompExplosive explosive = b.TryGetComp<CompExplosive>();

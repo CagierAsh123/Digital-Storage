@@ -58,10 +58,13 @@ namespace DigitalStorage.Components
 
             CompProperties_DigitalWorker props = comp.Props;
             List<WorkTypeDef> types = (props == null) ? null : props.workTypes;
+            List<WorkTypeDef> effective = comp.EffectiveWorkTypes;
 
             SB.Length = 0;
             SB.AppendLine("=== [DS 代理] " + comp.parent.LabelCap.ToString() + "  def=" + comp.parent.def.defName + " ===");
-            SB.AppendLine("  启用的工作类型：" + WorkTypeNames(types));
+            SB.AppendLine("  启用的工作类型（XML 配置）：" + WorkTypeNames(types));
+            SB.AppendLine("  实际扫描的工作类型：" + WorkTypeNames(effective)
+                          + "   ← 多出来的是「跟随」（canonical giver 被别的 mod 搬去了别的工作类型；2026-10-20 修）");
             SB.AppendLine("  在干的活：" + comp.ActiveCount + " 件 / 第一件 = "
                           + (comp.CurrentTask == null ? "(无)" : comp.CurrentTask.Label + " → " + comp.CurrentTask.TargetLabel));
             SB.AppendLine("  状态：启用=" + comp.Enabled + " 通电=" + comp.Powered + " 能干活=" + comp.CanWork
@@ -73,8 +76,8 @@ namespace DigitalStorage.Components
                 ? "(还没建；建筑还没干过活)"
                 : worker.LabelShort + "  固定资质=" + (props == null ? 0 : props.skillLevel)));
 
-            AppendPerWorkType(types);
-            AppendForeignGivers(types);
+            AppendPerWorkType(effective);
+            AppendForeignGivers(effective);
 
             SB.AppendLine("=== [DS 代理] 结束 ===");
             Log.Warning(SB.ToString());
@@ -120,7 +123,12 @@ namespace DigitalStorage.Components
                     else if (!adapter.AcceptsWorkType(wt))
                     {
                         verdict = "✗ 被 HomeWorkTypes 拒绝：" + adapter.GetType().Name
-                                  + " 只认 " + JoinStrings(adapter.HomeWorkTypes);
+                                  + " 只认 " + JoinStrings(adapter.HomeWorkTypes)
+                                  + " + 跟随集 " + WorkTypeNames(adapter.FollowedWorkTypes);
+                    }
+                    else if (!adapter.AcceptsByHomeName(wt))
+                    {
+                        verdict = "✓ " + adapter.GetType().Name + "（跟随：canonical giver 现在挂在这个工作类型下）";
                     }
                     else
                     {
