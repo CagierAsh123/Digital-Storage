@@ -57,6 +57,7 @@ python Tools/svg2png/svg2png.py Tools/svg2png/icons -o Tools/svg2png/out --size 
 | `制作代理-开关.svg` | `CompBillAutomation` 总开关 gizmo | 电源符号（断口圆环 + 竖杠），近白 |
 | `制作代理-超频.svg` | 超频档位 gizmo | 速度表（开口表盘 + 指针 + 轴心 + 刻度），琥珀 |
 | `制作代理-显示范围.svg` | 显示扫描范围 gizmo | 方框 + 四向刻度 + 中心块，青 |
+| `制作代理-并行.svg` | 每步并行上限 gizmo | 三条并排台子 + 顶部上限横杠，绿 |
 
 `preview.png` 是"原版按钮实测图"（128 / 64 / 32 px + 复选框叠加），改完图标先看它，
 比进游戏试快得多。

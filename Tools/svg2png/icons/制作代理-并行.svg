@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 制作代理 gizmo：每步并行上限（2026-10-21 新增）。
+     motif = 三条并排的台子 + 顶上一条"闸/上限"横杠（"同时最多开几条线"），配色绿 ——
+      与"开关"（近白圆环）、"超频"（琥珀表盘）、"范围"（青方框）在形状和颜色上都拉开。
+     三条竖条在 32px 也读得出来；横杠刻意只盖住上方，避免看起来像"三"字或表格。 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- 顶上的上限横杠 -->
+  <path d="M 28 30 L 100 30" fill="none" stroke="#7FE07A" stroke-width="7" stroke-linecap="round"/>
+  <!-- 三张"台子"（等宽竖条，圆角） -->
+  <rect x="30" y="46" width="16" height="54" rx="6" fill="#7FE07A"/>
+  <rect x="56" y="46" width="16" height="54" rx="6" fill="#7FE07A"/>
+  <rect x="82" y="46" width="16" height="54" rx="6" fill="#7FE07A"/>
+</svg>

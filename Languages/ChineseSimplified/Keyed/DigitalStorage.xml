@@ -229,6 +229,9 @@
     <DS_BA_RangeLabel>范围 {0}</DS_BA_RangeLabel>
     <DS_BA_RangeDesc>点一下切换扫描范围（默认 → 更大 → 全图 → 回默认）。范围越大，能扫到的工作台与核心越多。</DS_BA_RangeDesc>
     <DS_BA_RangeWholeMap>全图</DS_BA_RangeWholeMap>
+    <DS_BA_ParallelLabel>并行上限 {0} 台</DS_BA_ParallelLabel>
+    <DS_BA_ParallelDesc>同一个配方最多同时占几张工作台（1~64）。默认 64 = 不额外限制，实际只受"范围内能做这个配方的台子数"和"订单还差几件"限制。\n\n以前写死 9 台：装 Mines 2.0 那种十几台矿场同配方时，会出现面板上「在产 9/14 台」、剩下几台干看着的情况，就是这里卡的。</DS_BA_ParallelDesc>
+    <DS_BA_ParallelSlider>每步最多同时开工 {0} 台</DS_BA_ParallelSlider>
     <DS_JOB_St_TooSmall>合成存储装不下这个请求：{0} 需要 {1} 件，当前档位只有 {2}（换大档位或缩小数量）</DS_JOB_St_TooSmall>
     <DS_JOB_SubCannotDelete>「{0}」是最终产物的附属步骤，请删除最终产物那条订单（会整树一起撤）</DS_JOB_SubCannotDelete>
     <DS_JOB_Submitted>已提交合成：{0} ×{1}（连带 {2} 个步骤一起）</DS_JOB_Submitted>

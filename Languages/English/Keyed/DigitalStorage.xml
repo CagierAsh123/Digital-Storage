@@ -231,6 +231,9 @@
     <DS_BA_RangeLabel>Range {0}</DS_BA_RangeLabel>
     <DS_BA_RangeDesc>Click to cycle the scan range (default -> larger -> whole map -> back to default). A bigger range covers more workbenches and cores.</DS_BA_RangeDesc>
     <DS_BA_RangeWholeMap>whole map</DS_BA_RangeWholeMap>
+    <DS_BA_ParallelLabel>Parallel limit {0} benches</DS_BA_ParallelLabel>
+    <DS_BA_ParallelDesc>How many workbenches one recipe may occupy at the same time (1-64). Default 64 = effectively unlimited: the real caps are "how many benches in range can craft it" and "how many items the order still needs".\n\nThis used to be hard-capped at 9: with something like Mines 2.0 (a dozen mines all sharing one recipe) the panel showed "9/14 benches busy" and the rest just sat idle.</DS_BA_ParallelDesc>
+    <DS_BA_ParallelSlider>Up to {0} benches working per step</DS_BA_ParallelSlider>
     <DS_JOB_St_TooSmall>Crafting storage too small: {0} needs {1} items, current tier is only {2}</DS_JOB_St_TooSmall>
     <DS_JOB_SubCannotDelete>{0} is a subordinate step - delete the final product order instead</DS_JOB_SubCannotDelete>
     <DS_JOB_Submitted>Submitted craft: {0} x{1} ({2} steps)</DS_JOB_Submitted>

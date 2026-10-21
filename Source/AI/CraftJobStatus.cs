@@ -397,7 +397,7 @@ namespace DigitalStorage.AI
             sb.Append(" 产线=").Append(lineCount).Append('/').Append(planCount).Append(" 单");
             sb.Append(" 合成=").Append((comp.JobsForReading == null) ? 0 : comp.JobsForReading.Count);
             sb.Append(" 存储=").Append(comp.StorageTierLabel()).Append('(').Append(comp.StorageBytes).Append(" 件)");
-            sb.Append(" 并行处理单元=").Append(comp.ParallelUnits).Append("(每步最多 ").Append(comp.ParallelPerStep).Append(" 张台)");
+            sb.Append(" 并行上限=").Append(comp.ParallelStepCap).Append(" 台/步");
             sb.AppendLine();
 
             IList<CraftJob> jobs = comp.JobsForReading;
