@@ -118,6 +118,10 @@ namespace DigitalStorage.Components
         private readonly HashSet<Thing> usedBenches = new HashSet<Thing>();
         private readonly List<CraftPlan> demandPlans = new List<CraftPlan>();
 
+        // 配线诊断（每轮 SyncLines 清零；只给开发者工具看，不进存档）
+        private int lastPickNulls;
+        private int lastClaimFails;
+
         public CompProperties_BillAutomation Props
         {
             get { return (CompProperties_BillAutomation)props; }
@@ -152,6 +156,14 @@ namespace DigitalStorage.Components
         {
             get { return showRange; }
         }
+
+        // ── 只读诊断口（开发者工具"为什么没配满台子"用；与 SyncLines 同一套算法）──
+        internal int DemandLinesForReading(CraftPlan p) { return DemandLines(p); }
+        internal int FreeBenchCountForReading(RecipeDef r) { return FreeBenchCountFor(r); }
+        internal int LinesUsedForReading { get { return TotalLines(); } }
+        internal int SlotCapForReading { get { return Math.Max(1, Props.maxSlots); } }
+        internal int LastPickNulls { get { return lastPickNulls; } }
+        internal int LastClaimFails { get { return lastClaimFails; } }
 
 
         /// <summary>★ 范围显示开关（原"显示范围"gizmo 的功能，挪到 AE2 面板左栏按钮）。</summary>
@@ -495,6 +507,8 @@ private void RescanBenches(Map map)
             }
 
             usedBenches.Clear();
+            lastPickNulls = 0;      // 配线诊断：每轮重新计数
+            lastClaimFails = 0;
             for (int p = 0; p < plans.Count; p++)
             {
                 CraftPlan plan = plans[p];
@@ -523,17 +537,23 @@ private void RescanBenches(Map map)
                 //   2026-10-21 起玩家可在 gizmo 里调 1..64（默认 64 = 不拦）；真正的拦人的是
                 //   "范围内有几台能做这个配方"和"需求还差几件"，见下面 FreeBenchCountFor / DemandLines。
                 // ★ B1 / FIX-12（审计 2026-10-17）：再叠加 DemandLines —— 做 1 件不该占 3 台。
-                int want = Mathf.Min(FreeBenchCountFor(plan.recipe),
-                                     Mathf.Min(Mathf.Max(1, ParallelPerStep), DemandLines(plan)));
-                for (int i = plan.lines.Count; i < want && free > 0; i++)
+                // ★ 2026-10-21 **修 13/15 跑不满**：want 曾经是"还能配几条"（FreeBenchCountFor），
+                //   却拿去和 **已有线数** 比（for i = lines.Count; i < want）。于是"13 条线 + 2 张空台"
+                //   ⇒ want=2、i 从 13 起 ⇒ 循环一次都不进，永远补不上。正确口径：
+                //   want = 这一单**总共**想要几条线（并行上限 ∩ 需求），再加多少由 want - 已有 决定。
+                int demandLines = DemandLines(plan);
+                int want = Mathf.Min(Mathf.Max(1, ParallelPerStep), demandLines);
+                int room = Mathf.Min(want - plan.lines.Count, FreeBenchCountFor(plan.recipe));
+                for (int i = 0; i < room && free > 0; i++)
                 {
-                    if (plan.lines.Count >= DemandLines(plan)) continue;
+                    if (plan.lines.Count >= demandLines) break;
 
                     Thing bench = PickBench(plan.recipe);
-                    if (bench == null) continue;   // 这个配方在自己范围里没台子了
+                    if (bench == null) { lastPickNulls++; continue; }   // 这个配方在自己范围里没台子（诊断计数）
 
                     if (!BillBenchClaims.TryClaim(map, bench, this))
                     {
+                        lastClaimFails++;         // 诊断：被别的代理占着（或认领表里是无主死引用）
                         usedBenches.Add(bench);   // 别的制作代理占了 ⇒ 本轮别再挑它
                         continue;
                     }
@@ -2046,7 +2066,9 @@ private void RescanBenches(Map map)
 
         private void UpdateVisuals(Map map)
         {
-            int cap = Math.Max(0, Props.maxVisualSlots);
+            // ★ 2026-10-21：0 = 不限制（默认）。用户反馈"14 台在产只看到 6 只手"，
+            //   改成一有几条线就画几只；XML 里仍可给正整数设硬顶。
+            int cap = Props.maxVisualSlots <= 0 ? int.MaxValue : Props.maxVisualSlots;
             int index = 0;
             for (int p = 0; p < plans.Count; p++)
             {

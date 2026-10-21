@@ -3,6 +3,7 @@ using System.Text;
 using DigitalStorage.AI;
 using LudeonTK;
 using RimWorld;
+using UnityEngine;
 using Verse;
 
 namespace DigitalStorage.Components
@@ -127,6 +128,7 @@ namespace DigitalStorage.Components
             }
 
             AppendProxyLineage(map, comp);
+            AppendPlanAllocation(comp);
             SB.AppendLine("=== [DS 制作] 结束 ===");
             Log.Warning(SB.ToString());
         }
@@ -286,6 +288,84 @@ namespace DigitalStorage.Components
                           + (missed > 12 ? "（只列前 12 台）" : ""));
         }
 
+        /// <summary>
+        /// 每个订单**为什么没配满台子**：把 <c>SyncLines</c> 那套算式原样打出来
+        /// （需求线数 / 并行上限 / 可用台子 / 空闲台子 / 总槽位 → 实配线），
+        /// 再给出判定：被需求挡住、被并行上限挡住、被槽位挡住、还是认领/挑台失败。
+        /// </summary>
+        private static void AppendPlanAllocation(CompBillAutomation comp)
+        {
+            IList<CraftPlan> plans = comp.PlansForReading;
+            if (plans == null || plans.Count == 0)
+            {
+                SB.AppendLine("  ── 订单：一个都没有（先在上面「添加配方」里加一条）──");
+                return;
+            }
+
+            SB.AppendLine("  ── 订单配线明细（与 SyncLines 同一套算式）──");
+            for (int i = 0; i < plans.Count; i++)
+            {
+                CraftPlan p = plans[i];
+                if (p == null || p.recipe == null) continue;
+
+                int usable = comp.UsableBenchCountFor(p.recipe);
+                int free = comp.FreeBenchCountForReading(p.recipe);
+                int demand = comp.DemandLinesForReading(p);
+                int cap = comp.ParallelStepCap;
+                int want = Mathf.Min(cap, demand);                       // 这一单总共想要几条线
+                int room = Mathf.Min(want - p.lines.Count, free);        // 这一轮还能加几条
+
+                SB.AppendLine("    [" + (i + 1) + "] " + p.recipe.LabelCap
+                              + "  实配线=" + p.lines.Count
+                              + "  模式=" + ModeText(p)
+                              + "  需求线数=" + (demand == int.MaxValue ? "不限" : demand.ToString())
+                              + "  并行上限=" + cap
+                              + "  可用台子=" + usable
+                              + "  空闲台子=" + free
+                              + "  槽位=" + comp.LinesUsedForReading + "/" + comp.SlotCapForReading);
+
+                SB.AppendLine("        ⇒ want=" + (want == int.MaxValue ? "64+" : want.ToString())
+                              + "（min(并行上限 " + cap + ", 需求 "
+                              + (demand == int.MaxValue ? "∞" : demand.ToString()) + ")）"
+                              + "  本轮还能加=" + Mathf.Max(0, room)
+                              + "  判定：" + Verdict(p, p.lines.Count, Mathf.Max(0, room), usable, free, demand, cap, comp));
+            }
+        }
+
+        private static string ModeText(CraftPlan p)
+        {
+            if (p.mode == CraftPlan.ModeCount) return "次数（余 " + p.remaining + "）";
+            if (p.mode == CraftPlan.ModeTarget)
+            {
+                return "维持（目标 " + p.targetCount + "，已计 " + p.countedCount
+                       + "，差 " + Mathf.Max(0, p.targetCount - p.countedCount) + "）";
+            }
+            return "无限";
+        }
+
+        /// <summary>
+        /// 判定"为什么没配满"。<paramref name="room"/> = 这一轮**还能加**的线数（want - 已有 ∩ 空闲台子）；
+        /// room 不为 0 才是真异常（该加没加上），否则是正常的闸门（需求 / 并行上限 / 总槽位）。
+        /// </summary>
+        private static string Verdict(CraftPlan p, int lines, int room, int usable, int free,
+                                      int demand, int cap, CompBillAutomation comp)
+        {
+            if (!p.Maintained) return "订单已挂起或已做完（不会再配线）";
+            if (p.mode == CraftPlan.ModeTarget && p.countedCount >= p.targetCount && !p.wantsWork)
+            {
+                return "维持数量已达标（等产物被用掉才会再开新活）";
+            }
+            if (room > 0)
+            {
+                return "⚠ 该再配 " + room + " 条却没配上：挑台失败=" + comp.LastPickNulls
+                       + " 次（CanCraft/BenchUsable 挡），认领失败=" + comp.LastClaimFails + " 次（别的代理占着）";
+            }
+            if (lines >= usable) return "已配满（范围内可用台子全在产）";
+            if (lines >= cap) return "被并行上限挡住（gizmo「并行上限」= " + cap + "，可调到 " + CompBillAutomation.MaxParallelStepCap + "）";
+            if (lines >= demand) return "被需求挡住（这一档只差 " + (demand == int.MaxValue ? "∞" : demand.ToString()) + " 件）";
+            if (comp.LinesUsedForReading >= comp.SlotCapForReading) return "被总槽位挡住（maxSlots=" + comp.SlotCapForReading + "）";
+            return "配线未满但没找到明确闸门（贴这段给作者）";
+        }
         // ===================================================================
         // 小工具
         // ===================================================================

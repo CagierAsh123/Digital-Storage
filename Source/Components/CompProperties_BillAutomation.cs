@@ -60,8 +60,12 @@ namespace DigitalStorage.Components
         /// <summary>取活失败后的重试间隔（tick）。原版的 500~600 负缓存只在"选料失败"时写。</summary>
         public int noWorkRetryTicks = 30;
 
-        /// <summary>最多给几件在产的活画"手 + 黄条"（纯表现上限，机制不受影响）。</summary>
-        public int maxVisualSlots = 6;
+        /// <summary>
+        /// 最多给几件在产的活画"手 + 黄条"（纯表现上限，机制不受影响）。
+        /// <para>2026-10-21 用户反馈"只显示 6 个手" ⇒ 默认 **0 = 不限制**（有几条线画几只）。
+        /// 想要老行为就在 XML 里给个正整数。</para>
+        /// </summary>
+        public int maxVisualSlots = 0;
 
         /// <summary>
         /// 左上角完成提示的最小间隔（tick）。0 = 每 tick 都提示。

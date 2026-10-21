@@ -112,6 +112,8 @@
   <DS_BA_Forever>forever</DS_BA_Forever>
   <DS_BA_Remain>{0} left</DS_BA_Remain>
   <DS_BA_Lines>running {0}/{1}</DS_BA_Lines>
+    <DS_BA_LinesByDemand>only {0} left in the order</DS_BA_LinesByDemand>
+    <DS_BA_LinesByCap>parallel limit {0} benches</DS_BA_LinesByCap>
   <DS_BA_Suspend>suspend</DS_BA_Suspend>
   <DS_BA_Resume>resume</DS_BA_Resume>
   <DS_BA_Suspended>suspended</DS_BA_Suspended>

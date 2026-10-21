@@ -718,7 +718,7 @@ if (i == 1) TreeGlyph(new Rect(b.x + 4f, b.y + 4f, 15f, 15f));   // ★ 15×15�
             // ── 行5：工作台 ──
             AE2Draw.TextIn(new Rect(ri.x + LBL_X, y, VAL_X - LBL_X, ROW_H), "DS_CA_Bench".Translate().ToString(), 0f, AE2Draw.TextDimCol, TextAnchor.MiddleLeft);
             AE2Draw.TextIn(new Rect(ri.x + VAL_X, y, ri.width - VAL_X - 2f, ROW_H),
-                "DS_BA_Lines".Translate(BusyLines(p), comp.UsableBenchCountFor(p.recipe)).ToString(), 0f, AE2Draw.TextCol, TextAnchor.MiddleLeft);
+                LinesRowText(p), 0f, AE2Draw.TextCol, TextAnchor.MiddleLeft);
             y += ROW_H + 6f;
 
             // ── 进度条（青）+ 右侧百分比 ──
@@ -905,6 +905,32 @@ if (i == 1) TreeGlyph(new Rect(b.x + 4f, b.y + 4f, 15f, 15f));   // ★ 15×15�
                 if (l != null && l.HasWork) n++;
             }
             return n;
+        }
+
+        /// <summary>
+        /// 「在产 13/15 台」+ 为什么没配满。
+        /// ★ 2026-10-21 用户问"为什么 15 台只跑 13 台"：分母是「范围内可用台子」，
+        ///   分子是「这一单实际配了几条线」——差的那几台常常不是没台子，而是**订单只差几件**
+        ///   （或并行上限调小了）。把闸门直接写在后面，免得每次都要开开发者工具。
+        /// </summary>
+        private string LinesRowText(CraftPlan p)
+        {
+            int usable = comp.UsableBenchCountFor(p.recipe);
+            int busy = BusyLines(p);
+            string s = "DS_BA_Lines".Translate(busy, usable).ToString();
+            if (busy >= usable) return s;
+
+            int demand = comp.DemandLinesForReading(p);
+            if (demand < usable && p.mode != CraftPlan.ModeForever)
+            {
+                return s + "  「" + "DS_BA_LinesByDemand".Translate(demand).ToString() + "」";
+            }
+            int cap = comp.ParallelStepCap;
+            if (cap < usable)
+            {
+                return s + "  「" + "DS_BA_LinesByCap".Translate(cap).ToString() + "」";
+            }
+            return s;
         }
 
         private static string ModeShort(CraftPlan p)

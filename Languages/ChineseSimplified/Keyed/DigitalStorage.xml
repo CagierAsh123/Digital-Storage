@@ -112,6 +112,8 @@
   <DS_BA_Forever>无限</DS_BA_Forever>
   <DS_BA_Remain>剩余 {0}</DS_BA_Remain>
   <DS_BA_Lines>在产 {0}/{1} 台</DS_BA_Lines>
+    <DS_BA_LinesByDemand>订单只差 {0} 件</DS_BA_LinesByDemand>
+    <DS_BA_LinesByCap>并行上限 {0} 台</DS_BA_LinesByCap>
   <DS_BA_Suspend>挂起</DS_BA_Suspend>
   <DS_BA_Resume>恢复</DS_BA_Resume>
   <DS_BA_Suspended>已挂起</DS_BA_Suspended>
