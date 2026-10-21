@@ -294,6 +294,8 @@
     <DS_AE2_NoRecipeInCat>No craftable recipes in this category</DS_AE2_NoRecipeInCat>
     <DS_AE2_NoRecipeMatch>No recipe matching "{0}"</DS_AE2_NoRecipeMatch>
     <DS_AE2_PickRecipeFirst>Pick a recipe above first</DS_AE2_PickRecipeFirst>
+    <DS_AE2_LockedTag>research needed</DS_AE2_LockedTag>
+    <DS_AE2_NeedResearch>Research this first: {0}</DS_AE2_NeedResearch>
     <DS_AE2_Submit>Submit request</DS_AE2_Submit>
     <DS_AE2_AlreadyInJob>Already in this request</DS_AE2_AlreadyInJob>
     <DS_AE2_StuffNone>Any material (whatever the core holds)</DS_AE2_StuffNone>

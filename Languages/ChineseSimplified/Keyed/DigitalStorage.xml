@@ -292,6 +292,8 @@
     <DS_AE2_NoRecipeInCat>这个分类下没有可做的配方</DS_AE2_NoRecipeInCat>
     <DS_AE2_NoRecipeMatch>没有匹配「{0}」的配方</DS_AE2_NoRecipeMatch>
     <DS_AE2_PickRecipeFirst>在上面选一条配方</DS_AE2_PickRecipeFirst>
+    <DS_AE2_LockedTag>需研究</DS_AE2_LockedTag>
+    <DS_AE2_NeedResearch>这条配方要先完成研究：{0}</DS_AE2_NeedResearch>
     <DS_AE2_Submit>提交合成请求</DS_AE2_Submit>
     <DS_AE2_AlreadyInJob>已在这个请求里</DS_AE2_AlreadyInJob>
     <DS_AE2_StuffNone>不限材料（核心里有啥用啥）</DS_AE2_StuffNone>

@@ -52,6 +52,13 @@ namespace DigitalStorage.Components
         /// <summary>面板"添加配方"菜单的候选（= 范围内台子能做的配方并集，随扫描刷新）。</summary>
         private readonly List<RecipeDef> unlocked = new List<RecipeDef>();
 
+        /// <summary>
+        /// 范围内台子能做、但**被研究锁着**的配方（随扫描刷新）。
+        /// 面板里灰显并写明缺哪项研究 —— 静默隐藏会让玩家以为"这个 mod 的配方不被支持"
+        /// （Mines 2.0 的矿场就是这种：建筑没研究前置，配方全挂在 <c>minecraft</c> 下）。
+        /// </summary>
+        private readonly List<RecipeDef> locked = new List<RecipeDef>();
+
         private Pawn worker;
         private int nextWorkerAttemptTick = -99999;
         private int nextScanTick;
@@ -121,6 +128,12 @@ namespace DigitalStorage.Components
         internal IList<RecipeDef> UnlockedRecipes
         {
             get { return unlocked; }
+        }
+
+        /// <summary>给"添加配方"窗口看的<b>被研究锁着</b>的配方（灰显 + 写研究名）。</summary>
+        internal IList<RecipeDef> LockedRecipes
+        {
+            get { return locked; }
         }
 
         /// <summary>本次扫描到的台子（只读；Dev 诊断与"为什么这台没被认"用）。</summary>
@@ -391,7 +404,7 @@ private void RescanBenches(Map map)
                 benchDefs.Add(t.def);
             }
 
-            CraftUnlocks.MenuRecipes(benchDefs, unlocked);
+            CraftUnlocks.MenuRecipes(benchDefs, unlocked, locked);
             MergePlayerCraftableRecipes();   // ★ 通用兼容：并入所有玩家可做的配方
         }
 

@@ -15,16 +15,18 @@ namespace DigitalStorage.AI
     /// </summary>
     internal static class CraftUnlocks
     {
-        private static readonly Dictionary<ThingDef, List<RecipeDef>> cache =
-            new Dictionary<ThingDef, List<RecipeDef>>();
-
         /// <summary>某个工作台 def 能做的全部配方（已过滤掉不该出现的）。</summary>
+        /// <remarks>
+        /// <b>2026-10-21 起不再按 def 永久缓存。</b>Mines 2.0 这类 mod 在启动钩子 / 游戏组件里
+        /// **运行时**往 <c>DefDatabase&lt;RecipeDef&gt;</c> 注册配方，然后反射清掉
+        /// <c>ThingDef.allRecipesCached</c>（见其 <c>MineRecipes.InvalidateBillMenu</c>）。
+        /// 我们若在它注册之前读过一次并永久缓存，就会把"当时还是空表"的结果钉死，
+        /// 之后面板里永远没有这批配方（社区兼容：`Cain.Mineshaft` 的矿场配方）。
+        /// <para><c>ThingDef.AllRecipes</c> 自己仍是惰性缓存，读一次很便宜；这里只是重新过滤。</para>
+        /// </remarks>
         public static List<RecipeDef> For(ThingDef benchDef)
         {
-            List<RecipeDef> list;
-            if (cache.TryGetValue(benchDef, out list)) return list;
-
-            list = new List<RecipeDef>();
+            List<RecipeDef> list = new List<RecipeDef>();
             // ⚠️ 必须用 AllRecipes 而不是 def.recipes：XML 里 <recipes> 通常只写显式的几个，
             //    工作台的配方绝大多数来自"产品 def 上的 <recipeMaker> + recipeUsers"这一路，
             //    只有 AllRecipes 会把两路合并（ThingDef.cs:545-570 的第二趟扫描就是干这个的）。
@@ -38,7 +40,6 @@ namespace DigitalStorage.AI
                     if (IsAutomationCandidate(r)) list.Add(r);
                 }
             }
-            cache[benchDef] = list;
             return list;
         }
 
@@ -81,7 +82,23 @@ namespace DigitalStorage.AI
         /// </summary>
         public static void MenuRecipes(HashSet<ThingDef> benchDefs, List<RecipeDef> outList)
         {
+            MenuRecipes(benchDefs, outList, null);
+        }
+
+        /// <summary>
+        /// 同上，另外把<b>「只差研究」</b>的配方收进 <paramref name="lockedOut"/>。
+        ///
+        /// <para><b>为什么要露出来</b>（社区兼容：Mines 2.0）：矿场建筑本身没有研究前置
+        /// （<c>MinesAutomated_ThingDef_Mine</c> 不写 <c>researchPrerequisites</c>），
+        /// 但它的每一条配方都带 <c>researchPrerequisite = MinesAutomated_ResearchProjectDef_minecraft</c>。
+        /// 玩家造好矿场、打开制作代理面板却一条配方都看不到，界面上没有任何解释
+        /// （原版 <c>ITab_Bills</c> 同样是直接隐藏）—— 于是被当成"不兼容"。
+        /// 这里把这类配方单独留在 <c>LockedRecipes</c> 里，面板灰显 + 写清缺哪项研究。</para>
+        /// </summary>
+        public static void MenuRecipes(HashSet<ThingDef> benchDefs, List<RecipeDef> outList, List<RecipeDef> lockedOut)
+        {
             outList.Clear();
+            if (lockedOut != null) lockedOut.Clear();
             if (benchDefs == null || benchDefs.Count == 0) return;
 
             HashSet<RecipeDef> seen = tmpSeen;
@@ -92,14 +109,39 @@ namespace DigitalStorage.AI
                 for (int i = 0; i < rs.Count; i++)
                 {
                     RecipeDef r = rs[i];
-                    if (seen.Contains(r)) continue;
-                    if (!r.AvailableNow) continue;      // 研究 / meme / ideo 门槛
+                    if (r == null || seen.Contains(r)) continue;
                     seen.Add(r);
+                    if (!r.AvailableNow)                // 研究 / meme / ideo 门槛
+                    {
+                        // 只收"纯研究门槛"的（好解释）；meme/意识形态之类继续隐藏
+                        if (lockedOut != null && ResearchLock(r) != null) lockedOut.Add(r);
+                        continue;
+                    }
                     outList.Add(r);
                 }
             }
             seen.Clear();
             outList.Sort((a, b) => string.Compare(a.LabelCap, b.LabelCap, System.StringComparison.Ordinal));
+            if (lockedOut != null)
+            {
+                lockedOut.Sort((a, b) => string.Compare(a.LabelCap, b.LabelCap, System.StringComparison.Ordinal));
+            }
+        }
+
+        /// <summary>这条配方被哪项研究挡着（不差研究 ⇒ null）。</summary>
+        public static ResearchProjectDef ResearchLock(RecipeDef r)
+        {
+            if (r == null) return null;
+            if (r.researchPrerequisite != null && !r.researchPrerequisite.IsFinished) return r.researchPrerequisite;
+            if (r.researchPrerequisites != null)
+            {
+                for (int i = 0; i < r.researchPrerequisites.Count; i++)
+                {
+                    ResearchProjectDef p = r.researchPrerequisites[i];
+                    if (p != null && !p.IsFinished) return p;
+                }
+            }
+            return null;
         }
 
         private static readonly HashSet<RecipeDef> tmpSeen = new HashSet<RecipeDef>();

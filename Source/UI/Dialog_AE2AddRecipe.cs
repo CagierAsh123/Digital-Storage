@@ -85,6 +85,7 @@ namespace DigitalStorage.UI
         private void DrawList(Rect area)
         {
             List<RecipeDef> all = new List<RecipeDef>();
+            HashSet<RecipeDef> lockedSet = null;
             IList<RecipeDef> unlocked = comp.UnlockedRecipes;
             if (unlocked != null)
             {
@@ -105,6 +106,22 @@ namespace DigitalStorage.UI
                     if (uu != null && uu.defName != null && uu.defName.StartsWith("DigitalStorage_WorkerCraft")) { onProxy = true; break; }
                 }
                 if (onProxy && !all.Contains(r)) all.Add(r);
+            }
+
+            // ★ 被研究锁着的配方也要露出来（灰显 + 写明缺哪项研究）：
+            //   Mines 2.0 的矿场建筑本身没有研究前置，配方却全挂在 minecraft 下
+            //   ⇒ 以前面板里一条都看不到，玩家只会觉得"这个 mod 的配方不被支持"。
+            IList<RecipeDef> lockedRecipes = comp.LockedRecipes;
+            if (lockedRecipes != null && lockedRecipes.Count > 0)
+            {
+                lockedSet = new HashSet<RecipeDef>();
+                for (int i = 0; i < lockedRecipes.Count; i++)
+                {
+                    RecipeDef r = lockedRecipes[i];
+                    if (r == null) continue;
+                    lockedSet.Add(r);
+                    if (!all.Contains(r)) all.Add(r);
+                }
             }
 
             // 过滤：分类 + 搜索（叠加）
@@ -139,7 +156,8 @@ namespace DigitalStorage.UI
             {
                 RecipeDef rd = shown[start + i];
                 Rect row = new Rect(area.x, area.y + i * (rowH + 1f), area.width - 14f, rowH);
-                bool isSel = (rd == sel);
+                bool isLocked = lockedSet != null && lockedSet.Contains(rd);
+                bool isSel = !isLocked && (rd == sel);
                 AE2Draw.Row(row, Mouse.IsOver(row), isSel);
 
                 Rect ic = new Rect(row.x + 3f, row.y + 3f, 20f, 20f);
@@ -147,11 +165,24 @@ namespace DigitalStorage.UI
                 Widgets.DefIcon(ic.ContractedBy(1f), rd.ProducedThingDef);
 
                 // ★ 未选中用深色（之前因为 Small() 被改坏，颜色没生效 ⇒ 看起来是白字）
-                Color tc = isSel ? AE2Draw.Hi : AE2Draw.TextCol;
-                AE2Draw.TextIn(new Rect(row.x + 28f, row.y + 2f, row.width - 32f, 21f), rd.ProducedThingDef.LabelCap.ToString() + "　" + rd.LabelCap.ToString(), 1f, tc, TextAnchor.MiddleLeft);
+                Color tc = isLocked ? AE2Draw.TextDimCol : (isSel ? AE2Draw.Hi : AE2Draw.TextCol);
+                string rowText = rd.ProducedThingDef.LabelCap.ToString() + "　" + rd.LabelCap.ToString();
+                if (isLocked) rowText += "　（" + "DS_AE2_LockedTag".Translate().ToString() + "）";
+                AE2Draw.TextIn(new Rect(row.x + 28f, row.y + 2f, row.width - 32f, 21f), rowText, 1f, tc, TextAnchor.MiddleLeft);
 
-                if (Mouse.IsOver(row)) TooltipHandler.TipRegion(row, (string)(rd.LabelCap + "\n" + rd.description));
-                if (Widgets.ButtonInvisible(row)) sel = rd;
+                if (isLocked)
+                {
+                    // 灰显 + 点一下告诉你差哪项研究；不选中、不能提交
+                    ResearchProjectDef need = CraftUnlocks.ResearchLock(rd);
+                    string tip = "DS_AE2_NeedResearch".Translate((need == null) ? "?" : need.LabelCap.ToString()).ToString();
+                    if (Mouse.IsOver(row)) TooltipHandler.TipRegion(row, tip);
+                    if (Widgets.ButtonInvisible(row)) Messages.Message(tip, MessageTypeDefOf.RejectInput, false);
+                }
+                else
+                {
+                    if (Mouse.IsOver(row)) TooltipHandler.TipRegion(row, (string)(rd.LabelCap + "\n" + rd.description));
+                    if (Widgets.ButtonInvisible(row)) sel = rd;
+                }
             }
 
             if (shown.Count > vis)

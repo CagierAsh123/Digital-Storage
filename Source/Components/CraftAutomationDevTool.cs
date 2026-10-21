@@ -156,7 +156,31 @@ namespace DigitalStorage.Components
             else if (available == 0)
             {
                 SB.AppendLine("  ⚠️ 候选配方全被 AvailableNow 挡着（研究 / meme / 派系标签）⇒ 面板里不会出现。");
+                AppendMissingResearch(auto);
             }
+        }
+
+        /// <summary>把"挡着这些配方的研究"列出来（Mines 2.0 的矿场就是这样：配方全挂在 minecraft 下）。</summary>
+        private static void AppendMissingResearch(List<RecipeDef> recipes)
+        {
+            if (recipes == null || recipes.Count == 0) return;
+            List<string> names = new List<string>();
+            for (int i = 0; i < recipes.Count; i++)
+            {
+                ResearchProjectDef need = CraftUnlocks.ResearchLock(recipes[i]);
+                if (need == null) continue;
+                string label = need.LabelCap.ToString();
+                if (!names.Contains(label)) names.Add(label);
+                if (names.Count >= 3) break;
+            }
+            if (names.Count == 0) return;
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < names.Count; i++)
+            {
+                if (i > 0) sb.Append(" / ");
+                sb.Append(names[i]);
+            }
+            SB.AppendLine("    缺的研究：" + sb);
         }
 
         /// <summary>
