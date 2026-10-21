@@ -464,6 +464,14 @@ private void RescanBenches(Map map)
             for (int p = plans.Count - 1; p >= 0; p--)
             {
                 CraftPlan plan = plans[p];
+
+                // ★ 2026-10-21 用户反馈：「并行上限调小（小于当前在产数）时手不会少，从少往多调正常」。
+                //   原因是这个上限过去**只管加不管收** —— 调小后 want < lines.Count 只会让 room 变负、
+                //   停止补线，已经在手里的线（HasWork）继续干到做完，所以手上的活与"手"都减不下来。
+                //   这里让上限**双向生效**：超出就立刻收线（优闲先收，实在都在干活才从尾部收）。
+                int capNow = Mathf.Max(1, ParallelPerStep);
+                if (plan.lines.Count > capNow) TrimLinesTo(plan, capNow);
+
                 for (int i = plan.lines.Count - 1; i >= 0; i--)
                 {
                     CraftLine line = plan.lines[i];
@@ -593,6 +601,26 @@ private void RescanBenches(Map map)
             line.Bill = bill;
             line.TempStack = stack;
             return line;
+        }
+
+        /// <summary>
+        /// 把这一单的在产线数收到 <paramref name="want"/> 以内（并行上限调小时用）。
+        /// 优先收**空闲**的线（还没拿到料 ⇒ 让台子不亏任何进度），
+        /// 只有在全部都"手里有活"时才从尾部收（进度作废，但材料是完成那一刻才扣的，不会丢料）。
+        /// </summary>
+        private void TrimLinesTo(CraftPlan plan, int want)
+        {
+            if (want < 0) want = 0;
+            while (plan.lines.Count > want)
+            {
+                int victim = -1;
+                for (int i = plan.lines.Count - 1; i >= 0; i--)
+                {
+                    if (!plan.lines[i].HasWork) { victim = i; break; }
+                }
+                if (victim < 0) victim = plan.lines.Count - 1;
+                ReleaseLine(plan, victim);
+            }
         }
 
         private void ReleaseLine(CraftPlan plan, int i)
@@ -1191,7 +1219,11 @@ private void RescanBenches(Map map)
         /// <summary>设置每步并行上限（gizmo 滑条用；自动夹在 1..64）。</summary>
         public void SetParallelStepCap(int value)
         {
-            parallelStepCap = Mathf.Clamp(value, 1, MaxParallelStepCap);
+            int clamped = Mathf.Clamp(value, 1, MaxParallelStepCap);
+            if (clamped == ParallelStepCap) return;
+            parallelStepCap = clamped;
+            // 调小要**立刻**收线（不等下一次 60 tick 的扫描；TrimLinesTo 在 SyncLines 里做）
+            nextScanTick = 0;
         }
 
         /// <summary>一个已建好的 Job 的"计划规模"（件）= 各步骤需要量之和，用于容量条与占用统计。</summary>
