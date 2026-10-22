@@ -91,8 +91,11 @@ namespace DigitalStorage.Core
 
         public override bool TryAdd(Thing item, bool canMergeWithExistingStacks = true)
         {
+            if (item == null) return false;
+            int? moved = HandOverOwned(item, item.stackCount, canMergeWithExistingStacks);
+            if (moved.HasValue) return moved.Value == item.stackCount;
             // 整堆接口必须全部可收, 避免失败前已部分合堆
-            if (item == null || GetCountCanAccept(item, canMergeWithExistingStacks) < item.stackCount) return false;
+            if (GetCountCanAccept(item, canMergeWithExistingStacks) < item.stackCount) return false;
             if (!OwnerAllowsInsert(item)) return false;
             return base.TryAdd(item, canMergeWithExistingStacks);
         }
@@ -100,10 +103,37 @@ namespace DigitalStorage.Core
         public override int TryAdd(Thing item, int count, bool canMergeWithExistingStacks = true)
         {
             if (item == null || count <= 0) return 0;
+            int? moved = HandOverOwned(item, count, canMergeWithExistingStacks);
+            if (moved.HasValue) return moved.Value;
             if (!OwnerAllowsInsert(item)) return 0;
             int accepted = Math.Min(count, GetCountCanAccept(item, canMergeWithExistingStacks));
+            if (accepted <= 0) return 0;
             return base.TryAdd(item, accepted, canMergeWithExistingStacks);
         }
+
+        /// <summary>
+        /// 物品身上还挂着**别的**容器时，替调用方做正规转移（拆堆 → 摘除 → 塞入，失败自回滚）。
+        ///
+        /// <para><b>为什么必须拦这一手</b>：原版 <c>ThingOwner.TryAdd</c> 遇到这种物品只会打
+        /// <c>Tried to add … but this thing is already in another container. owner=…, current container owner=…</c>
+        /// 然后返回 false —— 物品留在原地。若那个"原地"其实是个**无主容器**
+        /// （<c>Verse.GenLeaving</c> 落地失败时会 <c>break</c>，剩下的东西就住在一个
+        /// <c>new ThingOwner&lt;Thing&gt;()</c> 里，Owner 为 null），物品就变成
+        /// 既不在图上、也不属于任何容器的游离物：<c>MapHeld == null</c> ⇒ 原版顺手搬运扫描
+        /// 里 <c>Fogged()</c> 空引用刷屏。2026-10-22 的报障正是这条链。
+        /// 唯一的正确 API 是 <c>TryTransferToContainer</c>，所以这里补上，而不是跟着拒收。</para>
+        ///
+        /// <para>返回 <c>null</c> 表示"不需要转移"（物品本来就是自由的 / 已经在这个容器里）。</para>
+        /// </summary>
+        private int? HandOverOwned(Thing item, int count, bool canMergeWithExistingStacks)
+        {
+            ThingOwner holder = item.holdingOwner;
+            if (holder == null || ReferenceEquals(holder, this)) return null;
+            // 已落地的物品在 Map 的持有容器里: 必须先 Despawn, 不能当容器间转移
+            if (item.Spawned) return 0;
+            return holder.TryTransferToContainer(item, this, Math.Min(count, item.stackCount), canMergeWithExistingStacks);
+        }
+
 
         internal void AddLoaded(Thing item)
         {

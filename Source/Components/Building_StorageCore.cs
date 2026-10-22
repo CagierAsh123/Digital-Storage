@@ -455,9 +455,52 @@ namespace DigitalStorage.Components
             if (innerContainer.TryAdd(taken, true)) return take;
 
             // 未存入的部分留在原持有者, 不改变调用方的余量身份
-            if (!ReferenceEquals(taken, t)) t.TryAbsorbStack(taken, false);
-            else previousOwner?.TryAdd(taken, false);
+            if (!ReferenceEquals(taken, t))
+            {
+                if (t.TryAbsorbStack(taken, false)) return 0;
+            }
+            else if (previousOwner != null && previousOwner.TryAdd(taken, false))
+            {
+                return 0;
+            }
+
+            // ★ 回滚兜底：走到这里说明 taken 既没存进来、也没吸回/退回原持有者
+            // （previousOwner 为 null，或者原持有者此刻已经不接受它 —— 例如被拆掉的任务）。
+            // 这时**必须**给它一个去处，否则它就是"既不在图上、也不属于任何容器"的游离物品：
+            // 没有 Map ⇒ 一旦混进 listerHaulables，原版顺手搬运扫描里
+            // HaulAIUtility.PawnCanAutomaticallyHaulFast_NewTemp 第一行 t.Fogged() 就对 t.MapHeld 取空，
+            // 每个结束任务的小人刷一条 NullReferenceException（2026-10-22 报的那条）。
+            if (!RescueDetachedThing(taken))
+            {
+                Log.Error("[DigitalStorage] 入库失败且回滚不回去，物品没救回来（请把这条日志发给作者）："
+                          + taken.ToStringSafe() + " ×" + taken.stackCount);
+            }
             return 0;
+        }
+
+        /// <summary>
+        /// 给"已经离开了原持有者、又塞不回去"的物品找去处。
+        ///
+        /// <para>顺序：先当**未落地**物品塞进最近的核心（这正是玩家想要的结果），
+        /// 再落到核心旁边的地面。两条都不行才返回 false —— 宁可留一条红字，
+        /// 也不能让物品变成谁都摸不到的游离状态（那样只会换来刷屏的空引用）。</para>
+        /// </summary>
+        private bool RescueDetachedThing(Thing t)
+        {
+            if (t == null || t.Destroyed) return true;
+            if (t.Spawned) return true;
+            if (!Spawned || Map == null) return false;
+
+            // 摘干净：原版 TryAdd 见到 holdingOwner != null 只会打一条 Warning 然后拒绝
+            ThingOwner owner = t.holdingOwner;
+            if (owner != null && !ReferenceEquals(owner, innerContainer)) owner.Remove(t);
+
+            Building_StorageCore core = DigitalDropRedirect.NearestUsableCore(Map, PositionHeld);
+            if (core != null && core.TryStoreIgnoringFilter(t, t.stackCount) == t.stackCount) return true;
+
+            IntVec3 cell = (core != null) ? core.PositionHeld : PositionHeld;
+            if (cell.IsValid && GenPlace.TryPlaceThing(t, cell, Map, ThingPlaceMode.Near, out Thing _)) return true;
+            return false;
         }
 
         /// <summary>

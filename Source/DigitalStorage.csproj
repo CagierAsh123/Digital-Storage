@@ -198,6 +198,8 @@
     <Compile Include="HarmonyPatches\Patch_ReservationManager_CanReserve.cs" />
     <Compile Include="HarmonyPatches\Patch_ReservationManager_CanReserve_SharedCore.cs" />
     <Compile Include="HarmonyPatches\Patch_GenPlace_DropRedirect.cs" />
+    <!-- 游离物品（MapHeld == null）不进搬运列表 + 老存档里已有的定期救回 -->
+    <Compile Include="HarmonyPatches\Patch_ListerHaulables_LimboGuard.cs" />
     <Compile Include="HarmonyPatches\Patch_Building_SubcoreScanner_SupplyFromCore.cs" />
     <Compile Include="HarmonyPatches\Patch_Building_GrowthVat_SupplyFromCore.cs" />
     <Compile Include="HarmonyPatches\Patch_PowerMultiplier.cs" />
