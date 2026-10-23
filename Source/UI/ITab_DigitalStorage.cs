@@ -286,10 +286,12 @@ namespace DigitalStorage.UI
             //   旧：ExtractMatchingTo(int count, IntVec3 pos, Map map, Predicate<Thing> filter)     4 参
             //   新：ExtractMatchingTo(Building_StorageCore core, int count, IntVec3 pos, Map map,
             //                        Predicate<Thing> filter, bool forbid = true)                     6 参
-            //   forbid: false ⇒ 面板取物不把东西设成禁止（那是 3.0 的"防送回"语义，这里不需要）。
+            //   forbid: true ⇒ 面板取物**置禁止**。4.1 起自动收纳尊重禁止
+            //   （CompAutoIngest.Reject.Forbidden），否则 300 tick 的"刚被取出"窗口一过期，
+            //   刚掏出来的东西就被瞬移吸回核心 —— 就是社区反复反馈的"取出来又塞回去"。
             int got = HaulSourceContents.ExtractMatchingTo(core, amount, core.Position, map,
                 delegate (Thing t) { return t.def == row.def && t.Stuff == row.stuff && QualityOrdinalOf(t) == row.qualityOrdinal; },
-                forbid: false);
+                forbid: true);
 
             if (got <= 0)
                 Messages.Message("DS_NoSpaceNearCore".Translate(), core, MessageTypeDefOf.RejectInput);

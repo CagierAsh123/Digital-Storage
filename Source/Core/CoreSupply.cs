@@ -113,8 +113,14 @@ namespace DigitalStorage.Core
             if (place(taken)) return true;
 
             // 放不进去：还回原容器。SplitOff 出来的那件还没 Spawn，TryAdd 是安全的。
-            if (!owner.TryAdd(taken, true) && map != null && pos.IsValid)
-                GenPlace.TryPlaceThing(taken, pos, map, ThingPlaceMode.Near);
+            if (!owner.TryAdd(taken, true) && map != null && pos.IsValid
+                && GenPlace.TryPlaceThing(taken, pos, map, ThingPlaceMode.Near, out Thing dropped)
+                && dropped != null && !dropped.Destroyed)
+            {
+                // 落地即盖"刚被取出"戳：否则自动收纳下一轮 15 tick 就把它吸回核心，
+                // 而需求（料斗/生育舱）还在 ⇒ 下一轮再取 ⇒ 取—吸循环。
+                CompAutoIngest.MarkWithdrawn(dropped);
+            }
             return false;
         }
     }

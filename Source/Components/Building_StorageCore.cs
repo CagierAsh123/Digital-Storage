@@ -459,7 +459,7 @@ namespace DigitalStorage.Components
             {
                 if (t.TryAbsorbStack(taken, false)) return 0;
             }
-            else if (previousOwner != null && previousOwner.TryAdd(taken, false))
+            else if (previousOwner != null && previousOwner.TryAdd(taken, true))
             {
                 return 0;
             }
@@ -641,6 +641,17 @@ namespace DigitalStorage.Components
 
             // 3.0 → 4.0：把旧账本搬进容器（只有从 3.0 存档读出来才有数据，新核心是 no-op）
             MigrateLegacy30IfNeeded();
+        }
+
+        /// <summary>
+        /// 碎堆自愈入口（见 <see cref="CoreStorageContainer.ConsolidateStacks"/>）：
+        /// 把同种可堆叠的小堆并成满堆。旧档 / 历史 <c>canMerge=false</c> 遗留的重复小堆靠它收回来，
+        /// 否则一堆 1..74 件的碎堆会把 500/1000/3000 个槽位一个个吃光（"容量明明还有却装不进"）。
+        /// </summary>
+        internal int ConsolidateStacks(int maxMerges)
+        {
+            CoreStorageContainer csc = innerContainer as CoreStorageContainer;
+            return csc?.ConsolidateStacks(maxMerges) ?? 0;
         }
 
         public override void DeSpawn(DestroyMode mode = DestroyMode.Vanish)

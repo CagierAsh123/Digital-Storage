@@ -183,8 +183,11 @@ namespace DigitalStorage.Backpack
             Pawn pawn = Pawn;
             Map map = (pawn == null) ? null : pawn.MapHeld;
             if (map != null && pawn.PositionHeld.IsValid
-                && GenPlace.TryPlaceThing(taken, pawn.PositionHeld, map, ThingPlaceMode.Near))
+                && GenPlace.TryPlaceThing(taken, pawn.PositionHeld, map, ThingPlaceMode.Near, out Thing dropped))
             {
+                // 落地即盖"刚被取出"戳，否则自动收纳 15 tick 一轮就把它吸回核心，
+                // 而背包下次装料又把它取出来 —— 玩家看到的就是"取—吸"循环。
+                if (dropped != null && !dropped.Destroyed) CompAutoIngest.MarkWithdrawn(dropped);
                 return;
             }
 

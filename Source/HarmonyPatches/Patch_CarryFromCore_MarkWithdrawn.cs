@@ -17,19 +17,21 @@ namespace DigitalStorage.HarmonyPatches
     ///
     /// <para><b>我们自己的取出路径早就有护栏</b>（<c>HaulSourceContents.ExtractTo</c> 里的
     /// <c>MarkWithdrawn(result)</c>，300 tick），但**原版取料路径不写这个标记** ——
-    /// 它不知道"这件东西刚从核心出来"。这里补上：小人开始搬一件东西时，如果它此刻的
-    /// <c>ParentHolder</c> 是我们的核心，就给它盖一个 300 tick 的"刚被取出"戳
-    /// （<see cref="CompAutoIngest.MarkWithdrawn"/>），落地后不会被立刻吸回去。</para>
+    /// 它不知道"这件东西刚从核心出来"。这里补上。</para>
     ///
     /// <para><b>为什么挂在 <c>Pawn_CarryTracker.TryStartCarry</c> 而不是 <c>Toils_Haul.StartCarryThing</c></b>：
     /// 后者是"造 toil"的工厂方法，真正决定拿哪件东西是 toil 的 <c>initAction</c> 在运行时做的，
     /// Patch 工厂拿不到运行时的物品。而 <c>TryStartCarry</c> 是**唯一**会把物品从容器搬进手上的入口
-    /// （原版 <c>Toils_Haul.cs:77</c> 就是调它），此时 <c>item.ParentHolder</c> 仍然是核心。
-    /// 两个重载都要挂：<c>TryStartCarry(Thing)</c> 与 <c>TryStartCarry(Thing, int, bool)</c>。</para>
+    /// （原版 <c>Toils_Haul.cs:77</c> 就是调它）。两个重载都要挂：
+    /// <c>TryStartCarry(Thing)</c> 与 <c>TryStartCarry(Thing, int, bool)</c>。</para>
     ///
-    /// <para>只标记**从我们核心拿出来的**那件（<c>ParentHolder as Building_StorageCore</c>）；
-    /// 从地上捡、从别家容器拿，一律不干预。与"避让作业"开关无关 —— 这条永远生效：
-    /// 它是"别把自己的东西立刻吸回去"的物理常识，不是让位策略。</para>
+    /// <para><b>2026-10-23 修正</b>：原来是在 <b>Postfix</b> 里看 <c>source.ParentHolder is Building_StorageCore</c>，
+    /// 但 <c>TryStartCarry</c> 内部会先 <c>SplitOff</c>：<b>整堆取走</b>时
+    /// <c>Verse\Thing.cs:1604-1618</c> 会 `holdingOwner?.Remove(this)` 再返回 `this`
+    /// ⇒ Postfix 里 ParentHolder 早就是 null（或不指向核心）⇒ <b>整堆取料从来没被标记过</b>，
+    /// 只有"部分取走"（SplitOff 出新实例、原堆还留在核心）才盖到。
+    /// 现在改用 Prefix 的 <c>__state</c> 记录"取之前它是不是在核心里"，取完再盖到
+    /// <c>CarriedThing</c> 上（部分=新实例、整堆=同一个实例）。</para>
     /// </summary>
     internal static class Patch_CarryFromCore_MarkWithdrawn
     {
@@ -37,34 +39,42 @@ namespace DigitalStorage.HarmonyPatches
             new[] { typeof(Thing), typeof(int), typeof(bool) })]
         internal static class ThreeArg
         {
-            private static void Postfix(Pawn_CarryTracker __instance, Thing item, int count, bool reserve,
-                ref int __result)
+            private static void Prefix(Thing item, out bool __state)
             {
-                if (__result <= 0) return;
-                MarkIfFromCore(__instance, item);
+                __state = item != null && item.ParentHolder is Building_StorageCore;
+            }
+
+            private static void Postfix(Pawn_CarryTracker __instance, bool __state, ref int __result)
+            {
+                if (__result <= 0 || !__state) return;
+                MarkCarried(__instance);
             }
         }
 
         [HarmonyPatch(typeof(Pawn_CarryTracker), nameof(Pawn_CarryTracker.TryStartCarry), new[] { typeof(Thing) })]
         internal static class OneArg
         {
-            private static void Postfix(Pawn_CarryTracker __instance, Thing item, ref bool __result)
+            private static void Prefix(Thing item, out bool __state)
             {
-                if (!__result) return;
-                MarkIfFromCore(__instance, item);
+                __state = item != null && item.ParentHolder is Building_StorageCore;
+            }
+
+            private static void Postfix(Pawn_CarryTracker __instance, bool __state, ref bool __result)
+            {
+                if (!__result || !__state) return;
+                MarkCarried(__instance);
             }
         }
 
-        private static void MarkIfFromCore(Pawn_CarryTracker tracker, Thing source)
+        /// <summary>
+        /// 标的是**真正被搬走的那一件**：部分取货时原版 SplitOff 出一个新实例（新 thingIDNumber），
+        /// 落地的是新实例；整堆取货时是同一个实例。两种情况 <c>CarriedThing</c> 都指向它。
+        /// </summary>
+        private static void MarkCarried(Pawn_CarryTracker tracker)
         {
-            if (tracker == null || source == null) return;
-            if (!(source.ParentHolder is Building_StorageCore)) return;
-
-            // ⚠️ 标的是**真正被搬走的那一件**：部分取货时原版会 SplitOff 出一个新实例，
-            //    落地的是新实例（新 thingIDNumber），标老的没有用。
+            if (tracker == null) return;
             Thing carried = tracker.CarriedThing;
             if (carried != null && !carried.Destroyed) CompAutoIngest.MarkWithdrawn(carried);
-            else if (!source.Destroyed) CompAutoIngest.MarkWithdrawn(source);
         }
     }
 }

@@ -38,6 +38,19 @@ namespace DigitalStorage.Components
         private static readonly Dictionary<int, int> rimFirstSeen = new Dictionary<int, int>();
 
         /// <summary>
+        /// 近期被"取出过"的物品（id → 最后一次取出的 tick）。
+        ///
+        /// <para>用途只有一个：物品<b>落地</b>时判断"这是不是一次仍在进行中的取料"，
+        /// 是就重新起算 <see cref="withdrawnUntil"/> 与 <see cref="rimFirstSeen"/>
+        /// （见 <see cref="TryRearmAfterSpawn"/>）。没有它就只能靠 thingIDNumber 记住
+        /// 一件早已被销毁的旧物，也就没法区分"第一次落地"与"被搬来搬去中的落地"。</para>
+        /// </summary>
+        private static readonly Dictionary<int, int> withdrawnSeen = new Dictionary<int, int>();
+
+        /// <summary>超过这么久没再被取出过的编号，不必再为它重算窗口（见 <see cref="TryRearmAfterSpawn"/>）。</summary>
+        private const int RearmWindowTicks = 3000;
+
+        /// <summary>
         /// 工作台旁边那一圈的宽限（tick）：给原版 / 搬运 mod 留出"正准备来拿它"的时间。
         /// 与 <see cref="MarkWithdrawn"/> 的 300 tick 取同一个量级（都是"一个 job 周期"）。
         /// </summary>
@@ -70,6 +83,7 @@ namespace DigitalStorage.Components
         internal static void ClearSessionCaches()
         {
             withdrawnUntil.Clear();
+            withdrawnSeen.Clear();
             rimFirstSeen.Clear();
             scanOffset = 0;
             lastSweepTick = -1;
@@ -78,7 +92,39 @@ namespace DigitalStorage.Components
         public static void MarkWithdrawn(Thing t)
         {
             if (t != null)
-                withdrawnUntil[t.thingIDNumber] = Find.TickManager.TicksGame + 300;
+            {
+                int now = Find.TickManager.TicksGame;
+                withdrawnUntil[t.thingIDNumber] = now + 300;
+                withdrawnSeen[t.thingIDNumber] = now;
+            }
+        }
+
+        /// <summary>
+        /// 物品**落地**（<c>Thing.SpawnSetup</c>）时重新起算两笔"别碰"窗口。
+        ///
+        /// <para><b>为什么必须在落地时重算</b>（用户 2026-10-23 反复上报的
+        /// 「小人把东西取出来又塞回系统」）：两个窗口都只从<b>取出手那一刻</b>起算，
+        /// 而取料作业真实耗时远不止 300 tick —— 小人从核心取料（<see cref="MarkWithdrawn"/> 起算）
+        /// → 走十几格去工地/工作台 → 放下的那一刻窗口早过期了 ⇒ 下一 tick 就被自动收纳瞬移回核心
+        /// ⇒ 那个作业找不到料、重新取一趟。放得越远越必现，正是"偶尔"的表现。</para>
+        ///
+        /// <para>判据用 <see cref="withdrawnSeen"/>：只有"近期确实被取出过"的物品才重算，
+        /// 普通搬运（从地上捡起再放下）不会因此获得免疫。</para>
+        /// </summary>
+        internal static void TryRearmAfterSpawn(Thing t)
+        {
+            if (t == null) return;
+            int id = t.thingIDNumber;
+            int now = Find.TickManager.TicksGame;
+
+            if (withdrawnSeen.TryGetValue(id, out int seen) && now - seen <= RearmWindowTicks)
+            {
+                withdrawnUntil[id] = now + 300;
+                // 工作台旁边那笔宽限原来是"首次出现"一口价（只放宽一次）；
+                // 第二次被放下来时它早就过期了 ⇒ 当场被吸走。落地即刷新首见时刻，
+                // 让"刚落下的料"重新拥有完整的宽限。
+                if (rimFirstSeen.ContainsKey(id)) rimFirstSeen[id] = now;
+            }
         }
 
         public static bool IsRecentlyWithdrawn(Thing t)
@@ -106,6 +152,13 @@ namespace DigitalStorage.Components
                 if (tick - kv.Value >= RimFirstSeenKeepTicks) stale.Add(kv.Key);
             for (int i = 0; i < stale.Count; i++)
                 rimFirstSeen.Remove(stale[i]);
+
+            // 「近期被取出过」表：过了 RearmWindowTicks 就没用了（只服务于落地重算）。
+            var oldWithdrawn = new List<int>();
+            foreach (var kv in withdrawnSeen)
+                if (tick - kv.Value > RearmWindowTicks) oldWithdrawn.Add(kv.Key);
+            for (int i = 0; i < oldWithdrawn.Count; i++)
+                withdrawnSeen.Remove(oldWithdrawn[i]);
         }
 
         public bool Enabled
@@ -163,7 +216,15 @@ namespace DigitalStorage.Components
         public override void CompTick()
         {
             base.CompTick();
-            if (core == null || !enabled || !core.Powered) return;
+            if (core == null) return;
+
+            // 碎堆自愈：每 600 tick 一批、每次最多并 8 对（核心 ID 错开相位）。
+            // 只做"减法"，跟收纳开关 / 电力无关，所以放在业务闸门之前 ——
+            // 旧档或历史 canMerge=false 路径留下的重复小堆不修，会把槽位一个个吃光。
+            if (core.Spawned && (Find.TickManager.TicksGame + core.thingIDNumber) % 600 == 0)
+                core.ConsolidateStacks(8);
+
+            if (!enabled || !core.Powered) return;
 
             // 设置「自动收纳」总开关（社区反馈：关掉后瞬移搬运就消失）
             if (!DigitalStorage.Settings.DigitalStorageSettings.autoIngestEnabled) return;
@@ -388,6 +449,8 @@ namespace DigitalStorage.Components
             /// <summary>是某个 pawn 当前 / 排队中作业的目标 —— 见 <see cref="IsTargetOfAnyPawnJob"/>。
             /// <b>默认不生效</b>（设置 <c>autoIngestYieldToJobs</c>）。</summary>
             JobTarget,
+            /// <summary>玩家亲手置了「禁止搬运」—— 见 <see cref="RejectReason"/> 里的说明。</summary>
+            Forbidden,
             RecentlyWithdrawn
         }
 
@@ -423,6 +486,14 @@ namespace DigitalStorage.Components
             // 容器内 / 背包里的东西 Spawned == false，一条判断就够。
             if (!t.Spawned) return Reject.NotOnMap;
             if (IsOnBillGiver(t, map)) return Reject.OnBillGiver;
+            // ★ 玩家手动「禁止搬运」的东西不动（用户 2026-10-23 反复上报的
+            //   「小人把东西取出来又塞回系统」有一半是这条：面板「取出」按钮落地时
+            //   会 SetForbidden(true)（HaulSourceContents.ExtractTo 的 forbid 参数），
+            //   而在 4.0 之前自动收纳**根本不看 forbidden** ⇒ 玩家手动掏出 50 钢铁，
+            //   5 秒后它自己又飞回核心，看起来就是"取出来又被塞回去"。
+            //   原版搬运/选目的地全都尊重 forbidden，这里跟着尊重：
+            //   禁止 = 玩家的明确意愿，比"算中即入"优先。
+            if (t.IsForbidden(Faction.OfPlayer)) return Reject.Forbidden;
             // ★ 2026-10：作业已经指着它 —— 抢走 = 让那个作业找不到东西（见方法注释）。
             //   **默认不生效**（见设置 autoIngestYieldToJobs）：本 mod 的取向是"算中即入"，
             //   让位只是留给"万一起了取料死循环"时的一键对照。

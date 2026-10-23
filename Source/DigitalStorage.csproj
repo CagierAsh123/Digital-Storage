@@ -175,6 +175,10 @@
     <Compile Include="HarmonyPatches\Patch_BenchWhitelist_Relax.cs" />
     <Compile Include="HarmonyPatches\Patch_HaulToContainer_ConcurrentCore.cs" />
     <Compile Include="HarmonyPatches\Patch_CarryFromCore_MarkWithdrawn.cs" />
+    <!-- 4.1「取出又塞回去」：落地侧补标记（原版丢手 / 任何 SpawnSetup 都再续一次窗口） -->
+
+    <Compile Include="HarmonyPatches\Patch_Thing_SpawnSetup_RearmWithdrawn.cs" />
+    <Compile Include="HarmonyPatches\Patch_ThingOwner_TransferToCore_PartialDeposit.cs" />
     <Compile Include="HarmonyPatches\Patch_JobDriver_Equip.cs" />
     <!-- B1 医疗与生存覆盖（2026-10-17）：血原质 / 输血 / 备药备货 -->
     <Compile Include="HarmonyPatches\Patch_HemogenAdministerFromCore.cs" />

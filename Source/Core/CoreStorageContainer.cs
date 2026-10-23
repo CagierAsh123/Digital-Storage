@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
+using DigitalStorage.AI;
 using DigitalStorage.Components;
+using RimWorld;
 using Verse;
 
 namespace DigitalStorage.Core
@@ -10,6 +13,9 @@ namespace DigitalStorage.Core
         {
             dontTickContents = true;
         }
+
+        /// 合并碎堆时的快照缓冲（复用，避免每轮 new List）
+        private readonly List<Thing> consolidateBuf = new List<Thing>();
 
         private void UpdateCapacity()
         {
@@ -41,6 +47,9 @@ namespace DigitalStorage.Core
         /// </summary>
         internal int CountCanAcceptSafe(Thing item, bool canMergeWithExistingStacks = true)
         {
+            // 自刷新（幂等 O(1)）：诊断工具直接调本方法时不经过 GetCountCanAccept，
+            // 若容器上的 maxStacks 还是哨兵 999999 会误报"无限容量"。
+            UpdateCapacity();
             if (item == null || item.def == null || item.stackCount <= 0) return 0;
             if (maxStacks == 999999) return item.stackCount;
 
@@ -89,6 +98,12 @@ namespace DigitalStorage.Core
             return core.AllowsInsert(item);
         }
 
+        /// <summary>
+        /// 注意 <paramref name="canMergeWithExistingStacks"/>：传 <c>false</c> 会**跳过原版的合并循环**，
+        /// 只要还有空槽就 append 成新条目 ⇒ 同 def 两堆、<c>Count</c> 虚增、ITab 容量条虚高。
+        /// 只有"该 Thing 被外部按引用持有（作业队列 / 预订单 / 装备槽）"时才允许传 false；
+        /// 回滚、退回、二次入库一律传 <c>true</c>。
+        /// </summary>
         public override bool TryAdd(Thing item, bool canMergeWithExistingStacks = true)
         {
             if (item == null) return false;
@@ -134,6 +149,76 @@ namespace DigitalStorage.Core
             return holder.TryTransferToContainer(item, this, Math.Min(count, item.stackCount), canMergeWithExistingStacks);
         }
 
+
+        /// <summary>
+        /// 把同种可堆叠的碎堆并成满堆 —— 旧档 / 历史 <c>canMerge=false</c> 路径留下的重复小堆自愈。
+        ///
+        /// <para><b>只做减法</b>：只减少 <see cref="ThingOwner.Count"/>，绝不会超额，所以顺手能把
+        /// 旧档里 <c>Count &gt; cap</c> 的超额库存压回上限内（被吸收方 <c>Destroy()</c> 会自动
+        /// <c>Remove</c>，不需要手动摘除 —— 手动摘除已销毁对象反而会 <c>RemoveAt(-1)</c> 抛异常）。</para>
+        ///
+        /// <para><b>三条铁律</b>（2026-10-23 审计）：① 不能并掉<b>被预约 / 被作业引用</b>的堆 ——
+        /// 销毁后 <c>ReservationManager</c> 预订单与 <c>CraftLine.Ingredients</c> 会指向 Destroyed
+        /// 目标，表现为"作业卡住"；② 必须 <c>respectStackLimit: true</c>，否则顶破 stackLimit；
+        /// ③ 带 HP 的堆只在 HP 相同时合并（原版按数量加权平均会抹平个体差异），带品质的不合并
+        /// （合堆会丢品质）。</para>
+        ///
+        /// <para>返回实际合并对数。<paramref name="maxMerges"/> 用于限制单次开销。</para>
+        /// </summary>
+        internal int ConsolidateStacks(int maxMerges)
+        {
+            if (maxMerges <= 0 || Count < 2) return 0;
+            Building_StorageCore core = Owner as Building_StorageCore;
+            if (core == null || !core.Spawned) return 0;
+            Map map = core.Map;
+            if (map == null) return 0;
+
+            // 先快照：合并会 Destroy 掉堆（从 innerList 移除），直接按索引遍历会错位
+            consolidateBuf.Clear();
+            consolidateBuf.AddRange(InnerListForReading);
+            int merges = 0;
+            for (int i = 0; i < consolidateBuf.Count && merges < maxMerges; i++)
+            {
+                Thing src = consolidateBuf[i];
+                if (src == null || src.Destroyed || src.stackCount <= 0) continue;
+                if (src.stackCount >= src.def.stackLimit) continue;
+                if (StackIsBusy(src, map)) continue;
+
+                for (int k = 0; k < consolidateBuf.Count && merges < maxMerges; k++)
+                {
+                    if (k == i) continue;
+                    Thing dst = consolidateBuf[k];
+                    if (dst == null || dst.Destroyed || ReferenceEquals(dst, src)) continue;
+                    if (!dst.CanStackWith(src)) continue;
+                    if (dst.stackCount >= dst.def.stackLimit) continue;
+                    if (dst.def.useHitPoints && dst.HitPoints != src.HitPoints) continue;
+                    if (dst.TryGetComp<CompQuality>() != null) continue;
+                    if (StackIsBusy(dst, map)) continue;
+
+                    int take = Math.Min(src.stackCount, dst.def.stackLimit - dst.stackCount);
+                    if (take <= 0) continue;
+                    Thing piece = src.SplitOff(take);
+                    if (piece == null) break;
+                    if (!dst.TryAbsorbStack(piece, true))
+                    {
+                        // 并失败（极少）：塞回去，再换一对
+                        TryAdd(piece, true);
+                        break;
+                    }
+                    merges++;
+                    if (src.Destroyed || src.stackCount <= 0) break;
+                }
+            }
+            return merges;
+        }
+
+        /// <summary>这一堆此刻能不能动：被预订单或制作代理认领的都不能并。</summary>
+        private static bool StackIsBusy(Thing t, Map map)
+        {
+            if (CraftIngredientClaims.OwnerOf(t) != null) return true;
+            if (map != null && map.reservationManager.IsReservedByAnyoneOf(t, Faction.OfPlayer)) return true;
+            return false;
+        }
 
         internal void AddLoaded(Thing item)
         {

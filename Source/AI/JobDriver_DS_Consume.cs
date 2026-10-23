@@ -62,6 +62,13 @@ namespace DigitalStorage.AI
 
         protected override IEnumerable<Toil> MakeNewToils()
         {
+            // ★ 作业结束/被打断时，手上剩余的消耗品会被原版丢在脚下
+            //   （`Verse.AI\Pawn_JobTracker.cs:510-517`，不置禁止、不打标记）⇒ 自动收纳
+            //   15 tick 一轮就把它吸回核心 ⇒ 还是饿/该用药，再派一趟 ⇒ "取—吸"循环。
+            //   丢之前先盖戳。`JobDriver.Cleanup` 在 1.6 里**不是 virtual**（`Verse.AI\JobDriver.cs:274`），
+            //   只能挂 `AddFinishAction`（它在 Cleanup 内部第 276-280 行执行，早于第 516 行的落地）。
+            AddFinishAction(_ => MarkCarriedForAutoIngest());
+
             // 容器被拆/断电，或那件东西没了 → 放弃（原版 JobGiver 会重试）
             this.FailOn(() =>
             {
@@ -86,6 +93,20 @@ namespace DigitalStorage.AI
             yield return Toils_Ingest.FinalizeIngest(pawn, TargetIndex.A);
         }
 
+        /// <summary>盖上"刚被取出"戳（<see cref="CompAutoIngest.MarkWithdrawn(Thing)"/>）。</summary>
+        private void MarkCarriedForAutoIngest()
+        {
+            try
+            {
+                Thing carried = pawn != null ? pawn.carryTracker.CarriedThing : null;
+                if (carried != null && !carried.Destroyed) CompAutoIngest.MarkWithdrawn(carried);
+            }
+            catch (Exception)
+            {
+                // 清理路径绝不抛异常
+            }
+        }
+
         // ---------- toil builders ----------
 
         private Toil DropIncompatibleCarryIfNeeded()
@@ -97,7 +118,14 @@ namespace DigitalStorage.AI
                 Thing carried = pawn.carryTracker.CarriedThing;
                 Thing target = TargetThing;
                 if (carried != null && target != null && carried.def != target.def)
-                    pawn.carryTracker.TryDropCarriedThing(pawn.Position, ThingPlaceMode.Near, out _);
+                {
+                    // 落地即盖"刚被取出"戳：否则自动收纳 15 tick 一轮就把它吸回核心。
+                    if (pawn.carryTracker.TryDropCarriedThing(pawn.Position, ThingPlaceMode.Near, out Thing dropped)
+                        && dropped != null && !dropped.Destroyed)
+                    {
+                        CompAutoIngest.MarkWithdrawn(dropped);
+                    }
+                }
             };
             return toil;
         }
@@ -153,14 +181,24 @@ namespace DigitalStorage.AI
             return toil;
         }
 
-        private static void ReturnToOwner(ThingOwner owner, Thing t)
+        private void ReturnToOwner(ThingOwner owner, Thing t)
         {
             if (t == null || t.Destroyed) return;
             if (owner != null && owner.TryAdd(t, true)) return;
             // 极端情况（容器满了）：就地落地，总比消失好
             if (t.Spawned) return;
-            Map map = Find.CurrentMap;
-            if (map != null) GenPlace.TryPlaceThing(t, map.Center, map, ThingPlaceMode.Near);
+            // ★ 落在小人脚下而不是地图中心（中心可能很远、也可能不可达）；
+            //   落地后立刻盖"刚被取出"戳，否则自动收纳 15 tick 一轮就把它吸回核心 ——
+            //   玩家看到的正是"吃饭/吃药的余料在核心与脚下之间来回飞"。
+            Map map = (pawn != null ? pawn.Map : null) ?? Find.CurrentMap;
+            if (map == null) return;
+            IntVec3 pos = (pawn != null && pawn.Spawned) ? pawn.Position : map.Center;
+            if (!pos.IsValid) pos = map.Center;
+            if (GenPlace.TryPlaceThing(t, pos, map, ThingPlaceMode.Near, out Thing dropped)
+                && dropped != null && !dropped.Destroyed)
+            {
+                CompAutoIngest.MarkWithdrawn(dropped);
+            }
         }
 
         private Toil CarryToChewSpot()

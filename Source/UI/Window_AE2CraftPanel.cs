@@ -1205,10 +1205,24 @@ if (i == 1) TreeGlyph(new Rect(b.x + 4f, b.y + 4f, 15f, 15f));   // ★ 15×15�
                     int n = Mathf.Min(left, th.stackCount);
                     Thing part = th.SplitOff(n);
                     if (part == null) continue;
-                    left -= n;
-                    if (!GenPlace.TryPlaceThing(part, cell, map, ThingPlaceMode.Near))
+                    // ★ 先盖章再落地：取出即"刚被取出"（与 CarryFromCore 同款护栏）。
+                    //   不盖的话自动收纳下一轮 15 tick 扫描就把它瞬移回核心 —— 玩家看到的就是
+                    //   "从核心取出来又塞回去"。落地成功后 SpawnSetup 补丁会再续一次窗口。
+                    CompAutoIngest.MarkWithdrawn(part);
+                    if (!GenPlace.TryPlaceThing(part, cell, map, ThingPlaceMode.Near, out Thing dropped))
                     {
-                        if (!held.TryAdd(part, false)) GenPlace.TryPlaceThing(part, cell, map, ThingPlaceMode.Near);
+                        // 回滚必须 canMerge:true —— false 会在有同种空槽时新开一堆（同 def 双堆、吃槽位）
+                        if (!held.TryAdd(part, true)) GenPlace.TryPlaceThing(part, cell, map, ThingPlaceMode.Near);
+                    }
+                    else
+                    {
+                        left -= n;
+                        if (dropped != null && !dropped.Destroyed)
+                        {
+                            CompAutoIngest.MarkWithdrawn(dropped);
+                            // 玩家手动掏出来的东西：置禁止，免得自动收纳 / 原版搬运工顺手送回去。
+                            dropped.SetForbidden(true, false);
+                        }
                     }
                 }
             }

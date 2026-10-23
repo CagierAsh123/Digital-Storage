@@ -5,6 +5,7 @@ using DigitalStorage.Core;
 using RimWorld;
 using UnityEngine;
 using Verse;
+using Verse.AI;
 using Verse.Sound;
 
 namespace DigitalStorage.AI
@@ -870,7 +871,24 @@ namespace DigitalStorage.AI
             {
                 ThingDefCountClass need = cost[i];
                 if (need == null || need.thingDef == null || need.count <= 0) continue;
-                TransferFromCores(map, need.thingDef, need.count, dest);
+                // ★ 只补"还差的"，不是"总成本"：框的内胆是 maxStacks=999999 的 ThingOwner，
+                //   什么都能收；多塞进去的料会在 `Frame.CompleteConstruction` 里被
+                //   `ClearAndDestroyContents()` 直接销毁（`RimWorld\Frame.cs:277`）⇒ 材料凭空消失。
+                //   还要扣掉原版搬运工/其它小人在途的量（IHaulEnroute），否则多人同时供料必超发。
+                int stillNeeded = need.count;
+                try
+                {
+                    stillNeeded = (f is IHaulEnroute enroute)
+                        ? enroute.GetSpaceRemainingWithEnroute(need.thingDef)
+                        : f.ThingCountNeeded(need.thingDef);
+                }
+                catch (Exception)
+                {
+                    // 第三方 IHaulEnroute 实现可能抛；算不出来就退回"总成本"（旧行为）
+                    stillNeeded = need.count;
+                }
+                if (stillNeeded <= 0) continue;
+                TransferFromCores(map, need.thingDef, stillNeeded, dest);
             }
             return true;
         }
@@ -919,7 +937,14 @@ namespace DigitalStorage.AI
                 {
                     Thing t = owner[j];
                     if (t == null || t.Destroyed || t.def != def) continue;
-                    int moved = owner.TryTransferToContainer(t, dest, Mathf.Min(left, t.stackCount), true);
+                    int before = t.stackCount;
+                    owner.TryTransferToContainer(t, dest, Mathf.Min(left, before), true);
+                    // ⚠️ 不能信 `TryTransferToContainer` 的返回值：原版在"整堆并进目标已有堆"时
+                    // 走合并分支、`thing.stackCount` 不变 ⇒ 返回 0（`Verse\ThingOwner.cs:750-767`）。
+                    // 4.0 之前就因此少减 `left`，虚拟工实际搬得比需求多。这里按转移前后的真实数量记账。
+                    int moved;
+                    if (t.Destroyed || t.holdingOwner != owner) moved = before;   // 整堆转走 / 被并掉
+                    else moved = before - t.stackCount;
                     if (moved > 0) left -= moved;
                 }
             }

@@ -75,7 +75,92 @@ namespace DigitalStorage.AI
             if (src != null && !src.Destroyed && src.MapHeld == pawn.Map)
                 pawn.Reserve(src, job, 1, reserveCount, null, false);
 
+            // 【4.1 / 用户 2026-10-23 报的"多人同建一个框，材料超发最后凭空消失"】
+            // 登记"我这趟在途多少"到原版 EnrouteManager —— 见 RegisterEnroute 的注释。
+            RegisterEnroute();
+
             return true;
+        }
+
+        /// <summary>
+        /// 把「本趟要送多少」登记进原版 <c>EnrouteManager</c>。
+        ///
+        /// <para><b>为什么非登记不可</b>：<c>Frame</c> / <c>Blueprint_Build</c> 都实现
+        /// <c>IHaulEnroute</c>，原版算"还差多少材料"走
+        /// <c>EnrouteUtility.GetSpaceRemainingWithEnroute</c> =
+        /// <c>SpaceRemainingFor(def) - EnrouteManager.GetEnroute(...)</c>。
+        /// 我们这条出核心的取料链 4.0 之前**一处都没登记**（全库 0 处 <c>AddEnroute</c>），
+        /// 于是每个小人规划时看到的"还差多少"都是**全额**：
+        /// 三名小人同建一个缺 20 钢的框 ⇒ 各取 20、各塞进
+        /// <c>Frame.resourceContainer</c>（<c>maxStacks = 999999</c>，来者不拒）⇒ 送进去 60。
+        /// 而 <c>Frame.CompleteConstruction</c>（<c>Frame.cs:262-277</c>）里有一句
+        /// <c>resourceContainer.ClearAndDestroyContents();</c> ⇒ <b>多出来的 40 直接销毁</b>，
+        /// 玩家看到的就是"材料送进去了、建完了、仓库里少了 40"。</para>
+        ///
+        /// <para><b>照抄原版</b> <c>JobDriver_HaulToContainer.UpdateTracker</c>
+        /// （<c>:204-227</c>）：<c>num = Mathf.Min(job.count, container.GetSpaceRemainingWithEnroute(def))</c>
+        /// （**不排除自己**，因为此时自己还没登记过），然后 <c>AddEnroute</c>。
+        /// 蓝图 → 框那一步不用管：<c>Blueprint_Build.MakeSolidThing</c>（<c>:70-79</c>）里有
+        /// <c>base.Map.enrouteManager.SendReservations(this, frame)</c>，原版自己会把账搬过去。</para>
+        ///
+        /// <para><b>释放</b>：<see cref="ReleaseEnroute"/> 挂在 <c>AddFinishAction</c> 上。
+        /// 容器 despawn 时原版也会清（<c>Thing.DeSpawn</c> → <c>Notify_ContainerDespawned</c>），
+        /// 两边都放一次不会重复扣（<c>ReleaseFor</c> 只删这名 pawn 的条目）。
+        /// 驱动实例上的这几个字段**不进存档**：读档后 job 直接续跑、不会重跑
+        /// <c>TryMakePreToilReservations</c>，与存档里的 enroute 账对得上（原版同理）。</para>
+        /// </summary>
+        private void RegisterEnroute()
+        {
+            Thing src = SourceThing;
+            Thing dest = job.GetTarget(TargetIndex.A).Thing;
+            if (src == null || src.Destroyed || src.def == null) return;
+            if (dest == null || dest.Destroyed) return;
+
+            IHaulEnroute enroute = dest as IHaulEnroute;
+            if (enroute == null) return;
+            Map map = enroute.Map;
+            if (map == null) return;
+
+            int count = Math.Min(job.count, enroute.GetSpaceRemainingWithEnroute(src.def));
+            if (count <= 0) return;
+
+            map.enrouteManager.AddEnroute(enroute, pawn, src.def, count);
+            TrackEnroute(enroute);
+        }
+
+        /// <summary>本趟登记过在途量的容器（收尾时逐个还回去）。</summary>
+        private readonly List<IHaulEnroute> enrouteContainers = new List<IHaulEnroute>();
+
+        private void TrackEnroute(IHaulEnroute c)
+        {
+            if (c == null) return;
+            for (int i = 0; i < enrouteContainers.Count; i++)
+                if (ReferenceEquals(enrouteContainers[i], c)) return;
+            enrouteContainers.Add(c);
+        }
+
+        /// <summary>
+        /// 还掉本趟登记的在途量（作业无论怎么结束都会走到）。
+        /// 蓝图 → 框之后 <c>job.targetA</c> 已经是框，所以开头登记的那个蓝图实例
+        /// 也一起还 —— 两个都放一次是安全的（<c>ReleaseFor</c> 只删自己的条目）。
+        /// </summary>
+        private void ReleaseEnroute()
+        {
+            // 1) 登记时那个容器
+            for (int i = 0; i < enrouteContainers.Count; i++)
+                ReleaseOne(enrouteContainers[i]);
+            enrouteContainers.Clear();
+
+            // 2) 当前目的地（可能已经被 MakeSolidThing 换成 Frame，账也被 SendReservations 搬过去了）
+            ReleaseOne(job.GetTarget(TargetIndex.A).Thing as IHaulEnroute);
+        }
+
+        private void ReleaseOne(IHaulEnroute enroute)
+        {
+            if (enroute == null) return;
+            Map map = enroute.Map;
+            if (map == null) return;
+            map.enrouteManager.ReleaseFor(enroute, pawn);
         }
 
         public override void Notify_Starting()
@@ -115,6 +200,9 @@ namespace DigitalStorage.AI
 
         protected override IEnumerable<Toil> MakeNewToils()
         {
+            // 收尾时把自己登记的在途量还回去（见 RegisterEnroute）。
+            AddFinishAction(_ => OnFinish());
+
             // 那件东西没了 / 被销毁 → 放弃
             this.FailOn(() =>
             {
@@ -145,6 +233,9 @@ namespace DigitalStorage.AI
 
             // 3) 地形蓝图：先拆掉这一格的旧地板（原版交付层那一步，见 RemoveExistingFloor 的注释）
             yield return RemoveExistingFloor();
+
+            // 3.5) 工地被人占着就先等一会（见 WaitSiteClear —— "取出来又塞回去"的主循环源头）
+            yield return WaitSiteClear();
 
             // 4) 蓝图 → Frame（原版 HaulToContainer 同款，解决 #5）
             yield return Toils_Construct.MakeSolidThingFromBlueprintIfNecessary(TargetIndex.A, TargetIndex.None);
@@ -264,8 +355,12 @@ namespace DigitalStorage.AI
                 int carried = actor.carryTracker.TryStartCarry(taken, requested, false);
                 if (carried < requested)
                 {
-                    if (!taken.Destroyed && taken.holdingOwner == null && !owner.TryAdd(taken, true))
-                        GenPlace.TryPlaceThing(taken, actor.Position, actor.Map, ThingPlaceMode.Near);
+                    if (!taken.Destroyed && taken.holdingOwner == null && !owner.TryAdd(taken, true)
+                        && GenPlace.TryPlaceThing(taken, actor.Position, actor.Map, ThingPlaceMode.Near, out Thing droppedPart))
+                    {
+                        // 落地即给"刚被取出"戳：否则下一轮 15 tick 扫描就把它吸回核心（取—塞循环）。
+                        CompAutoIngest.MarkWithdrawn(droppedPart);
+                    }
                     EndJobWith(JobCondition.Incompletable);
                     return;
                 }
@@ -273,6 +368,75 @@ namespace DigitalStorage.AI
                 job.SetTarget(TargetIndex.B, actor.carryTracker.CarriedThing);
             };
             return toil;
+        }
+
+        /// <summary>
+        /// 工地被别的 pawn 占着时**先等一会**，别让原版把整个作业判死。
+        ///
+        /// <para><b>为什么这是"取出来又塞回去"的主源头</b>：<c>Blueprint.TryReplaceWithSolidThing</c>
+        /// （<c>RimWorld\Blueprint.cs:49-55</c>）一发现 <c>GenConstruct.FirstBlockingThing != null</c>
+        /// 就 <c>workerPawn.jobs.EndCurrentJob(JobCondition.Incompletable)</c>，而阻挡物**包括站在占格里的
+        /// 任何 pawn**（<c>GenConstruct.cs:900-903</c>）。作业一死，手里的料被
+        /// <c>Pawn_JobTracker.CleanupCurrentJob</c> 丢在脚下 → 15 tick 内被自动收纳吸回核心 →
+        /// WorkGiver 看到"核心有料、蓝图缺料"又派同一趟。工地上人来人往时，这就是一个稳定的死循环。</para>
+        ///
+        /// <para>只对<b>pawn</b>挡路才等（等它走开），其它阻挡物（墙、掉落物）等也没用 ⇒ 立刻交回原版判死。
+        /// 最多等 4 游戏秒，仍挡着才 Incompletable（料有 <c>MarkWithdrawn</c> 窗口，不会立刻被吸回）。</para>
+        /// </summary>
+        private Toil WaitSiteClear()
+        {
+            int waited = 0;
+            var toil = ToilMaker.MakeToil("DS_WaitSiteClear");
+            toil.defaultCompleteMode = ToilCompleteMode.Never;
+            toil.initAction = () => waited = 0;
+            toil.tickAction = () =>
+            {
+                waited++;
+                Thing dest = job.GetTarget(TargetIndex.A).Thing;
+                if (dest == null || dest.Destroyed) { EndJobWith(JobCondition.Incompletable); return; }
+                if (!(dest is Blueprint))
+                {
+                    ReadyForNextToil();   // 已经是 Frame / 不是蓝图：直接进下一段
+                    return;
+                }
+                Thing blocker = GenConstruct.FirstBlockingThing(dest, pawn);
+                if (blocker == null || !(blocker is Pawn))
+                {
+                    ReadyForNextToil();   // 没人挡 / 挡的是死物：交回原版按原样判死
+                    return;
+                }
+                if (waited >= 240)
+                {
+                    EndJobWith(JobCondition.Incompletable);
+                }
+            };
+            return toil;
+        }
+
+        /// <summary>
+        /// 作业结束 / 被打断时，手里还没交付的料会被 <c>Pawn_JobTracker</c> 丢在脚下
+        /// （<c>Pawn_JobTracker.cs:510-517</c>，不置禁止、也不打"刚被取出"戳）。
+        /// 这里在丢之前先把戳盖上：落地时新补丁（<c>Patch_Thing_SpawnSetup_RearmWithdrawn</c>）
+        /// 会再续一次窗口，保证"取料→路远→落地"这条路上不会被自动收纳当场吸回。
+        /// <para>⚠️ <c>JobDriver.Cleanup</c> 在 1.6 里**不是 virtual**（`Verse.AI\JobDriver.cs:274`），
+        /// 只能用 <c>AddFinishAction</c>（它在 <c>Cleanup</c> 内部第 276-280 行被调用，
+        /// 早于 <c>Pawn_JobTracker.cs:516</c> 的落地）。</para>
+        /// </summary>
+        private void OnFinish()
+        {
+            try
+            {
+                Pawn p = pawn;
+                if (p != null && p.carryTracker != null && p.carryTracker.CarriedThing != null)
+                {
+                    CompAutoIngest.MarkWithdrawn(p.carryTracker.CarriedThing);
+                }
+            }
+            catch (Exception)
+            {
+                // 清理路径绝不抛异常
+            }
+            ReleaseEnroute();
         }
 
         private Toil PlaceHauled()
@@ -288,19 +452,37 @@ namespace DigitalStorage.AI
                 Thing targetThing = job.GetTarget(TargetIndex.A).Thing;
 
                 // 构造场景：塞容器优先（不落地 → listerHaulables 看不到，#1）
-                if (targetThing is IConstructible)
+                if (targetThing is IConstructible constructible)
                 {
                     ThingOwner container = targetThing.TryGetInnerInteractableThingOwner();
-                    if (container != null && container.CanAcceptAnyOf(carried, true))
+                    if (container != null)
                     {
-                        Thing taken = actor.carryTracker.innerContainer.Take(carried, carried.stackCount);
-                        if (taken != null && container.TryAdd(taken, true))
+                        // ★ 按"还差多少"裁剪投料量。Frame 的内胆是 maxStacks=999999 的 ThingOwner
+                        //   （`Frame.cs:170`），什么都能收 ⇒ 超发的料不会落地，而是在
+                        //   `Frame.CompleteConstruction` 里被 `ClearAndDestroyContents()` **直接销毁**
+                        //   （`Frame.cs:277`）。多出来的留在手上，作业结束时由 Cleanup 落地并带"刚被取出"戳。
+                        int give = carried.stackCount;
+                        try
                         {
-                            // B2: 不设 forbidden。蓝图 reservation 已保护材料；建造失败时原版退回材料不会带 forbidden。
-                            return;
+                            int need = constructible.ThingCountNeeded(carried.def);
+                            if (need >= 0 && need < give) give = need;
                         }
-                        if (taken != null)
-                            actor.carryTracker.innerContainer.TryAdd(taken, true);
+                        catch (Exception)
+                        {
+                            // 某些第三方 IConstructible 的 ThingCountNeeded 会抛（原版对安装蓝图也会）
+                            // ⇒ 算不出来就不裁，维持原行为。
+                        }
+                        if (give > 0 && container.CanAcceptAnyOf(carried, true))
+                        {
+                            Thing taken = actor.carryTracker.innerContainer.Take(carried, give);
+                            if (taken != null && container.TryAdd(taken, true))
+                            {
+                                // B2: 不设 forbidden。蓝图 reservation 已保护材料；建造失败时原版退回材料不会带 forbidden。
+                                return;
+                            }
+                            if (taken != null)
+                                actor.carryTracker.innerContainer.TryAdd(taken, true);
+                        }
                     }
                 }
 
@@ -333,8 +515,15 @@ namespace DigitalStorage.AI
                     //   forbidden）⇒ 那条路上只能靠这个窗口挡住"刚放下就被吸回核心、小人再取一趟"的循环。
                     if (dropped != null)
                     {
+                        // ★ 4.1 改：**不再置禁止**。
+                        //   置禁止（`SetForbidden(true)`）原本是为了让原版待搬表看不到它
+                        //   （`ListerHaulables.ShouldBeHaulable` 会把禁止物踢出去）。
+                        //   但自动收纳现在**尊重禁止**（`CompAutoIngest.Reject.Forbidden`），
+                        //   两者叠加的结果是"这块料永远躺在地上"。
+                        //   现在统一靠"刚被取出"窗口顶住：`MarkWithdrawn` 起算 300 tick，
+                        //   落地时再重算一次（`CompAutoIngest.TryRearmAfterSpawn`），
+                        //   窗口过后它照常被自动收纳回核心 —— 材料不会凭空消失也不会滞留。
                         CompAutoIngest.MarkWithdrawn(dropped);
-                        if (!(targetThing is IConstructible)) dropped.SetForbidden(true, false);
                     }
                 }
             };
