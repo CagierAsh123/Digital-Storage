@@ -801,6 +801,7 @@ namespace DigitalStorage.AI
             if (workToBuild <= 0f)
             {
                 if (!DigitalWorkBudget.AllowCompletion()) return;   // 超预算：下一 tick 再建完
+                ForeignJobRelease.BeforeVanishing(f, pawn);
                 f.CompleteConstruction(pawn);
                 return;
             }
@@ -822,6 +823,7 @@ namespace DigitalStorage.AI
             StrikeCount++;
             if (willFinish)
             {
+                ForeignJobRelease.BeforeVanishing(f, pawn);
                 f.CompleteConstruction(pawn);
             }
         }
@@ -897,6 +899,11 @@ namespace DigitalStorage.AI
         {
             Thing created;
             bool jobEnded;
+            // 换框 = 蓝图消失。殖民者手上那条"往蓝图送货/建造"的 job 会因此指着空气，
+            // 必须同一 tick 收掉（否则那条 job 一旦落进存档，读档时 targetA 静默变 Invalid
+            // ⇒ 原版 JobDriver_ConstructFinishFrame 解引用 null 炸档，见 ForeignJobRelease 注释）。
+            // 换框失败（第三方拦了）时白收一次也无害：它下一 tick 会重新领同一个活。
+            ForeignJobRelease.BeforeVanishing(bp, pawn);
             if (!bp.TryReplaceWithSolidThing(pawn, out created, out jobEnded))
             {
                 return false;
@@ -1370,6 +1377,9 @@ namespace DigitalStorage.AI
             {
                 t.Faction.Notify_BuildingRemoved(b, pawn);
             }
+            // 同一 tick 收掉"正指着这栋建筑"的殖民者 job（见 ForeignJobRelease 注释：
+            // 拆完的建筑若仍挂在某人的 curJob.targetA 上，那次存档会写出一条读档必炸的 job）。
+            ForeignJobRelease.BeforeVanishing(t, pawn);
             t.Destroy(DestroyMode.Deconstruct);
             if (pawn.records != null)
             {
