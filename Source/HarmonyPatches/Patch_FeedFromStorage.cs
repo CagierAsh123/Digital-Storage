@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using DigitalStorage.AI;
 using DigitalStorage.Components;
 using DigitalStorage.Core;
@@ -60,10 +61,7 @@ namespace DigitalStorage.HarmonyPatches
             // 铁律：ExtractToFeet 是有副作用的（物品真会离开容器落地），必须先确认能用。
             if (!eater.WillEat(best, getter, careIfNotAcceptableForTitle: true)) return;
 
-            int take = CalculateFeedAmount(eater, best.def, best.stackCount);
-            if (take <= 0) return;
-
-            Thing taken = HaulSourceContents.ExtractToFeet(best, take, getter);
+            Thing taken = TakeForFeeding(best, eater, getter);
             if (taken == null) return;
 
             foodSource = taken;
@@ -71,18 +69,88 @@ namespace DigitalStorage.HarmonyPatches
             __result = true;
         }
 
-        private static int CalculateFeedAmount(Pawn eater, ThingDef def, int maxAvailable)
+        /// <summary>复用窗口（tick）：探测与真正建 job 之间通常只隔同一个 tick 或下一 tick。</summary>
+        private const int ReuseTicks = 2;
+
+        private struct Prepared
         {
-            float nutritionWanted = eater.needs?.food != null
-                ? eater.needs.food.NutritionWanted
-                : 1f;
-            float nutritionPerItem = def.GetStatValueAbstract(StatDefOf.Nutrition);
-            if (nutritionPerItem <= 0f) return 1;
-            int needed = (int)Math.Ceiling(nutritionWanted / nutritionPerItem);
-            if (needed <= 0) needed = 1;
-            if (def.ingestible.maxNumToIngestAtOnce > 0)
-                needed = Math.Min(needed, def.ingestible.maxNumToIngestAtOnce);
-            return Math.Min(needed, maxAvailable);
+            public Pawn Eater;
+            public Thing Thing;
+            public int Tick;
+        }
+
+        /// <summary>同一个取用者（getter）刚抽出来的那一份。</summary>
+        private static readonly Dictionary<Pawn, Prepared> preparedByGetter = new Dictionary<Pawn, Prepared>();
+
+        /// <summary>
+        /// 抽一份可喂的食物到 <paramref name="getter"/> 脚下，并做 <see cref="ReuseTicks"/> 的复用。
+        ///
+        /// <para><b>为什么必须复用</b>（用户 2026-10-23 报「每次都会多留一个婴儿食品在地上」）：
+        /// 原版 <c>WorkGiver_Scanner.cs:35-37</c> 把 <c>HasJobOnThing</c> 实现成
+        /// <c>JobOnThing(pawn, t, forced) != null</c> —— 探测调一次、真正建 job 再调一次，
+        /// 而 <c>WorkGiver_BottleFeedBaby.JobOnThing</c>（<c>:15</c>）会走
+        /// <c>ChildcareUtility.FindBabyFoodForBaby</c>（<c>:772</c>）→ 落到本补丁的挂点上。
+        /// 探测那一次抽出来的东西没人用 ⇒ 地上白留一份。
+        /// 同一个坑在 <c>Patch_WardenDeliverHemogenFromCore</c> 已经踩过（那里也是 2 tick 复用窗口）。</para>
+        /// </summary>
+        private static Thing TakeForFeeding(Thing best, Pawn eater, Pawn getter)
+        {
+            int now = Find.TickManager.TicksGame;
+
+            if (preparedByGetter.TryGetValue(getter, out Prepared prepared))
+            {
+                preparedByGetter.Remove(getter);
+                if (prepared.Thing != null && !prepared.Thing.Destroyed && prepared.Thing.Spawned
+                    && prepared.Thing.Map == getter.MapHeld
+                    && prepared.Eater == eater && now - prepared.Tick <= ReuseTicks)
+                {
+                    return prepared.Thing;
+                }
+            }
+
+            int take = CalculateFeedAmount(eater, best);
+            if (take <= 0) return null;
+
+            Thing taken = HaulSourceContents.ExtractToFeet(best, take, getter);
+            if (taken == null) return null;
+
+            preparedByGetter[getter] = new Prepared { Eater = eater, Thing = taken, Tick = now };
+            if (preparedByGetter.Count > 32) PruneStale(now);
+            return taken;
+        }
+
+        /// <summary>纯内存卫生：只探测、没真正建 job 的取用者会留下一条过期项。</summary>
+        private static void PruneStale(int now)
+        {
+            var stale = new List<Pawn>();
+            foreach (KeyValuePair<Pawn, Prepared> kv in preparedByGetter)
+            {
+                if (kv.Key == null || kv.Value.Thing == null || kv.Value.Thing.Destroyed
+                    || now - kv.Value.Tick > 120)
+                {
+                    stale.Add(kv.Key);
+                }
+            }
+            for (int i = 0; i < stale.Count; i++) preparedByGetter.Remove(stale[i]);
+        }
+
+        /// <summary>
+        /// 取多少——<b>必须与原版同一个算式</b>。
+        ///
+        /// <para>原版 <c>JobDriver_BottleFeedBaby</c>（<c>:36-40</c>）拿食物时用的是
+        /// <c>Mathf.Min(babyFood.stackCount, FoodUtility.WillIngestStackCountOf(baby, def, NutritionForEater(baby, babyFood)))</c>，
+        /// 而 <c>FoodUtility.StackCountForNutrition</c>（<c>FoodUtility.cs:1307-1315</c>）是
+        /// <c>Mathf.RoundToInt</c>（四舍五入）、下限 1；旧实现用的是 <c>Math.Ceiling</c> 且拿的是
+        /// <c>GetStatValueAbstract(StatDefOf.Nutrition)</c>。只要「营养需求 ÷ 单件营养」的小数部分 &lt; 0.5，
+        /// 旧实现就比 job 实际会拿走的**多抽一件** ⇒ 那一件正好留在地上（用户看到的就是这个）。</para>
+        /// </summary>
+        private static int CalculateFeedAmount(Pawn eater, Thing food)
+        {
+            if (food?.def == null) return 0;
+            float nutritionPerItem = FoodUtility.NutritionForEater(eater, food);
+            int needed = FoodUtility.WillIngestStackCountOf(eater, food.def, nutritionPerItem);
+            if (needed < 1) needed = 1;
+            return Math.Min(needed, food.stackCount);
         }
     }
 }
