@@ -106,10 +106,11 @@ namespace DigitalStorage.Components
                 return;
             }
 
-            // 清空核心再放：如果核心原本有别的食物，"只剩冲突食物"这个前提就不成立了
-            int cleared = ClearCore(core);
+            // 腾空核心再放：如果核心原本有别的食物，"只剩冲突食物"这个前提就不成立了
+            int cleared = ClearCore(core, out int returned);
             SB.AppendLine("  核心 " + core.Position + "（全图 " + coreCount + " 个，已通电=" + core.IsUsableNow + "）"
-                          + "：清掉原有 " + cleared + " 件");
+                          + "：腾空原有 " + cleared + " 堆");
+            AppendClearedNote(cleared, returned);
             int stored = Stock(core, conflict, 20);
             SB.AppendLine("  放入冲突食物 = " + conflict.defName + " × " + stored
                           + "（WillEat=" + pawn.WillEat(conflict, pawn, careIfNotAcceptableForTitle: true) + "）");
@@ -153,7 +154,7 @@ namespace DigitalStorage.Components
 
             SB.Length = 0;
             SB.AppendLine("=== [DS V-B0-4] 换成合规食物：目标 " + pawn.LabelShort + "  核心 " + core.Position + " ===");
-            int cleared = ClearCore(core);
+            int cleared = ClearCore(core, out int returned);
             ThingDef ok = FindFood(pawn, CompliantCandidates, wantWillEat: true);
             if (ok == null)
             {
@@ -162,8 +163,9 @@ namespace DigitalStorage.Components
                 return;
             }
             int stored = Stock(core, ok, 20);
-            SB.AppendLine("  清掉原有 " + cleared + " 件；放入合规食物 = " + ok.defName + " × " + stored
+            SB.AppendLine("  腾空原有 " + cleared + " 堆；放入合规食物 = " + ok.defName + " × " + stored
                           + "（WillEat=" + pawn.WillEat(ok, pawn, careIfNotAcceptableForTitle: true) + "）");
+            AppendClearedNote(cleared, returned);
             SB.AppendLine("  期望：这个人现在**会**把食物抽到脚下并吃掉（这就是对照）。");
             AppendFoodTable(pawn);
             Log.Warning(SB.ToString());
@@ -334,7 +336,7 @@ namespace DigitalStorage.Components
         {
             List<Building_StorageCore> usable = CoreFinder.AllUsableCores(map);
             count = usable.Count;
-            Building_StorageCore best = Nearest(usable, cell);
+            Building_StorageCore best = NearestEmpty(usable, cell) ?? Nearest(usable, cell);
             if (best != null) return best;
 
             var tmp = new List<Building_StorageCore>();
@@ -343,7 +345,26 @@ namespace DigitalStorage.Components
                 if (c != null && !c.Destroyed && c.Spawned) tmp.Add(c);
             }
             count = tmp.Count;
-            return Nearest(tmp, cell);
+            return NearestEmpty(tmp, cell) ?? Nearest(tmp, cell);
+        }
+
+        /// <summary>
+        /// 优先挑**空核心**：这样 <see cref="ClearCore"/> 根本不用动玩家的存货。
+        /// 只有全图核心都有货时才退回去腾空最近的那个（那时也是挪到地上，不销毁）。
+        /// </summary>
+        private static Building_StorageCore NearestEmpty(List<Building_StorageCore> cores, IntVec3 cell)
+        {
+            Building_StorageCore best = null;
+            float bestDist = float.MaxValue;
+            for (int i = 0; i < cores.Count; i++)
+            {
+                Building_StorageCore c = cores[i];
+                if (c == null || c.Destroyed || !c.Spawned) continue;
+                if (c.innerContainer == null || c.innerContainer.Count > 0) continue;
+                float d = c.Position.DistanceTo(cell);
+                if (d < bestDist) { bestDist = d; best = c; }
+            }
+            return best;
         }
 
         private static Building_StorageCore Nearest(List<Building_StorageCore> cores, IntVec3 cell)
@@ -375,21 +396,67 @@ namespace DigitalStorage.Components
             return best;
         }
 
-        /// <summary>清空核心内容物（dev 工具，直接销毁；返回件数）。</summary>
-        private static int ClearCore(Building_StorageCore core)
+        /// <summary>
+        /// 腾空核心：内容物**挪到地上并禁止**，<b>绝不销毁</b>。
+        /// <para>这一条是被真实存档烧出来的教训：早先用 <c>Destroy(DestroyMode.Vanish)</c> 实现，
+        /// 实测时把玩家核心里的 135 堆真存货一起删了 —— dev 工具可以弄乱地图，但不能吞玩家的东西。</para>
+        /// <para>落地后立刻 <c>SetForbidden(value: true)</c>：<c>CompAutoIngest</c> 会跳过被禁止的物品，
+        /// 否则这些货几 tick 内就被自己吸回核心，等于没腾空（这条依赖我们自己的 <c>Reject.Forbidden</c>）。</para>
+        /// </summary>
+        /// <param name="core">要腾空的核心。</param>
+        /// <param name="returned">其中"地上放不下、只能放回核心"的堆数。</param>
+        /// <returns>成功挪到地上的堆数。</returns>
+        private static int ClearCore(Building_StorageCore core, out int returned)
         {
+            returned = 0;
             if (core?.innerContainer == null) return 0;
+            Map map = core.MapHeld;
             List<Thing> list = new List<Thing>(core.innerContainer);
-            int n = 0;
+            int moved = 0;
             for (int i = 0; i < list.Count; i++)
             {
                 Thing t = list[i];
                 if (t == null || t.Destroyed) continue;
                 core.innerContainer.Remove(t);
-                t.Destroy(DestroyMode.Vanish);
-                n++;
+
+                Thing placed = null;
+                bool ok = map != null
+                          && GenDrop.TryDropSpawn(t, core.Position, map, ThingPlaceMode.Near, out placed);
+                if (ok)
+                {
+                    (placed ?? t).SetForbidden(value: true, warnOnFail: false);
+                    moved++;
+                    continue;
+                }
+
+                // 地上放不下（或没地图）：放回核心，绝不销毁
+                if (core.innerContainer.TryAdd(t, canMergeWithExistingStacks: false))
+                {
+                    returned++;
+                    continue;
+                }
+
+                // 最后手段：原地刷出来（仍然不销毁）
+                if (map != null && !t.Spawned)
+                {
+                    GenSpawn.Spawn(t, core.Position, map);
+                    t.SetForbidden(value: true, warnOnFail: false);
+                    moved++;
+                    continue;
+                }
+
+                Log.Error("[DS V-B0-4] 腾空核心：既放不下也放不回，且没地图可刷出：" + t.LabelShort);
             }
-            return n;
+            return moved;
+        }
+
+        /// <summary>把「腾空核心」这件事说清楚（挪到地上≠销毁，测完要记得取消禁止）。</summary>
+        private static void AppendClearedNote(int moved, int returned)
+        {
+            if (moved <= 0 && returned <= 0) return;
+            SB.AppendLine("    ℹ️ 原有存货被**挪到地上并禁止**（不是销毁）"
+                          + (returned > 0 ? "；其中 " + returned + " 堆放不下、已放回核心" : "")
+                          + "。测完取消禁止，它们会被自吸回去。");
         }
 
         /// <summary>把 <paramref name="def"/> 种食物塞进核心（无视筛选，见 <c>TryStoreIgnoringFilter</c>）。</summary>
