@@ -203,7 +203,9 @@ namespace DigitalStorage.AI
 
                 int n;
                 ctx.avail.TryGetValue(t.def, out n);
-                ctx.avail[t.def] = n + t.stackCount;
+                // 只算**还能被认领**的量：别的线已经按量占掉的部分不能重复算，
+                // 否则这里觉得"够"，Collect 时才发现不够 ⇒ 白跑一轮展开。
+                ctx.avail[t.def] = n + CraftIngredientClaims.FreeAmountOf(t);
 
                 List<Thing> list;
                 if (!ctx.stacks.TryGetValue(t.def, out list))
@@ -472,12 +474,14 @@ namespace DigitalStorage.AI
                     Thing t = list[j];
                     if (t == null || t.Destroyed) continue;
 
-                    object owner = CraftIngredientClaims.OwnerOf(t);
-                    if (owner != null && !ReferenceEquals(owner, ctx.line)) continue;
+                    // 按量认领（2026-10-23，与 BillProbe 同一套判据）：别的线占了这堆一部分，
+                    // 剩下的先用，不够再从下一堆补 —— 整堆跳过会让并行塌缩成串行。
+                    int free = CraftIngredientClaims.FreeAmountOf(t);
+                    if (free <= 0) continue;
 
-                    int take = Math.Min(remaining, t.stackCount);
+                    int take = Math.Min(remaining, free);
                     if (take <= 0) continue;
-                    if (!CraftIngredientClaims.TryClaim(t, ctx.line)) continue;
+                    if (!CraftIngredientClaims.TryClaim(t, ctx.line, take)) continue;
 
                     picked.Add(t);
                     nums.Add(take);

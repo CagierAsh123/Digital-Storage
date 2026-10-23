@@ -530,30 +530,68 @@ namespace DigitalStorage.AI
         /// <para>守卫是必要的：原版候选来源的第二处是"区域遍历地图上的散落物"
         /// （<c>WorkGiver_DoBill.cs:529-551</c>），核心里凑不齐时它会把**地上的东西**选进来。
         /// 不挡的话，制作代理就变成"第二套自动收纳"，直接从地上吃料。</para>
+        ///
+        /// <para><b>def 与件数照抄原版，只换"从哪堆拿"</b>：原版挑中的那堆被别人按量认领掉、
+        /// 或余量不够时，从本图核心同 def 的其它堆补齐（2026-10-23，实机 V-B0-5）。</para>
         /// </summary>
         private static bool ExtractIngredients(Job job, CraftLine owner, Map map, out Thing[] things, out int[] counts, out bool claimedConflict)
         {
             claimedConflict = false;
+            things = new Thing[0];
+            counts = new int[0];
+
             List<LocalTargetInfo> q = job.targetQueueB;
             int n = (q == null) ? 0 : q.Count;
-            things = new Thing[n];
-            counts = new int[n];
+            if (n == 0) return false;
 
+            // ① 抄原版这一轮的账：每项 = (def, 需要几件, 它挑中的那一堆)。
+            //    def 与件数**照抄原版**（营养换算/混料/取整全在后面算好了），只把"从哪堆拿"换掉。
+            ThingDef[] defs = new ThingDef[n];
+            int[] needs = new int[n];
+            Thing[] preferred = new Thing[n];
             for (int i = 0; i < n; i++)
             {
                 Thing t = q[i].Thing;
-                things[i] = t;
-                counts[i] = (job.countQueue != null && i < job.countQueue.Count)
-                    ? job.countQueue[i]
-                    : (t != null ? t.stackCount : 0);
-
                 if (t == null || t.Destroyed) return false;
 
                 Building_StorageCore core = t.ParentHolder as Building_StorageCore;
                 if (core == null || core.Map != map) return false;   // 地上的 / 别的图的 / 书架衣架里的
-                if (counts[i] > t.stackCount) return false;          // 被人顺走了几件，数量对不上
+
+                int need = (job.countQueue != null && i < job.countQueue.Count)
+                    ? job.countQueue[i]
+                    : t.stackCount;
+                if (need <= 0) return false;
+
+                defs[i] = t.def;
+                needs[i] = need;
+                preferred[i] = t;
             }
 
+            // ② 本图核心存货池，按 def 分组（大堆优先：少一次两堆拼）。
+            //    这是"补料"的候选面 —— 原版挑中的那堆被别人认领掉时，从同 def 的别的堆拿。
+            List<Thing> pool = new List<Thing>();
+            HaulSourceContents.CollectDirect(map, pool);
+            Dictionary<ThingDef, List<Thing>> byDef = new Dictionary<ThingDef, List<Thing>>();
+            for (int i = 0; i < pool.Count; i++)
+            {
+                Thing t = pool[i];
+                if (t == null || t.Destroyed || t.def == null || t.stackCount <= 0) continue;
+
+                List<Thing> list;
+                if (!byDef.TryGetValue(t.def, out list))
+                {
+                    list = new List<Thing>();
+                    byDef[t.def] = list;
+                }
+                list.Add(t);
+            }
+            foreach (KeyValuePair<ThingDef, List<Thing>> kv in byDef)
+            {
+                kv.Value.Sort((a, b) => b.stackCount.CompareTo(a.stackCount));
+            }
+
+            // ③ 按量认领 + 跨堆补料。
+            //
             // B1（审计 2026-10-17，对应第三方补丁 FIX-13）：**原料认领**。
             //
             // 不认领的后果（三份独立审计同时命中）：几条线对同一堆料各记一份账，
@@ -562,19 +600,85 @@ namespace DigitalStorage.AI
             //
             // 用"认领"而非 ReservationManager：预约要 (thing, pawn)，而代理只有一个共享的
             // 资质载体 pawn，同一 pawn 再预约同一堆会被原版拒 ⇒ 还是塌缩（详见 CraftIngredientClaims）。
+            //
+            // ★ 2026-10-23（实机 V-B0-5）：认领改成**按量**。原版选料器不区分代理的"两条线"
+            //   （共用假 pawn、不真预约），两条线必然同时挑中同一堆料；以前整堆互斥 ⇒ 第二条线
+            //   永远判「这批材料正被另一条产线占用」。现在只要这堆够分就能并行，
+            //   不够分则从同 def 的其它堆补齐（补不齐才算真缺料）。
+            List<Thing> picked = new List<Thing>(n);
+            List<int> nums = new List<int>(n);
             for (int i = 0; i < n; i++)
             {
-                if (!CraftIngredientClaims.TryClaim(things[i], owner))
+                bool blocked;
+                if (!Allocate(owner, defs[i], needs[i], preferred[i], byDef, picked, nums, out blocked))
                 {
-                    // 已被别的线占了：把本次已认领的退掉，等下一轮（原版会把这一堆换成另一堆再试）
+                    // 拿不到：把本次已认领的全退掉，等下一轮（原版会给这一堆换成别的堆再试）
                     CraftIngredientClaims.Release(owner);
                     things = new Thing[0];
                     counts = new int[0];
-                    claimedConflict = true;
+                    claimedConflict = blocked;
                     return false;
                 }
             }
-            return true;
+
+            things = picked.ToArray();
+            counts = nums.ToArray();
+            return things.Length > 0;
+        }
+
+        /// <summary>
+        /// 给一项原料（<paramref name="def"/> 共 <paramref name="need"/> 件）在核心里落实实物。
+        /// <b>原版挑中的那堆优先</b>，余量不够就从同 def 的其它堆补（可跨多堆拆分 —— 结算侧
+        /// <c>BillCraftFunnel</c> 按 <c>SplitOff</c> 切料，本来就支持"一堆只拿一部分"）。
+        ///
+        /// <para><paramref name="blocked"/> 为 true 表示失败原因里有"被别人认领"的成分，
+        /// 用来把 <c>DS_BA_Block_Claimed</c> 与 <c>DS_BA_NoCoreMaterial</c> 分开报。</para>
+        /// </summary>
+        private static bool Allocate(CraftLine owner, ThingDef def, int need, Thing preferred,
+            Dictionary<ThingDef, List<Thing>> byDef, List<Thing> picked, List<int> nums, out bool blocked)
+        {
+            blocked = false;
+
+            if (preferred != null && def != null && preferred.def == def && !preferred.Destroyed)
+            {
+                int free = CraftIngredientClaims.FreeAmountOf(preferred);
+                if (free <= 0 && CraftIngredientClaims.ClaimedTotal(preferred) > 0) blocked = true;
+
+                int take = (free < need) ? free : need;
+                if (take > 0 && CraftIngredientClaims.TryClaim(preferred, owner, take))
+                {
+                    picked.Add(preferred);
+                    nums.Add(take);
+                    need -= take;
+                }
+            }
+            if (need <= 0) return true;
+
+            List<Thing> list;
+            if (def == null || !byDef.TryGetValue(def, out list)) return false;
+
+            for (int i = 0; i < list.Count && need > 0; i++)
+            {
+                Thing t = list[i];
+                if (t == null || t.Destroyed || ReferenceEquals(t, preferred)) continue;
+
+                int free = CraftIngredientClaims.FreeAmountOf(t);
+                if (free <= 0)
+                {
+                    if (CraftIngredientClaims.ClaimedTotal(t) > 0) blocked = true;
+                    continue;
+                }
+
+                int take = (free < need) ? free : need;
+                if (!CraftIngredientClaims.TryClaim(t, owner, take)) continue;   // 账对不上就换下一堆
+
+                picked.Add(t);
+                nums.Add(take);
+                need -= take;
+            }
+
+            if (need > 0 && CraftIngredientClaims.HasOtherOwner(preferred, owner)) blocked = true;
+            return need <= 0;
         }
     }
 }
