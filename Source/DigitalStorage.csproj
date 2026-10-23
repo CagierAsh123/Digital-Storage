@@ -91,6 +91,7 @@
     <Compile Include="Components\CompDigitalWorker.cs" />
     <Compile Include="Components\CompProperties_BillAutomation.cs" />
     <Compile Include="Components\CompBillAutomation.cs" />
+    <Compile Include="Components\TitleFoodDevTool.cs" />
 
     <Compile Include="Core\CoreTier.cs" />
     <Compile Include="Core\HaulSourceContents.cs" />
